@@ -1,0 +1,36 @@
+[build]
+  command = "CI=false npm run build"
+  publish = "build"
+
+[dev]
+  framework = "create-react-app"
+  targetPort = 3001
+
+[build.environment]
+  NODE_VERSION = "16"
+  NPM_FLAGS = "--legacy-peer-deps"
+
+[[plugins]]
+  package = "@netlify/plugin-lighthouse"
+
+[context.production]
+  environment = { NODE_ENV = "production" }
+
+[context.deploy-preview]
+  environment = { NODE_ENV = "development" }
+
+[[redirects]]
+  from = "/api/*"
+  to = "http://localhost:11434/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin/*"
+  to = "/admin/index.html"
+  status = 200

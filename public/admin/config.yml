@@ -1,0 +1,23 @@
+backend:
+  name: git-gateway
+  branch: preview
+  commit_messages:
+    create: 'Create {{collection}} "{{slug}}"'
+    update: 'Update {{collection}} "{{slug}}"'
+    delete: 'Delete {{collection}} "{{slug}}"'
+
+local_backend: true
+media_folder: "public/images"
+public_folder: "/images"
+
+collections:
+  - name: "config"
+    label: "Config"
+    files:
+      - name: "chat"
+        label: "Chat Settings"
+        file: "content/config/chat.json"
+        fields:
+          - { label: "Model Name", name: "modelName", widget: "string", default: "deepseek-r1:7b" }
+          - { label: "Temperature", name: "temperature", widget: "number", default: 0.7 }
+          - { label: "Max Tokens", name: "maxTokens", widget: "number", default: 2048 }

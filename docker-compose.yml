@@ -1,0 +1,19 @@
+services:
+  ollama:
+    image: ollama/ollama
+    environment:
+      - OLLAMA_MODELS_PATH=https://huggingface.co/models/deepseek-ai/deepseek-r1
+    volumes:
+      - ollama_cache:/root/.cache/ollama
+    ports:
+      - "11434:11434"
+
+  web:
+    image: nginx:alpine
+    volumes:
+      - ./web:/usr/share/nginx/html
+    ports:
+      - "3001:80"
+
+volumes:
+  ollama_cache:

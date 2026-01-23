@@ -1,0 +1,23 @@
+{
+  "chatConfigs": {
+    "title": "Chat Configurations",
+    "type": "object",
+    "properties": {
+      "modelName": {
+        "type": "string",
+        "title": "Model Name",
+        "default": "deepseek-r1:7b"
+      },
+      "temperature": {
+        "type": "number",
+        "title": "Temperature",
+        "default": 0.7
+      },
+      "maxTokens": {
+        "type": "number",
+        "title": "Max Tokens",
+        "default": 2048
+      }
+    }
+  }
+}

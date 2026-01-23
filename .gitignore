@@ -1,0 +1,42 @@
+# Build
+/build
+/dist
+.cache
+.netlify
+
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Testing
+/coverage
+
+# Environment
+.env*
+!.env.example
+!.env.production
+
+# Large files & Models
+/models
+*.gguf
+*.bin
+*.model
+*.weights
+/ollama-models
+.git/lfs
+*.tar
+*.gz
+/data
+/checkpoints
+
+# Misc
+.DS_Store
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.idea/
+.vscode/

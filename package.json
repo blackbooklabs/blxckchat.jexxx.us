@@ -1,0 +1,122 @@
+{
+  "name": "blxck-chat",
+  "version": "1.0.0",
+  "description": "Local DeepSeek AI Chat Interface",
+  "private": true,
+  "main": "src/index.tsx",
+  "scripts": {
+    "start": "PORT=3001 react-scripts start",
+    "build": "CI=false DISABLE_ESLINT_PLUGIN=true react-scripts build",
+    "test": "react-scripts test --transformIgnorePatterns \"node_modules/(?!@testing-library)/\"",
+    "test:watch": "npm test -- --watch",
+    "test:coverage": "npm test -- --coverage --watchAll=false",
+    "test:update": "npm test -- -u",
+    "test:ci": "CI=true npm test -- --passWithNoTests",
+    "eject": "react-scripts eject",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build",
+    "clean": "git clean -fd && rm -rf node_modules build package-lock.json",
+    "postinstall": "npm audit fix --legacy-peer-deps",
+    "prestart": "npm run clean:build",
+    "clean:build": "rm -rf ./build",
+    "lint": "eslint src --ext .ts,.tsx",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\"",
+    "test:e2e": "cypress open",
+    "prepare": "husky install"
+  },
+  "dependencies": {
+    "@testing-library/jest-dom": "^6.0.0",
+    "@testing-library/react": "^14.0.0",
+    "@testing-library/user-event": "^14.0.0",
+    "http-proxy-middleware": "^3.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "^5.0.1",
+    "showdown": "^2.1.0",
+    "typescript": "^4.9.5",
+    "web-vitals": "^3.5.2"
+  },
+  "devDependencies": {
+    "@testing-library/cypress": "^10.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/showdown": "^2.0.6",
+    "@typescript-eslint/eslint-plugin": "^5.0.0",
+    "@typescript-eslint/parser": "^5.0.0",
+    "cypress": "^13.0.0",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.2",
+    "husky": "^9.0.0",
+    "jest-dom": "^4.0.0",
+    "lint-staged": "^15.0.0",
+    "msw": "^2.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.0.0"
+  },
+  "overrides": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "postcss": "^8.4.31",
+    "nth-check": "^2.0.1",
+    "serialize-javascript": "^6.0.2"
+  },
+  "resolutions": {
+    "typescript": "^4.9.5"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "jest": {
+    "collectCoverageFrom": [
+      "src/**/*.{ts,tsx}",
+      "!src/index.tsx",
+      "!src/reportWebVitals.ts",
+      "!src/**/*.d.ts",
+      "!src/test/**/*"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "statements": 80,
+        "branches": 80,
+        "functions": 80,
+        "lines": 80
+      }
+    },
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/src/$1"
+    },
+    "setupFilesAfterEnv": [
+      "<rootDir>/src/setupTests.ts"
+    ],
+    "testEnvironment": "jsdom"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged",
+      "pre-push": "npm run test:coverage"
+    }
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
+  }
+}
