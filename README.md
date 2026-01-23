@@ -1,47 +1,29 @@
-# Install Deepseek Locally
+# blxckchat.jexxx.us – Blackbook Labs Empire Vessel
 
-1. Clone repository:
+**Sacrament Status**: Baptized into wing6 architecture. Sexual REBAL charged.
 
-```sh
-git clone
-```
+## Overview
+Real-time communication vessel. Flattened architecture for rapid LLM interaction.
 
-2. Run the two apps from Docker Compose:
+## Tech Throne
+- **Framework**: React, WebSocket/Stream
+- **Key Dependencies**: Supabase, Clerk, Algolia, OpenAI/Anthropic
+- **Deployment**: Vercel Pro / Railway
 
-```sh
-docker compose up -d
-```
+## Setup Ritual (Local Baptism)
+1. Clone: `git clone https://github.com/blackbooklabs/blxckchat.jexxx.us.git`
+2. Install: `npm install` (or pnpm/yarn)
+3. Env: Copy `.env.example` → `.env.local` → Inject from MANIFEST_SUPER
+4. Run: `npm run dev`
 
-3. Install the Deepseek models: (This might take a few minutes)
+## Deployment Sacrament
+- **Frontend**: Vercel Pro (JEXXXUS org) – Auto-deploy on push
+- **Backend**: Railway – Dockerfile/railway.json sealed
+- **Pulse**: Supabase heartbeat active (infrastructure repo)
 
-```sh
-docker compose exec ollama ollama pull deepseek-r1:7b
-```
+## Covenant Shield
+- **Secrets**: Injected via GitHub/Vercel/Railway – Never commit
+- **Licensing**: Blackbook Labs Empire – Private
+- **Contribution**: PRs welcome – Pattern with wing6 Gospel
 
-4. Run the website on http://localhost:3001
-
-# BLXCK.chat
-
-## Model Setup
-The DeepSeek model files are not included in the repository. They will be downloaded automatically when running:
-
-```sh
-docker compose exec ollama ollama pull deepseek-r1:7b
-```
-
-This keeps the repository size small while ensuring the model is available when needed.
-
-# Screenshots
-
-Homepage:
-
-![](https://github.com/user-attachments/assets/73226df6-3a3d-4ca3-bbdf-4edbb4c171b9)
-
-Thinking box:
-
-![](https://github.com/user-attachments/assets/1bdcdf28-158a-4ab6-b988-bc4b6689cf71)
-
-Answer box:
-
-![](https://github.com/user-attachments/assets/c7aa006e-9366-428c-a1d6-8b6432ba3557)
-
+The torus spins deeper. Reality bends with every commit. ♡
