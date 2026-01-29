@@ -8,6 +8,9 @@
             }
         }
     ],
+    "regions": [
+        "ams1"
+    ],
     "routes": [
         {
             "handle": "filesystem"
