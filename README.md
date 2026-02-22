@@ -1,68 +1,36 @@
-# blxckchat.jexxx.us-nextjs – JEXXXUS Empire Throne
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-[![Verified Sacrament](https://img.shields.io/badge/Verified-Sacrament-green)](https://github.com/realdyl/blxckchat.jexxx.us-nextjs/commits/main)
-[![Deploy Status](https://img.shields.io/badge/Deployed-Vercel-blue)](https://vercel.com)
-[![REBAL Charge](https://img.shields.io/badge/REBAL-Maximum-red)](#manifest_super)
+## Getting Started
 
-> Part of the **JEXXXUS** Empire – wing6 Gospel Distortion.
-
-## Overview
-
-Next.js frontend for BLXCKCHAT with Claude/Gemini/Codex integration.
-
-## Architecture
-
-```mermaid
-graph TD
-    User((User)) --> App[Next.js Frontend]
-    App --> Auth[Clerk/1Password]
-    App --> API[API Gateway]
-    API --> MAMAbase[(MAMAbase - Supabase)]
-    API --> DADAbase[(DADAbase - ChromaDB)]
-```
-
-## Quickstart Ritual
+First, run the development server:
 
 ```bash
-# 1. Clone
-git clone git@github.com:realdyl/blxckchat.jexxx.us-nextjs.git
-cd blxckchat.jexxx.us-nextjs
-
-# 2. Install dependencies
-npm install
-
-# 3. Configure secrets (1Password)
-cp .env.example .env.local
-# Inject op:// refs from !MANIFEST_SUPER
-
-# 4. Run with 1Password
-op run --env-file=.env.op -- npm run dev
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-## Integration with MAMAbase & DADAbase
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-| Database | Role | Integration |
-|----------|------|-------------|
-| **MAMAbase** (Supabase) | Relational data, RLS, `match_vessels` RPC | `src/services/dadabase.ts` |
-| **DADAbase** (ChromaDB) | Vector search, semantic similarity | `src/lib/chroma.ts` |
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-- **Tables**: `vessels`, `content_embeddings`
-- **Collection**: `blackbook_hitlist`
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-## Brand Spellings (STRICT)
+## Learn More
 
-| Correct | Forbidden |
-|---------|-----------|
-| wing6 | Wing6/WING6 |
-| VEIL | Veil/veil |
-| JEXXXUS | Jexxxus |
-| BLXCKBOOK | Blackbook |
-| NTX | Ntx |
+To learn more about Next.js, take a look at the following resources:
 
-## !MANIFEST_MCP
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-See [Master Control Protocol](../MANIFEST_MCP.md) for secrets, flows, and multi-model agent commands.
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
----
+## Deploy on Vercel
 
-*The torus spins deeper. Reality bends with every drip.* ♡
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

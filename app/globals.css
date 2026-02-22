@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Deep black background */
+  --background: #030303;
+  /* Primary text - soft white */
+  --foreground: #f5f5f5;
+  /* Surface colors for cards, containers */
+  --surface: #0a0a0a;
+  --surface-elevated: #111111;
+  --surface-hover: #1a1a1a;
+  /* Border colors */
+  --border: #262626;
+  --border-subtle: #1c1c1c;
+  /* Vibrant purple-pink accent */
+  --accent: #c084fc;
+  --accent-muted: #a855f7;
+  --accent-glow: rgba(192, 132, 252, 0.4);
+  /* Muted text */
+  --muted: #737373;
+  --muted-foreground: #a3a3a3;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Custom scrollbar for dark theme */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: var(--surface);
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--muted);
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  /* Gradient text utility */
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-accent to-accent-muted;
+  }
+  
+  /* Glow effect for accent elements */
+  .glow-accent {
+    box-shadow: 0 0 30px var(--accent-glow);
+  }
+  
+  /* Glass morphism effect */
+  .glass {
+    @apply bg-surface/80 backdrop-blur-xl border border-border/50;
+  }
+}
