@@ -1,4 +1,5 @@
 import React from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import './App.css';
 import ChatInterface from './components/ChatInterface';
 import { TEST_IDS } from './test/constants';
@@ -11,6 +12,7 @@ function App() {
         <p>Your AI Chat Interface</p>
       </header>
       <ChatInterface />
+      <Analytics />
     </div>
   );
 }

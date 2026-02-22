@@ -16,7 +16,7 @@ const ChatInterface: React.FC = () => {
     if (!input.trim()) return;
 
     setIsLoading(true);
-    const userMessage = { role: 'user', content: input };
+    const userMessage: Message = { role: 'user', content: input };
     setMessages(prev => [...prev, userMessage]);
     setInput('');
 
