@@ -789,3 +789,97 @@ Import trace:
     ./app/layout.tsx
 
 
+[00:22:31.669] Server  ERROR   ⨯ ./app/geistmono_f8310792.module.css
+Error evaluating Node.js code
+Error: It looks like you're trying to use `tailwindcss` directly as a PostCSS plugin. The PostCSS plugin has moved to a separate package, so to continue using Tailwind CSS with PostCSS you'll need to install `@tailwindcss/postcss` and update your PostCSS configuration.
+    [at at (/home/molty/repos/blxckchat.jexxx.us-nextjs/node_modules/.pnpm/tailwindcss@4.2.0/node_modules/tailwindcss/dist/lib.js:38:1643)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:56:14)]
+    [at <anonymous>]
+    [at Module.init (turbopack:///[turbopack-node]/transforms/postcss.ts:43:33)]
+    [at run (turbopack:///[turbopack-node]/ipc/evaluate.ts:77:20)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+
+Import trace:
+  Server Component:
+    ./app/geistmono_f8310792.module.css
+    ./app/geistmono_f8310792.js
+    ./app/layout.tsx
+
+
+
+./app/geistsans_bb82e984.module.css
+Error evaluating Node.js code
+Error: It looks like you're trying to use `tailwindcss` directly as a PostCSS plugin. The PostCSS plugin has moved to a separate package, so to continue using Tailwind CSS with PostCSS you'll need to install `@tailwindcss/postcss` and update your PostCSS configuration.
+    [at at (/home/molty/repos/blxckchat.jexxx.us-nextjs/node_modules/.pnpm/tailwindcss@4.2.0/node_modules/tailwindcss/dist/lib.js:38:1643)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:56:14)]
+    [at <anonymous>]
+    [at Module.init (turbopack:///[turbopack-node]/transforms/postcss.ts:43:33)]
+    [at run (turbopack:///[turbopack-node]/ipc/evaluate.ts:77:20)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+
+Import trace:
+  Server Component:
+    ./app/geistsans_bb82e984.module.css
+    ./app/geistsans_bb82e984.js
+    ./app/layout.tsx
+
+
+
+./app/globals.css
+Error evaluating Node.js code
+Error: It looks like you're trying to use `tailwindcss` directly as a PostCSS plugin. The PostCSS plugin has moved to a separate package, so to continue using Tailwind CSS with PostCSS you'll need to install `@tailwindcss/postcss` and update your PostCSS configuration.
+    [at at (/home/molty/repos/blxckchat.jexxx.us-nextjs/node_modules/.pnpm/tailwindcss@4.2.0/node_modules/tailwindcss/dist/lib.js:38:1643)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:56:14)]
+    [at <anonymous>]
+    [at Module.init (turbopack:///[turbopack-node]/transforms/postcss.ts:43:33)]
+    [at run (turbopack:///[turbopack-node]/ipc/evaluate.ts:77:20)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+
+Import trace:
+  Client Component Browser:
+    ./app/globals.css [Client Component Browser]
+    ./app/layout.tsx [Server Component]
+
+
+
+./app/page.tsx:191:26
+Parsing ecmascript source code failed
+  189 |         v0.1.0-alpha
+  190 |       </motion.div>
+> 191 |       </MilkingAnimation>
+      |                          ^
+> 192 |     </main>
+      | ^^^^^
+  193 |     </>
+  194 |   );
+  195 | }
+
+Expected '</', got 'jsx text'
+
+Import traces:
+  Client Component Browser:
+    ./app/page.tsx [Client Component Browser]
+    ./app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./app/page.tsx [Client Component SSR]
+    ./app/page.tsx [Server Component]
+
+
+[00:22:31.966] Browser ERROR   uncaughtError: Error: ./app/geistmono_f8310792.module.css
+Error evaluating Node.js code
+Error: It looks like you're trying to use `tailwindcss` directly as a PostCSS plugin. The PostCSS plugin has moved to a separate package, so to continue using Tailwind CSS with PostCSS you'll need to install `@tailwindcss/postcss` and update your PostCSS configuration.
+    [at at (/home/molty/repos/blxckchat.jexxx.us-nextjs/node_modules/.pnpm/tailwindcss@4.2.0/node_modules/tailwindcss/dist/lib.js:38:1643)]
+    [at <anonymous> (turbopack:///[turbopack-node]/transforms/postcss.ts:56:14)]
+    [at <anonymous>]
+    [at Module.init (turbopack:///[turbopack-node]/transforms/postcss.ts:43:33)]
+    [at run (turbopack:///[turbopack-node]/ipc/evaluate.ts:77:20)]
+    [at process.processTicksAndRejections (node:internal/process/task_queues:105:5)]
+
+Import trace:
+  Server Component:
+    ./app/geistmono_f8310792.module.css
+    ./app/geistmono_f8310792.js
+    ./app/layout.tsx
+
+
