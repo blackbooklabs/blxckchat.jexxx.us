@@ -2,6 +2,8 @@
 
 import { motion } from "motion/react";
 import { MessageCircle, Sparkles, Heart } from "lucide-react";
+import CursorMotion from "@/components/CursorMotion";
+import MilkingAnimation from "@/components/MilkingAnimation";
 
 // Animation variants
 const containerVariants = {
@@ -42,6 +44,9 @@ const glowVariants = {
 
 export default function Home() {
   return (
+    <>
+      <CursorMotion color="rgba(255, 182, 193, 0.8)" size={12} />
+      <MilkingAnimation intensity="passionate">
     <main className="flex-1 flex flex-col items-center justify-center min-h-screen p-6 relative overflow-hidden">
       {/* Animated background elements */}
       <motion.div
@@ -183,6 +188,8 @@ export default function Home() {
       >
         v0.1.0-alpha
       </motion.div>
+      </MilkingAnimation>
     </main>
+    </>
   );
 }

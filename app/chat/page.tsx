@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Send, User } from "lucide-react";
+import { Send, User, Heart, Sparkles } from "lucide-react";
+import CursorMotion from "@/components/CursorMotion";
+import MilkingAnimation from "@/components/MilkingAnimation";
 
 interface Message {
   id: string;
@@ -15,7 +17,7 @@ export default function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
-      text: "Welcome to BLXCKCHAT. Your messages are encrypted.",
+      text: "💕 Welcome to BLXCKCHAT, beautiful! Your messages are encrypted and milked with love. Move your cursor around and feel the passion! 💦",
       sender: "other",
       timestamp: new Date(),
     },
@@ -35,11 +37,11 @@ export default function ChatInterface() {
     setMessages([...messages, newMessage]);
     setInput("");
 
-    // Simulate response
+    // Simulate response with milkification
     setTimeout(() => {
       const response: Message = {
         id: (Date.now() + 1).toString(),
-        text: "Message received. Encryption verified.",
+        text: "💕 Message received! Your words have been milked and encrypted with love.",
         sender: "other",
         timestamp: new Date(),
       };
@@ -48,7 +50,9 @@ export default function ChatInterface() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <>
+      <CursorMotion color="rgba(255, 182, 193, 0.6)" size={10} />
+      <div className="flex flex-col h-screen bg-background">
       {/* Header */}
       <motion.div
         className="p-4 border-b border-border bg-surface/50 backdrop-blur"
@@ -71,29 +75,40 @@ export default function ChatInterface() {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         <AnimatePresence>
           {messages.map((message, index) => (
-            <motion.div
-              key={message.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3, delay: index * 0.1 }}
-              className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
-            >
+            <MilkingAnimation intensity="gentle">
               <motion.div
-                className={`max-w-xs px-4 py-2 rounded-2xl ${
-                  message.sender === "user"
-                    ? "bg-accent text-background"
-                    : "bg-surface border border-border"
-                }`}
-                whileHover={{ scale: 1.02 }}
-                transition={{ duration: 0.2 }}
+                key={message.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+                className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+                role="article"
+                aria-label={`Message from ${message.sender}`}
               >
-                <p className="text-sm">{message.text}</p>
-                <p className="text-xs opacity-70 mt-1">
-                  {message.timestamp.toLocaleTimeString()}
-                </p>
+                <motion.div
+                  className={`max-w-xs px-4 py-3 rounded-2xl shadow-sm ${
+                    message.sender === "user"
+                      ? "bg-gradient-to-br from-accent to-pink-500 text-background shadow-pink-500/20"
+                      : "bg-surface border border-border hover:border-accent/30"
+                  }`}
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <p className="text-sm leading-relaxed">{message.text}</p>
+                  <div className="flex items-center gap-1 mt-2">
+                    {message.sender === "user" ? (
+                      <Heart className="w-3 h-3 opacity-70" />
+                    ) : (
+                      <Sparkles className="w-3 h-3 opacity-70" />
+                    )}
+                    <p className="text-xs opacity-70">
+                      {message.timestamp.toLocaleTimeString()}
+                    </p>
+                  </div>
+                </motion.div>
               </motion.div>
-            </motion.div>
+            </MilkingAnimation>
           ))}
         </AnimatePresence>
       </div>
@@ -111,20 +126,25 @@ export default function ChatInterface() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={(e) => e.key === "Enter" && sendMessage()}
-            placeholder="Type your message..."
-            className="flex-1 px-4 py-2 bg-surface border border-border rounded-full focus:outline-none focus:border-accent"
+            placeholder="Type your message... 💬"
+            className="flex-1 px-4 py-2 bg-surface border border-border rounded-full focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20"
+            aria-label="Message input"
           />
-          <motion.button
-            onClick={sendMessage}
-            className="px-4 py-2 bg-accent text-background rounded-full"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-          >
-            <Send className="w-4 h-4" />
-          </motion.button>
+          <MilkingAnimation intensity="passionate">
+            <motion.button
+              onClick={sendMessage}
+              className="px-4 py-2 bg-gradient-to-r from-accent to-pink-500 text-background rounded-full shadow-lg"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              aria-label="Send message"
+            >
+              <Send className="w-4 h-4" />
+            </motion.button>
+          </MilkingAnimation>
         </div>
       </motion.div>
-    </div>
+      </div>
+    </>
   );
 }
