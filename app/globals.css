@@ -26,7 +26,7 @@
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-gray-200;
   }
   
   body {
@@ -71,6 +71,6 @@
   
   /* Glass morphism effect */
   .glass {
-    @apply bg-surface/80 backdrop-blur-xl border border-border/50;
+    @apply bg-surface/80 backdrop-blur-xl border border-gray-200/50;
   }
 }
