@@ -1,0 +1,130 @@
+"use client";
+
+import { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { Send, User } from "lucide-react";
+
+interface Message {
+  id: string;
+  text: string;
+  sender: "user" | "other";
+  timestamp: Date;
+}
+
+export default function ChatInterface() {
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: "1",
+      text: "Welcome to BLXCKCHAT. Your messages are encrypted.",
+      sender: "other",
+      timestamp: new Date(),
+    },
+  ]);
+  const [input, setInput] = useState("");
+
+  const sendMessage = () => {
+    if (!input.trim()) return;
+
+    const newMessage: Message = {
+      id: Date.now().toString(),
+      text: input,
+      sender: "user",
+      timestamp: new Date(),
+    };
+
+    setMessages([...messages, newMessage]);
+    setInput("");
+
+    // Simulate response
+    setTimeout(() => {
+      const response: Message = {
+        id: (Date.now() + 1).toString(),
+        text: "Message received. Encryption verified.",
+        sender: "other",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, response]);
+    }, 1000);
+  };
+
+  return (
+    <div className="flex flex-col h-screen bg-background">
+      {/* Header */}
+      <motion.div
+        className="p-4 border-b border-border bg-surface/50 backdrop-blur"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-accent rounded-full flex items-center justify-center">
+            <User className="w-5 h-5 text-background" />
+          </div>
+          <div>
+            <h2 className="font-semibold text-foreground">Encrypted Chat</h2>
+            <p className="text-sm text-muted">Secure connection</p>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <AnimatePresence>
+          {messages.map((message, index) => (
+            <motion.div
+              key={message.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3, delay: index * 0.1 }}
+              className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+            >
+              <motion.div
+                className={`max-w-xs px-4 py-2 rounded-2xl ${
+                  message.sender === "user"
+                    ? "bg-accent text-background"
+                    : "bg-surface border border-border"
+                }`}
+                whileHover={{ scale: 1.02 }}
+                transition={{ duration: 0.2 }}
+              >
+                <p className="text-sm">{message.text}</p>
+                <p className="text-xs opacity-70 mt-1">
+                  {message.timestamp.toLocaleTimeString()}
+                </p>
+              </motion.div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
+      {/* Input */}
+      <motion.div
+        className="p-4 border-t border-border bg-surface/50 backdrop-blur"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, delay: 0.2 }}
+      >
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={(e) => e.key === "Enter" && sendMessage()}
+            placeholder="Type your message..."
+            className="flex-1 px-4 py-2 bg-surface border border-border rounded-full focus:outline-none focus:border-accent"
+          />
+          <motion.button
+            onClick={sendMessage}
+            className="px-4 py-2 bg-accent text-background rounded-full"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Send className="w-4 h-4" />
+          </motion.button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}

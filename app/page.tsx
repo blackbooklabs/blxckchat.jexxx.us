@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { MessageCircle, Sparkles, Zap } from "lucide-react";
 
 // Animation variants
@@ -141,7 +141,8 @@ export default function Home() {
 
         {/* CTA Button */}
         <motion.div variants={itemVariants}>
-          <motion.button
+          <motion.a
+            href="/chat"
             className="group relative inline-flex items-center gap-2 px-8 py-4 bg-accent text-background font-semibold rounded-full overflow-hidden"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.98 }}
@@ -149,7 +150,7 @@ export default function Home() {
           >
             <span className="absolute inset-0 bg-gradient-to-r from-accent via-accent-muted to-accent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <span className="relative flex items-center gap-2">
-              Get Started
+              Enter Chat
               <motion.span
                 animate={{ x: [0, 4, 0] }}
                 transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
@@ -157,7 +158,7 @@ export default function Home() {
                 →
               </motion.span>
             </span>
-          </motion.button>
+          </motion.a>
         </motion.div>
 
         {/* Status indicator */}
