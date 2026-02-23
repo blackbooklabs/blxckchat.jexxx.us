@@ -47,7 +47,7 @@ export default function Home() {
     <>
       <CursorMotion color="rgba(255, 182, 193, 0.8)" size={12} />
       <MilkingAnimation intensity="passionate">
-    <main className="flex-1 flex flex-col items-center justify-center min-h-screen p-6 relative overflow-hidden">
+        <main className="flex-1 flex flex-col items-center justify-center min-h-screen p-6 relative overflow-hidden">
       {/* Animated background elements */}
       <motion.div
         className="absolute top-1/4 left-1/4 w-96 h-96 bg-accent/20 rounded-full blur-[120px]"
@@ -188,8 +188,8 @@ export default function Home() {
       >
         v0.1.0-alpha
       </motion.div>
-      </MilkingAnimation>
     </main>
+    </MilkingAnimation>
     </>
   );
 }
