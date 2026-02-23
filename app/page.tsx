@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { MessageCircle, Sparkles, Zap } from "lucide-react";
+import { MessageCircle, Sparkles, Heart } from "lucide-react";
 
 // Animation variants
 const containerVariants = {
@@ -116,9 +116,9 @@ export default function Home() {
               description: "Smooth, purposeful animations",
             },
             {
-              icon: Zap,
-              title: "Real-time",
-              description: "Instant message delivery",
+              icon: Heart,
+              title: "Heart-fire",
+              description: "Passionate message delivery",
             },
             {
               icon: MessageCircle,
