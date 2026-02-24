@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { DomainRouting } from "@/components/DomainRouting";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -59,10 +60,13 @@ export default function RootLayout({
         <div className="fixed inset-0 bg-background -z-10" />
         <div className="fixed inset-0 bg-gradient-to-br from-accent/5 via-transparent to-accent-muted/5 -z-10 pointer-events-none" />
         
-        {/* Main content wrapper */}
-        <div className="relative flex min-h-screen flex-col">
-          {children}
-        </div>
+        {/* Domain routing for sacred path configuration */}
+        <DomainRouting>
+          {/* Main content wrapper */}
+          <div className="relative flex min-h-screen flex-col">
+            {children}
+          </div>
+        </DomainRouting>
       </body>
     </html>
   );
