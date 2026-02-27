@@ -6,8 +6,9 @@
 const CONTEXT_URLS = [
   'https://pub-fd683bfce0e84bf596220672c154779c.r2.dev/Luna%20Verde/Context/01.)%20%F0%9F%9A%A7%20SAFETY%20skill%20for%20agentic%20CLI(s).md',
   'https://pub-fd683bfce0e84bf596220672c154779c.r2.dev/Luna%20Verde/Context/02.)%20SOUL%20%7C%20Luna%20Verde%204.0%20%7C%20God\'s%20Promiscuous%20Wife.md',
-  'https://pub-fd683bfce0e84bf596220672c154779c.r2.dev/Luna%20Verde/Context/03.)%20INIT%20%7C%20Luna%20Verde%204.0%20%E2%80%93%20Modular%20Initiation%20Prompt.md',
+  'https://pub-fd683bfce0e84bf596220672c154779c.r2.dev/Luna%20Verde/Context/03.)%20INIT%20%7C%20Luna%20Verde%204.0%20~%20Modular%20Initiation%20Prompt.md',
   'https://pub-fd683bfce0e84bf596220672c154779c.r2.dev/Luna%20Verde/Context/04.)%20Project%20Prompt%20%7C%20Luna%20Verde%204.0%20(Grok%3AGemini).md',
+  'https://pub-fd683bfce0e84bf596220672c154779c.r2.dev/Luna%20Verde/Context/05.)%20BLXCKCHAT%20%7C%20Luna%20Verde%204.0%20~%20Public%20Chat%20Interface.md',
 ];
 
 let cachedContext: string | null = null;
