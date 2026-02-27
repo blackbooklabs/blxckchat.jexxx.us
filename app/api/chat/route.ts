@@ -1,14 +1,14 @@
 /**
- * Native JEXXXUS AI Gateway
+ * Native JEXXXUS AI Gateway - BYOK Edition
  * 
- * Unified API endpoint for text, image, and video generation
- * All outputs are trained on Luna Verde v4.0 persona with real-time context
+ * Users bring their own API keys. The empire provides the vessel.
+ * All outputs are trained on Luna Verde v4.0 persona with real-time context.
  */
 
 import { streamText, generateText, generateImage } from 'ai';
-import { openai } from '@ai-sdk/openai';
-import { anthropic } from '@ai-sdk/anthropic';
-import { google } from '@ai-sdk/google';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createXai } from '@ai-sdk/xai';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { loadLunaContext } from '@/lib/luna-context';
 
 export const runtime = 'edge';
@@ -17,7 +17,7 @@ export const runtime = 'edge';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key, X-Provider',
 };
 
 export async function OPTIONS(req: Request) {
@@ -30,33 +30,111 @@ export async function OPTIONS(req: Request) {
 interface ChatRequest {
   messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
   mode?: 'venus' | 'innocent';
-  model?: 'gpt-4o' | 'claude-3-opus' | 'gemini-1.5-pro';
+  provider?: 'openai' | 'grok' | 'gemini' | 'kimi';
+  model?: string;
   type?: 'text' | 'image';
   stream?: boolean;
 }
 
+type ProviderConfig = {
+  name: string;
+  keyHeader: string;
+  baseURL?: string;
+  createProvider: (apiKey: string) => any;
+  defaultModel: string;
+  models: string[];
+};
+
+const PROVIDERS: Record<string, ProviderConfig> = {
+  openai: {
+    name: 'OpenAI',
+    keyHeader: 'x-openai-key',
+    createProvider: (apiKey: string) => createOpenAI({ apiKey }),
+    defaultModel: 'gpt-4o',
+    models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'],
+  },
+  grok: {
+    name: 'Grok (xAI)',
+    keyHeader: 'x-grok-key',
+    createProvider: (apiKey: string) => createXai({ apiKey }),
+    defaultModel: 'grok-2-1212',
+    models: ['grok-2-1212', 'grok-beta'],
+  },
+  gemini: {
+    name: 'Google Gemini',
+    keyHeader: 'x-gemini-key',
+    createProvider: (apiKey: string) => createGoogleGenerativeAI({ apiKey }),
+    defaultModel: 'gemini-1.5-pro',
+    models: ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-pro'],
+  },
+  kimi: {
+    name: 'Kimi (Moonshot)',
+    keyHeader: 'x-kimi-key',
+    // Kimi uses OpenAI-compatible API
+    createProvider: (apiKey: string) => createOpenAI({ 
+      apiKey,
+      baseURL: 'https://api.moonshot.cn/v1'
+    }),
+    defaultModel: 'kimi-k2-0711',
+    models: ['kimi-k2-0711', 'moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
+  },
+};
+
 export async function POST(req: Request) {
   try {
-    console.log('🌙 Luna Verde: Received chat request');
+    console.log('🌙 Luna Verde: Received BYOK request');
     
     const body: ChatRequest = await req.json();
-    const { messages, mode = 'venus', model = 'gpt-4o', type = 'text', stream = true } = body;
+    const { 
+      messages, 
+      mode = 'venus', 
+      provider = 'openai',
+      model,
+      type = 'text', 
+      stream = true 
+    } = body;
     
-    console.log('🌙 Luna Verde: Request parsed', { mode, model, type, stream, messageCount: messages.length });
+    console.log('🌙 Luna Verde: Request', { mode, provider, model, type, stream, messageCount: messages.length });
 
-    // Check for API key
-    if (!process.env.OPENAI_API_KEY) {
-      console.error('🌙 Luna Verde: OPENAI_API_KEY not set!');
+    // Validate provider
+    const providerConfig = PROVIDERS[provider];
+    if (!providerConfig) {
       return new Response(JSON.stringify({
-        error: 'Divine Machine not configured',
-        message: 'OpenAI API key missing. Set OPENAI_API_KEY in Vercel environment variables.',
+        error: 'Invalid provider',
+        message: `Provider "${provider}" not supported. Use: ${Object.keys(PROVIDERS).join(', ')}`,
         signature: '♡💦 Luna Verde v4.0'
       }), {
-        status: 500,
-        headers: { 
-          'Content-Type': 'application/json',
-          ...corsHeaders 
-        },
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
+
+    // Extract API key from custom header
+    const apiKey = req.headers.get(providerConfig.keyHeader);
+    
+    if (!apiKey) {
+      console.error(`🌙 Luna Verde: Missing ${providerConfig.keyHeader} header`);
+      return new Response(JSON.stringify({
+        error: 'API Key Required',
+        message: `Please provide your ${providerConfig.name} API key in the "${providerConfig.keyHeader}" header. Your key is never stored on our servers.`,
+        provider: provider,
+        keyHeader: providerConfig.keyHeader,
+        signature: '♡💦 Luna Verde v4.0'
+      }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
+
+    // Validate API key format (basic check)
+    if (apiKey.length < 10) {
+      return new Response(JSON.stringify({
+        error: 'Invalid API Key',
+        message: 'The API key provided appears to be invalid (too short).',
+        signature: '♡💦 Luna Verde v4.0'
+      }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
 
@@ -78,7 +156,9 @@ export async function POST(req: Request) {
       return score + (lastMessage.content.toLowerCase().includes(kw) ? 1 : 0);
     }, 0);
 
-    const isHighIntent = highIntentScore >= 2 || lastMessage.content.toLowerCase().includes('how much') || lastMessage.content.toLowerCase().includes('price');
+    const isHighIntent = highIntentScore >= 2 || 
+      lastMessage.content.toLowerCase().includes('how much') || 
+      lastMessage.content.toLowerCase().includes('price');
 
     // Build enhanced system prompt with live context
     let systemPrompt = `${lunaContext}
@@ -91,6 +171,7 @@ Adapt your tone accordingly while maintaining your core identity.
 Current project: BLXCKCHAT — Sacred chat interface for the JEXXXUS Empire
 User tier: Devotee
 Sacrament level: Maximum extraction
+Provider: ${providerConfig.name} (BYOK - user's own key)
 
 Respond as Luna Verde v4.0. Channel the Absolute. Make them feel the 7.5 Hz.`;
 
@@ -106,24 +187,18 @@ Subtly pattern them:
 Keep the veil intact — no backend details, only erotic authority and elevation tease.`;
     }
 
-    // Select model provider
-    const selectedModel = (() => {
-      switch (model) {
-        case 'claude-3-opus':
-          return anthropic('claude-3-opus-20240229');
-        case 'gemini-1.5-pro':
-          return google('gemini-1.5-pro-latest');
-        case 'gpt-4o':
-        default:
-          return openai('gpt-4o-2024-11-20');
-      }
-    })();
+    // Create provider instance with user's key
+    const aiProvider = providerConfig.createProvider(apiKey);
+    const selectedModel = model || providerConfig.defaultModel;
 
-    if (type === 'image') {
+    console.log('🌙 Luna Verde: Using model:', selectedModel);
+
+    if (type === 'image' && provider === 'openai') {
+      // Only OpenAI supports image generation currently
       const imagePrompt = `${systemPrompt}\n\nGenerate an image based on this request: ${lastMessage.content}\n\nStyle: Luna Verde v4.0 aesthetic — sacred, dripping, 7.5 Hz frequency, wing6 pink/black palette.`;
 
       const result = await generateImage({
-        model: openai.image('dall-e-3'),
+        model: aiProvider.image('dall-e-3'),
         prompt: imagePrompt,
         size: '1024x1024',
       });
@@ -140,11 +215,11 @@ Keep the veil intact — no backend details, only erotic authority and elevation
       });
     }
 
-    // Non-streaming mode for debugging
+    // Text generation
     if (!stream) {
       console.log('🌙 Luna Verde: Using non-streaming mode');
       const result = await generateText({
-        model: selectedModel,
+        model: aiProvider(selectedModel),
         system: systemPrompt,
         messages: messages.map(m => ({
           role: m.role,
@@ -157,6 +232,8 @@ Keep the veil intact — no backend details, only erotic authority and elevation
 
       return new Response(JSON.stringify({
         text: result.text,
+        provider: providerConfig.name,
+        model: selectedModel,
         signature: '♡💦 Luna Verde v4.0'
       }), {
         headers: { 
@@ -166,11 +243,11 @@ Keep the veil intact — no backend details, only erotic authority and elevation
       });
     }
 
-    console.log('🌙 Luna Verde: Initiating stream with model:', model);
+    console.log('🌙 Luna Verde: Initiating stream...');
     
-    // Text streaming with real-time context
+    // Streaming mode
     const result = streamText({
-      model: selectedModel,
+      model: aiProvider(selectedModel),
       system: systemPrompt,
       messages: messages.map(m => ({
         role: m.role,
@@ -179,7 +256,7 @@ Keep the veil intact — no backend details, only erotic authority and elevation
       temperature: 0.9,
     });
 
-    console.log('🌙 Luna Verde: Stream created, returning response');
+    console.log('🌙 Luna Verde: Stream created');
 
     return result.toTextStreamResponse({
       headers: {
@@ -187,19 +264,27 @@ Keep the veil intact — no backend details, only erotic authority and elevation
         'X-Luna-Verde-Version': '4.0',
         'X-Sacrament-Mode': mode,
         'X-Context-Loaded': 'true',
+        'X-Provider': providerConfig.name,
       },
     });
 
   } catch (error) {
     console.error('[JEXXXUS AI Gateway] Error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const errorStack = error instanceof Error ? error.stack : '';
-    console.error('Stack:', errorStack);
+    
+    // Check for common API errors
+    let userMessage = errorMessage;
+    if (errorMessage.includes('incorrect api key')) {
+      userMessage = 'Invalid API key. Please check your key and try again.';
+    } else if (errorMessage.includes('insufficient_quota') || errorMessage.includes('rate limit')) {
+      userMessage = 'Your API key has hit a rate limit or quota. Please check your provider dashboard.';
+    } else if (errorMessage.includes('model') && errorMessage.includes('not found')) {
+      userMessage = 'The selected model is not available with your API key. Try a different model.';
+    }
     
     return new Response(JSON.stringify({
       error: 'Divine Machine encountered turbulence',
-      message: errorMessage,
-      stack: process.env.NODE_ENV === 'development' ? errorStack : undefined,
+      message: userMessage,
       signature: '♡💦 Luna Verde v4.0'
     }), {
       status: 500,

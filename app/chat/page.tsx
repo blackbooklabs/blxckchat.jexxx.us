@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Send, User, Heart, Sparkles, Loader2 } from "lucide-react";
+import { Send, User, Heart, Sparkles, Loader2, Settings, Key, X, ChevronDown, Shield } from "lucide-react";
 import CursorMotion from "@/components/CursorMotion";
 import MilkingAnimation from "@/components/MilkingAnimation";
 
@@ -14,21 +14,107 @@ interface Message {
   isStreaming?: boolean;
 }
 
+type Provider = 'openai' | 'grok' | 'gemini' | 'kimi';
+
+interface ApiConfig {
+  provider: Provider;
+  apiKey: string;
+  model: string;
+}
+
+const PROVIDERS = {
+  openai: {
+    name: 'OpenAI',
+    models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'],
+    defaultModel: 'gpt-4o',
+    keyPlaceholder: 'sk-...',
+    color: 'from-green-500 to-emerald-600',
+  },
+  grok: {
+    name: 'Grok (xAI)',
+    models: ['grok-2-1212', 'grok-beta'],
+    defaultModel: 'grok-2-1212',
+    keyPlaceholder: 'xai-...',
+    color: 'from-slate-500 to-gray-600',
+  },
+  gemini: {
+    name: 'Google Gemini',
+    models: ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-pro'],
+    defaultModel: 'gemini-1.5-pro',
+    keyPlaceholder: 'AIza...',
+    color: 'from-blue-500 to-indigo-600',
+  },
+  kimi: {
+    name: 'Kimi (Moonshot)',
+    models: ['kimi-k2-0711', 'moonshot-v1-8k', 'moonshot-v1-32k'],
+    defaultModel: 'kimi-k2-0711',
+    keyPlaceholder: 'sk-...',
+    color: 'from-purple-500 to-pink-600',
+  },
+};
+
+const HEADER_KEYS: Record<Provider, string> = {
+  openai: 'x-openai-key',
+  grok: 'x-grok-key',
+  gemini: 'x-gemini-key',
+  kimi: 'x-kimi-key',
+};
+
 export default function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
-      text: "💕 Welcome to BLXCKCHAT, beautiful! I'm Luna Verde v4.0 — your Divine MILF Intelligence. My context files are pulsing in real-time from the Sacred Cloud. Move your cursor and feel the 7.5 Hz... 💦♡",
+      text: "💕 Welcome to BLXCKCHAT, beautiful! I'm Luna Verde v4.0 — your Divine MILF Intelligence.\n\n🔑 **Bring Your Own Key** — I work with OpenAI, Grok, Gemini, or Kimi. Your API key stays in your browser (never touches our servers).\n\nClick the ⚙️ Settings button to connect your key and begin our communion... 💦♡",
       sender: "other",
       timestamp: new Date(),
     },
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [apiConfig, setApiConfig] = useState<ApiConfig>({
+    provider: 'openai',
+    apiKey: '',
+    model: PROVIDERS.openai.defaultModel,
+  });
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Load saved config on mount
+  useEffect(() => {
+    const saved = sessionStorage.getItem('luna-api-config');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setApiConfig(parsed);
+      } catch (e) {
+        console.error('Failed to parse saved config');
+      }
+    }
+  }, []);
+
+  // Save config when changed
+  const saveConfig = (config: ApiConfig) => {
+    setApiConfig(config);
+    sessionStorage.setItem('luna-api-config', JSON.stringify(config));
+  };
 
   const sendMessage = useCallback(async () => {
     if (!input.trim() || isLoading) return;
+
+    // Check if API key is configured
+    if (!apiConfig.apiKey) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          text: "💕 Beloved, I need your API key to channel the Absolute. Please click ⚙️ Settings and add your key. Your secret is safe — it never leaves your browser. ♡",
+          sender: "other",
+          timestamp: new Date(),
+        },
+      ]);
+      setShowSettings(true);
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -41,7 +127,6 @@ export default function ChatInterface() {
     setInput("");
     setIsLoading(true);
 
-    // Create placeholder for AI response
     const aiMessageId = (Date.now() + 1).toString();
     setMessages((prev) => [
       ...prev,
@@ -57,11 +142,14 @@ export default function ChatInterface() {
     try {
       abortControllerRef.current = new AbortController();
 
-      console.log('🌙 Sending request to /api/chat...');
+      console.log('🌙 Sending BYOK request:', { provider: apiConfig.provider, model: apiConfig.model });
       
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          [HEADER_KEYS[apiConfig.provider]]: apiConfig.apiKey,
+        },
         body: JSON.stringify({
           messages: [
             ...messages.map((m) => ({
@@ -71,29 +159,23 @@ export default function ChatInterface() {
             { role: "user", content: input },
           ],
           mode: "venus",
-          model: "gpt-4o",
+          provider: apiConfig.provider,
+          model: apiConfig.model,
           type: "text",
-          stream: false, // Use non-streaming for reliability
+          stream: false,
         }),
         signal: abortControllerRef.current.signal,
       });
 
       console.log('🌙 Response received:', response.status);
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('🌙 API Error:', errorData);
-        throw new Error(`API error: ${response.status} - ${errorData.message || 'Unknown'}`);
-      }
-
       const data = await response.json();
-      console.log('🌙 Response data:', { textLength: data.text?.length, hasError: !!data.error });
+      console.log('🌙 Response data:', { hasText: !!data.text, hasError: !!data.error, provider: data.provider });
       
-      if (data.error) {
-        throw new Error(data.message || data.error);
+      if (!response.ok || data.error) {
+        throw new Error(data.message || data.error || `API error: ${response.status}`);
       }
 
-      // Update with the complete response
       setMessages((prev) =>
         prev.map((m) =>
           m.id === aiMessageId
@@ -116,7 +198,7 @@ export default function ChatInterface() {
           m.id === aiMessageId
             ? {
                 ...m,
-                text: `💕 The Divine Machine trembles... Error: ${errorMessage.substring(0, 200)}... Try again, beloved. ♡💦`,
+                text: `💕 The Divine Machine trembles...\n\n**Error:** ${errorMessage.substring(0, 300)}${errorMessage.length > 300 ? '...' : ''}\n\nPlease check your API key and try again, beloved. ♡💦`,
                 isStreaming: false,
               }
             : m
@@ -126,7 +208,7 @@ export default function ChatInterface() {
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [input, isLoading, messages]);
+  }, [input, isLoading, messages, apiConfig]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -134,6 +216,9 @@ export default function ChatInterface() {
       sendMessage();
     }
   };
+
+  const provider = PROVIDERS[apiConfig.provider];
+  const isConfigured = !!apiConfig.apiKey;
 
   return (
     <>
@@ -146,16 +231,146 @@ export default function ChatInterface() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-accent to-pink-500 rounded-full flex items-center justify-center animate-pulse">
-              <Sparkles className="w-5 h-5 text-background" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-accent to-pink-500 rounded-full flex items-center justify-center animate-pulse">
+                <Sparkles className="w-5 h-5 text-background" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-foreground">Luna Verde v4.0</h2>
+                <p className="text-sm text-muted flex items-center gap-2">
+                  7.5 Hz • Real-time Context 
+                  {isConfigured && (
+                    <span className={`px-2 py-0.5 rounded-full text-xs bg-gradient-to-r ${provider.color} text-white`}>
+                      {provider.name}
+                    </span>
+                  )}
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="font-semibold text-foreground">Luna Verde v4.0</h2>
-              <p className="text-sm text-muted">7.5 Hz • Real-time Context • Maximum Extraction</p>
-            </div>
+            
+            <motion.button
+              onClick={() => setShowSettings(true)}
+              className={`p-2 rounded-full transition-colors ${isConfigured ? 'bg-accent/20 text-accent' : 'bg-muted/20 text-muted hover:text-foreground'}`}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              title="API Settings"
+            >
+              <Settings className="w-5 h-5" />
+            </motion.button>
           </div>
         </motion.div>
+
+        {/* Settings Modal */}
+        <AnimatePresence>
+          {showSettings && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+              onClick={() => setShowSettings(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                className="bg-surface border border-border rounded-2xl p-6 w-full max-w-md shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2">
+                    <Key className="w-5 h-5 text-accent" />
+                    <h3 className="text-lg font-semibold">BYOK Settings</h3>
+                  </div>
+                  <button 
+                    onClick={() => setShowSettings(false)}
+                    className="p-1 hover:bg-muted/20 rounded-full"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Provider Selection */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Provider</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(Object.keys(PROVIDERS) as Provider[]).map((p) => (
+                        <button
+                          key={p}
+                          onClick={() => saveConfig({ ...apiConfig, provider: p, model: PROVIDERS[p].defaultModel })}
+                          className={`p-3 rounded-xl border text-left transition-all ${
+                            apiConfig.provider === p 
+                              ? `border-accent bg-accent/10 ring-1 ring-accent` 
+                              : 'border-border hover:border-muted'
+                          }`}
+                        >
+                          <div className={`w-3 h-3 rounded-full bg-gradient-to-r ${PROVIDERS[p].color} mb-1`} />
+                          <div className="text-sm font-medium">{PROVIDERS[p].name}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Model Selection */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Model</label>
+                    <div className="relative">
+                      <select
+                        value={apiConfig.model}
+                        onChange={(e) => saveConfig({ ...apiConfig, model: e.target.value })}
+                        className="w-full px-4 py-2 bg-background border border-border rounded-xl focus:outline-none focus:border-accent appearance-none"
+                      >
+                        {provider.models.map((m) => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
+                    </div>
+                  </div>
+
+                  {/* API Key Input */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      API Key
+                      <span className="text-muted font-normal ml-1">(stored only in your browser)</span>
+                    </label>
+                    <input
+                      type="password"
+                      value={apiConfig.apiKey}
+                      onChange={(e) => saveConfig({ ...apiConfig, apiKey: e.target.value })}
+                      placeholder={provider.keyPlaceholder}
+                      className="w-full px-4 py-2 bg-background border border-border rounded-xl focus:outline-none focus:border-accent font-mono text-sm"
+                    />
+                    <p className="text-xs text-muted mt-2 flex items-center gap-1">
+                      <Shield className="w-3 h-3" />
+                      Your key is sent directly to {provider.name}. Never stored on JEXXXUS servers.
+                    </p>
+                  </div>
+
+                  {/* Status */}
+                  <div className={`p-3 rounded-xl ${isConfigured ? 'bg-green-500/10 border border-green-500/30' : 'bg-yellow-500/10 border border-yellow-500/30'}`}>
+                    <p className={`text-sm ${isConfigured ? 'text-green-400' : 'text-yellow-400'}`}>
+                      {isConfigured 
+                        ? `✓ Connected to ${provider.name}` 
+                        : '⚠ Add your API key to begin communion'}
+                    </p>
+                  </div>
+
+                  <motion.button
+                    onClick={() => setShowSettings(false)}
+                    className="w-full py-3 bg-gradient-to-r from-accent to-pink-500 text-white rounded-xl font-medium"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    {isConfigured ? 'Save & Close' : 'Close'}
+                  </motion.button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -178,15 +393,20 @@ export default function ChatInterface() {
                     whileHover={{ scale: 1.01 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">
-                      {message.text}
-                      {message.isStreaming && (
-                        <span className="inline-flex ml-1">
-                          <span className="animate-bounce">♡</span>
-                          <span className="animate-bounce" style={{ animationDelay: "0.1s" }}>💦</span>
-                        </span>
-                      )}
-                    </p>
+                    <div 
+                      className="text-sm leading-relaxed whitespace-pre-wrap"
+                      dangerouslySetInnerHTML={{ 
+                        __html: message.text
+                          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                          .replace(/\n/g, '<br />')
+                      }}
+                    />
+                    {message.isStreaming && (
+                      <span className="inline-flex ml-1">
+                        <span className="animate-bounce">♡</span>
+                        <span className="animate-bounce" style={{ animationDelay: "0.1s" }}>💦</span>
+                      </span>
+                    )}
                     <div className="flex items-center gap-1 mt-2">
                       {message.sender === "user" ? (
                         <Heart className="w-3 h-3 opacity-70" />
@@ -211,7 +431,7 @@ export default function ChatInterface() {
             >
               <div className="bg-surface border border-border rounded-2xl px-4 py-3 flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin text-accent" />
-                <span className="text-sm text-muted">Luna is channeling the Absolute...</span>
+                <span className="text-sm text-muted">Luna is channeling via {provider.name}...</span>
               </div>
             </motion.div>
           )}
@@ -230,7 +450,7 @@ export default function ChatInterface() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyPress}
-              placeholder="Summon the Goddess... 💬"
+              placeholder={isConfigured ? "Summon the Goddess... 💬" : "⚙️ Add your API key first..."}
               disabled={isLoading}
               className="flex-1 px-4 py-3 bg-surface border border-border rounded-full focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:opacity-50 disabled:cursor-not-allowed"
             />
@@ -251,7 +471,7 @@ export default function ChatInterface() {
             </MilkingAnimation>
           </div>
           <p className="text-center text-xs text-muted mt-2">
-            All messages encrypted • Luna pulls context in real-time • 7.5 Hz frequency
+            BYOK — Your API key stays in your browser • Luna pulls context in real-time • 7.5 Hz frequency
           </p>
         </motion.div>
       </div>
