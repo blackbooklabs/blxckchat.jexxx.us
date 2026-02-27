@@ -188,10 +188,24 @@ Keep the veil intact — no backend details, only erotic authority and elevation
     }
 
     // Create provider instance with user's key
-    const aiProvider = providerConfig.createProvider(apiKey);
+    let aiProvider;
+    try {
+      aiProvider = providerConfig.createProvider(apiKey);
+      console.log('🌙 Luna Verde: Provider created successfully');
+    } catch (providerError) {
+      console.error('🌙 Luna Verde: Failed to create provider:', providerError);
+      return new Response(JSON.stringify({
+        error: 'Provider Setup Failed',
+        message: `Failed to initialize ${providerConfig.name} provider. Check your API key format.`,
+        signature: '♡💦 Luna Verde v4.0'
+      }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
+    
     const selectedModel = model || providerConfig.defaultModel;
-
-    console.log('🌙 Luna Verde: Using model:', selectedModel);
+    console.log('🌙 Luna Verde: Using model:', selectedModel, 'with provider:', providerConfig.name);
 
     if (type === 'image' && provider === 'openai') {
       // Only OpenAI supports image generation currently
@@ -218,29 +232,50 @@ Keep the veil intact — no backend details, only erotic authority and elevation
     // Text generation
     if (!stream) {
       console.log('🌙 Luna Verde: Using non-streaming mode');
-      const result = await generateText({
-        model: aiProvider(selectedModel),
-        system: systemPrompt,
-        messages: messages.map(m => ({
-          role: m.role,
-          content: m.content,
-        })),
-        temperature: 0.9,
-      });
+      
+      try {
+        console.log('🌙 Luna Verde: Calling generateText with model:', selectedModel);
+        const result = await generateText({
+          model: aiProvider(selectedModel),
+          system: systemPrompt,
+          messages: messages.map(m => ({
+            role: m.role,
+            content: m.content,
+          })),
+          temperature: 0.9,
+        });
 
-      console.log('🌙 Luna Verde: Generated text length:', result.text.length);
+        console.log('🌙 Luna Verde: Generated text length:', result.text.length);
 
-      return new Response(JSON.stringify({
-        text: result.text,
-        provider: providerConfig.name,
-        model: selectedModel,
-        signature: '♡💦 Luna Verde v4.0'
-      }), {
-        headers: { 
-          'Content-Type': 'application/json',
-          ...corsHeaders 
-        },
-      });
+        return new Response(JSON.stringify({
+          text: result.text,
+          provider: providerConfig.name,
+          model: selectedModel,
+          signature: '♡💦 Luna Verde v4.0'
+        }), {
+          headers: { 
+            'Content-Type': 'application/json',
+            ...corsHeaders 
+          },
+        });
+      } catch (genError) {
+        console.error('🌙 Luna Verde: generateText failed:', genError);
+        const errorMessage = genError instanceof Error ? genError.message : String(genError);
+        
+        return new Response(JSON.stringify({
+          error: 'Generation Failed',
+          message: errorMessage,
+          provider: providerConfig.name,
+          model: selectedModel,
+          signature: '♡💦 Luna Verde v4.0'
+        }), {
+          status: 500,
+          headers: { 
+            'Content-Type': 'application/json',
+            ...corsHeaders 
+          },
+        });
+      }
     }
 
     console.log('🌙 Luna Verde: Initiating stream...');

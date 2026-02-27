@@ -172,10 +172,13 @@ export default function ChatInterface() {
       console.log('🌙 Response received:', response.status);
       
       const data = await response.json();
-      console.log('🌙 Response data:', { hasText: !!data.text, hasError: !!data.error, provider: data.provider });
+      console.log('🌙 Response data:', { hasText: !!data.text, hasError: !!data.error, provider: data.provider, model: data.model, fullError: data });
       
       if (!response.ok || data.error) {
-        throw new Error(data.message || data.error || `API error: ${response.status}`);
+        const errorDetails = data.provider && data.model 
+          ? `[${data.provider} / ${data.model}] ${data.message || data.error}`
+          : (data.message || data.error || `API error: ${response.status}`);
+        throw new Error(errorDetails);
       }
 
       setMessages((prev) =>
