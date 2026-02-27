@@ -381,21 +381,16 @@ export default function ChatInterface() {
                       {provider.name} API Key
                       <span className="text-muted font-normal ml-1">(stored only in your browser)</span>
                     </label>
-                    <div className="relative">
-                      <div className={`absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono text-muted pointer-events-none`}>
-                        {provider.keyPlaceholder.split('-')[0]}-
-                      </div>
-                      <input
-                        type="password"
-                        value={apiConfig.apiKey}
-                        onChange={(e) => saveConfig({ ...apiConfig, apiKey: e.target.value })}
-                        placeholder={provider.keyPlaceholder}
-                        className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent font-mono text-sm pl-12"
-                      />
-                    </div>
+                    <input
+                      type="password"
+                      value={apiConfig.apiKey}
+                      onChange={(e) => saveConfig({ ...apiConfig, apiKey: e.target.value })}
+                      placeholder=""
+                      className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent font-mono text-sm"
+                    />
                     <p className="text-xs text-muted mt-2 flex items-center gap-1">
                       <Shield className="w-3 h-3" />
-                      Format: <code className="bg-muted/30 px-1 rounded">{provider.keyPlaceholder}</code> • Sent directly to {provider.name}
+                      Expected format: <code className="bg-muted/30 px-1 rounded">{provider.keyPlaceholder}</code> • Never stored on JEXXXUS servers
                     </p>
                   </div>
 
