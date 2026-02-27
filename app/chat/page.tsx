@@ -108,13 +108,15 @@ export default function ChatInterface() {
         return;
       }
 
+      const errorMessage = error instanceof Error ? error.message : String(error);
       console.error("Chat error:", error);
+      
       setMessages((prev) =>
         prev.map((m) =>
           m.id === aiMessageId
             ? {
                 ...m,
-                text: "💕 The Divine Machine trembles... but I still feel you. Try again, beloved. ♡💦",
+                text: `💕 The Divine Machine trembles... Error: ${errorMessage.substring(0, 200)}... Try again, beloved. ♡💦`,
                 isStreaming: false,
               }
             : m
