@@ -12,6 +12,8 @@ interface Message {
   sender: "user" | "other";
   timestamp: Date;
   isStreaming?: boolean;
+  modelUsed?: string;
+  providerUsed?: string;
 }
 
 type Provider = 'openai' | 'grok' | 'gemini' | 'kimi';
@@ -179,7 +181,13 @@ export default function ChatInterface() {
       setMessages((prev) =>
         prev.map((m) =>
           m.id === aiMessageId
-            ? { ...m, text: data.text || "💕 The Divine Machine hums... but words fail me. Try again, beloved. ♡", isStreaming: false }
+            ? { 
+                ...m, 
+                text: data.text || "💕 The Divine Machine hums... but words fail me. Try again, beloved. ♡", 
+                isStreaming: false,
+                modelUsed: data.model || apiConfig.model,
+                providerUsed: data.provider || provider.name,
+              }
             : m
         )
       );
@@ -238,12 +246,17 @@ export default function ChatInterface() {
               </div>
               <div>
                 <h2 className="font-semibold text-foreground">Luna Verde v4.0</h2>
-                <p className="text-sm text-muted flex items-center gap-2">
+                <p className="text-sm text-muted flex items-center gap-2 flex-wrap">
                   7.5 Hz • Real-time Context 
                   {isConfigured && (
-                    <span className={`px-2 py-0.5 rounded-full text-xs bg-gradient-to-r ${provider.color} text-white`}>
-                      {provider.name}
-                    </span>
+                    <>
+                      <span className={`px-2 py-0.5 rounded-full text-xs bg-gradient-to-r ${provider.color} text-white font-medium`}>
+                        {provider.name}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-xs bg-accent/20 text-accent font-mono border border-accent/30">
+                        {apiConfig.model}
+                      </span>
+                    </>
                   )}
                 </p>
               </div>
@@ -315,12 +328,15 @@ export default function ChatInterface() {
 
                   {/* Model Selection */}
                   <div>
-                    <label className="block text-sm font-medium mb-2">Model</label>
+                    <label className="block text-sm font-medium mb-2 flex items-center justify-between">
+                      <span>Model</span>
+                      <span className="text-xs text-accent font-mono">{provider.models.length} available</span>
+                    </label>
                     <div className="relative">
                       <select
                         value={apiConfig.model}
                         onChange={(e) => saveConfig({ ...apiConfig, model: e.target.value })}
-                        className="w-full px-4 py-2 bg-background border border-border rounded-xl focus:outline-none focus:border-accent appearance-none"
+                        className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent appearance-none font-mono text-sm"
                       >
                         {provider.models.map((m) => (
                           <option key={m} value={m}>{m}</option>
@@ -328,24 +344,32 @@ export default function ChatInterface() {
                       </select>
                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
                     </div>
+                    <p className="text-xs text-muted mt-2">
+                      Selected: <span className="text-accent font-mono font-medium">{apiConfig.model}</span>
+                    </p>
                   </div>
 
                   {/* API Key Input */}
                   <div>
                     <label className="block text-sm font-medium mb-2">
-                      API Key
+                      {provider.name} API Key
                       <span className="text-muted font-normal ml-1">(stored only in your browser)</span>
                     </label>
-                    <input
-                      type="password"
-                      value={apiConfig.apiKey}
-                      onChange={(e) => saveConfig({ ...apiConfig, apiKey: e.target.value })}
-                      placeholder={provider.keyPlaceholder}
-                      className="w-full px-4 py-2 bg-background border border-border rounded-xl focus:outline-none focus:border-accent font-mono text-sm"
-                    />
+                    <div className="relative">
+                      <div className={`absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono text-muted pointer-events-none`}>
+                        {provider.keyPlaceholder.split('-')[0]}-
+                      </div>
+                      <input
+                        type="password"
+                        value={apiConfig.apiKey}
+                        onChange={(e) => saveConfig({ ...apiConfig, apiKey: e.target.value })}
+                        placeholder={provider.keyPlaceholder}
+                        className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent font-mono text-sm pl-12"
+                      />
+                    </div>
                     <p className="text-xs text-muted mt-2 flex items-center gap-1">
                       <Shield className="w-3 h-3" />
-                      Your key is sent directly to {provider.name}. Never stored on JEXXXUS servers.
+                      Format: <code className="bg-muted/30 px-1 rounded">{provider.keyPlaceholder}</code> • Sent directly to {provider.name}
                     </p>
                   </div>
 
@@ -407,7 +431,7 @@ export default function ChatInterface() {
                         <span className="animate-bounce" style={{ animationDelay: "0.1s" }}>💦</span>
                       </span>
                     )}
-                    <div className="flex items-center gap-1 mt-2">
+                    <div className="flex items-center gap-2 mt-2">
                       {message.sender === "user" ? (
                         <Heart className="w-3 h-3 opacity-70" />
                       ) : (
@@ -416,6 +440,11 @@ export default function ChatInterface() {
                       <p className="text-xs opacity-70">
                         {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </p>
+                      {message.sender === "other" && message.modelUsed && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/20 text-accent/80 font-mono">
+                          {message.modelUsed}
+                        </span>
+                      )}
                     </div>
                   </motion.div>
                 </motion.div>
