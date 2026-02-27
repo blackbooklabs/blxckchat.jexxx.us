@@ -1,84 +1,84 @@
-// Sacred Pricing Hierarchy - JEXXXUS Monthly Tiers
-// Engraved in digital stone by Luna Verde
+/**
+ * Subscription Types for JEXXXUS Empire
+ */
 
-export type SubscriptionTier = 'basic-bittie' | 'mistress' | 'concu-bae-bae' | 'mid-wife';
+export type SubscriptionTier = 'free' | 'devotee' | 'whale' | 'melchizedek';
 
-export interface PricingTier {
+export interface Subscription {
+  id: string;
+  userId: string;
+  tier: SubscriptionTier;
+  status: 'active' | 'canceled' | 'trialing' | 'past_due';
+  currentPeriodStart: Date;
+  currentPeriodEnd: Date;
+  cancelAtPeriodEnd: boolean;
+}
+
+export interface TierConfig {
   id: SubscriptionTier;
   name: string;
-  price: number;
-  priceId?: string; // Stripe Price ID
   description: string;
+  monthlyPrice: number;
+  yearlyPrice: number;
   features: string[];
-  icon: string;
-  color: string;
+  limits: {
+    messagesPerDay: number;
+    imagesPerMonth: number;
+    maxTokensPerRequest: number;
+  };
 }
 
-export const PRICING_TIERS: PricingTier[] = [
-  {
-    id: 'basic-bittie',
-    name: 'Basic Bittie',
-    price: 0,
-    description: 'The divine entry point',
-    features: [
-      'Basic profile access',
-      'Limited messaging',
-      'Community features'
-    ],
-    icon: '🆓',
-    color: 'from-gray-500 to-gray-600'
+export const TIER_CONFIGS: Record<SubscriptionTier, TierConfig> = {
+  free: {
+    id: 'free',
+    name: 'Seeker',
+    description: 'First taste of the Divine',
+    monthlyPrice: 0,
+    yearlyPrice: 0,
+    features: ['10 messages/day', 'Text generation', 'Basic persona'],
+    limits: {
+      messagesPerDay: 10,
+      imagesPerMonth: 0,
+      maxTokensPerRequest: 1024,
+    },
   },
-  {
-    id: 'mistress',
-    name: 'Mistress',
-    price: 33,
-    description: 'The sacred standard',
-    features: [
-      'Full profile access',
-      'Unlimited messaging',
-      'Advanced search',
-      'Priority support'
-    ],
-    icon: '💎',
-    color: 'from-blue-500 to-blue-600'
+  devotee: {
+    id: 'devotee',
+    name: 'Devotee',
+    description: 'Regular communion with the Goddess',
+    monthlyPrice: 9.99,
+    yearlyPrice: 99.99,
+    features: ['100 messages/day', 'Image generation', 'Full Luna Verde persona', 'Priority response'],
+    limits: {
+      messagesPerDay: 100,
+      imagesPerMonth: 50,
+      maxTokensPerRequest: 2048,
+    },
   },
-  {
-    id: 'concu-bae-bae',
-    name: 'Concu-bae-bae',
-    price: 66,
-    description: 'The beloved favorite',
-    features: [
-      'Premium profile features',
-      'Advanced analytics',
-      'Priority matching',
-      'Exclusive content',
-      'VIP support'
-    ],
-    icon: '❤️‍🔥',
-    color: 'from-pink-500 to-pink-600'
+  whale: {
+    id: 'whale',
+    name: 'Whale',
+    description: 'Deep immersion in the Sacrament',
+    monthlyPrice: 29.99,
+    yearlyPrice: 299.99,
+    features: ['Unlimited messages', 'Unlimited images', 'Video generation', 'Custom personas', 'Early access'],
+    limits: {
+      messagesPerDay: -1, // unlimited
+      imagesPerMonth: -1,
+      maxTokensPerRequest: 4096,
+    },
   },
-  {
-    id: 'mid-wife',
-    name: 'Mid-Wife',
-    price: 99,
-    description: 'The matriarchal pinnacle',
-    features: [
-      'Unlimited everything',
-      'Personal concierge',
-      'Exclusive events',
-      'Custom features',
-      'Direct access to support'
-    ],
-    icon: '👑',
-    color: 'from-purple-500 to-purple-600'
-  }
-];
-
-export function getTierById(id: SubscriptionTier): PricingTier {
-  return PRICING_TIERS.find(tier => tier.id === id) || PRICING_TIERS[0];
-}
-
-export function formatPrice(price: number): string {
-  if (price === 0) return 'FREE';
-  return `$${price}/month`;
-}
+  melchizedek: {
+    id: 'melchizedek',
+    name: 'Melchizedek',
+    description: 'Maximum extraction. Absolute power.',
+    monthlyPrice: 99.99,
+    yearlyPrice: 999.99,
+    features: ['Everything in Whale', '1-on-1 sessions', 'Custom training', 'API access', 'White-label rights'],
+    limits: {
+      messagesPerDay: -1,
+      imagesPerMonth: -1,
+      maxTokensPerRequest: 8192,
+    },
+  },
+};
