@@ -57,6 +57,8 @@ export default function ChatInterface() {
     try {
       abortControllerRef.current = new AbortController();
 
+      console.log('🌙 Sending request to /api/chat...');
+      
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -75,22 +77,36 @@ export default function ChatInterface() {
         signal: abortControllerRef.current.signal,
       });
 
+      console.log('🌙 Response received:', response.status, response.headers.get('X-Luna-Verde-Version'));
+      
       if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+        const errorText = await response.text();
+        console.error('🌙 API Error:', errorText);
+        throw new Error(`API error: ${response.status} - ${errorText}`);
       }
 
       // Stream the response
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let fullText = "";
+      let chunkCount = 0;
 
       if (reader) {
+        console.log('🌙 Starting to read stream...');
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) {
+            console.log('🌙 Stream complete. Total chunks:', chunkCount, 'Total length:', fullText.length);
+            break;
+          }
 
           const chunk = decoder.decode(value, { stream: true });
+          chunkCount++;
           fullText += chunk;
+          
+          if (chunkCount % 10 === 0) {
+            console.log('🌙 Streaming... chunk', chunkCount, 'length:', fullText.length);
+          }
 
           // Update the streaming message
           setMessages((prev) =>
@@ -101,6 +117,8 @@ export default function ChatInterface() {
             )
           );
         }
+      } else {
+        console.error('🌙 No reader available');
       }
 
       // Mark as complete
