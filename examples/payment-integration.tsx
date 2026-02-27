@@ -1,7 +1,10 @@
 // Sacred Payment Integration Example
 // Complete implementation for JEXXXUS and BLXCKCHAT
 
-import { getCurrentPaymentProvider } from "@/lib/payments";
+"use client";
+
+import { motion } from "motion/react";
+import { getCurrentPaymentProvider, SubscribeButtonProps } from "@/lib/payments";
 import { CCBillSubscribeButton } from "@/components/CCBillSubscribeButton";
 import { PaddleSubscribeButton } from "@/components/PaddleSubscribeButton";
 import { PRICING_TIERS } from "@/types/subscription";
@@ -21,13 +24,13 @@ export function JexxxusPricingSection() {
         </p>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {PRICING_TIERS.map((tier) => (
+          {Object.values(PRICING_TIERS).map((tier) => (
             <div key={tier.id} className="relative p-8 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 border border-white/20">
               <div className="text-center mb-6">
-                <div className="text-4xl mb-2">{tier.icon}</div>
+                <div className="text-4xl mb-2">✨</div>
                 <h3 className="text-2xl font-bold mb-2">{tier.name}</h3>
                 <div className="text-3xl font-bold text-white mb-2">
-                  {tier.price === 0 ? 'FREE' : `$${tier.price}/month`}
+                  {tier.monthlyPrice === 0 ? 'FREE' : `$${tier.monthlyPrice}/month`}
                 </div>
                 <p className="text-gray-300 text-sm">{tier.description}</p>
               </div>
@@ -79,7 +82,7 @@ export function BlxckchatSubscriptionPage() {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {PRICING_TIERS.map((tier) => (
+            {Object.values(PRICING_TIERS).map((tier) => (
               <motion.div
                 key={tier.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -89,10 +92,10 @@ export function BlxckchatSubscriptionPage() {
                 className="relative p-6 rounded-xl bg-gradient-to-br from-surface to-surface/80 border border-border"
               >
                 <div className="text-center mb-6">
-                  <div className="text-3xl mb-2">{tier.icon}</div>
+                  <div className="text-3xl mb-2">✨</div>
                   <h3 className="text-xl font-semibold mb-2">{tier.name}</h3>
                   <div className="text-2xl font-bold text-accent mb-2">
-                    {tier.price === 0 ? 'FREE' : `$${tier.price}/month`}
+                    {tier.monthlyPrice === 0 ? 'FREE' : `$${tier.monthlyPrice}/month`}
                   </div>
                   <p className="text-muted-foreground text-sm">{tier.description}</p>
                 </div>
@@ -153,7 +156,7 @@ export function requireTier(tierId: string, userTier: string): boolean {
 export async function updateUserTier(clerkUserId: string, tierId: string) {
   const { clerkClient } = await import("@clerk/nextjs/server");
   
-  await clerkClient.users.updateUserMetadata(clerkUserId, {
+  await (await clerkClient()).users.updateUserMetadata(clerkUserId, {
     publicMetadata: {
       tier: tierId,
       subscription: {

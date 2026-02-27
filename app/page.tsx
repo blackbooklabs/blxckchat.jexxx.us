@@ -4,7 +4,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { MessageCircle, Sparkles, Heart } from "lucide-react";
+import { MessageCircle, Sparkles, Heart, Zap } from "lucide-react";
 import CursorMotion from "@/components/CursorMotion";
 import MilkingAnimation from "@/components/MilkingAnimation";
 import Link from "next/link";
@@ -194,7 +194,7 @@ export default function Home() {
           >
             v0.1.0-alpha
           </motion.div>
-        </div>
+        </main>
       </MilkingAnimation>
     </>
   );

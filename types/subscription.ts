@@ -82,3 +82,14 @@ export const TIER_CONFIGS: Record<SubscriptionTier, TierConfig> = {
     },
   },
 };
+
+// Legacy export for backward compatibility
+export const PRICING_TIERS = TIER_CONFIGS;
+
+// Export helper function for webhook and other consumers
+export function getTierById(tierId: string): SubscriptionTier {
+  const validTiers: SubscriptionTier[] = ['free', 'devotee', 'whale', 'melchizedek'];
+  return validTiers.includes(tierId as SubscriptionTier) 
+    ? (tierId as SubscriptionTier) 
+    : 'free';
+}

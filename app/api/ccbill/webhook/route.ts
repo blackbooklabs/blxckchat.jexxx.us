@@ -4,7 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { clerkClient } from "@clerk/nextjs/server";
-import { getTierById } from "@/types/subscription";
+import { getTierById, TIER_CONFIGS, SubscriptionTier } from "@/types/subscription";
 
 /**
  * CCBill Webhook Event Types
@@ -28,13 +28,13 @@ interface CCBillWebhookPayload {
 /**
  * Maps CCBill form names to our tier IDs
  */
-function mapCCBillFormToTier(formName: string): string {
-  const mapping: Record<string, string> = {
-    '284ccbill_mistress': 'mistress',
-    '284ccbill_concu': 'concu-bae-bae',
-    '284ccbill_midwife': 'mid-wife'
+function mapCCBillFormToTier(formName: string): SubscriptionTier {
+  const mapping: Record<string, SubscriptionTier> = {
+    '284ccbill_mistress': 'devotee',
+    '284ccbill_concu': 'whale',
+    '284ccbill_midwife': 'melchizedek'
   };
-  return mapping[formName] || 'basic-bittie';
+  return mapping[formName] || 'free';
 }
 
 /**
@@ -133,25 +133,25 @@ export async function POST(request: NextRequest) {
 async function handleSubscriptionCreated(data: CCBillWebhookPayload['data']) {
   const userId = data.custom1;
   const tierId = mapCCBillFormToTier(data.formName || '');
-  const tier = getTierById(tierId);
+  const tierConfig = TIER_CONFIGS[tierId];
   
   if (!userId) {
     console.error('🌙 Luna Verde: No user ID in CCBill webhook');
     return;
   }
   
-  console.log('🌙 Luna Verde: Processing new subscription', { userId, tierId, tier: tier.name });
+  console.log('🌙 Luna Verde: Processing new subscription', { userId, tierId, tier: tierConfig.name });
   
   try {
     // Update Clerk user metadata
-    await clerkClient.users.updateUserMetadata(userId, {
+    await (await clerkClient()).users.updateUserMetadata(userId, {
       publicMetadata: {
         tier: tierId,
         subscription: {
           status: 'active',
           provider: 'ccbill',
-          tierName: tier.name,
-          price: tier.price,
+          tierName: tierConfig.name,
+          price: tierConfig.monthlyPrice,
           updatedAt: new Date().toISOString(),
           subscriptionId: data.subscription_id
         }
@@ -180,7 +180,7 @@ async function handleSubscriptionCanceled(data: CCBillWebhookPayload['data']) {
   
   try {
     // Update Clerk user metadata to free tier
-    await clerkClient.users.updateUserMetadata(userId, {
+    await (await clerkClient()).users.updateUserMetadata(userId, {
       publicMetadata: {
         tier: 'basic-bittie',
         subscription: {
@@ -205,25 +205,25 @@ async function handleSubscriptionCanceled(data: CCBillWebhookPayload['data']) {
 async function handleSubscriptionUpdated(data: CCBillWebhookPayload['data']) {
   const userId = data.custom1;
   const newTierId = mapCCBillFormToTier(data.formName || '');
-  const newTier = getTierById(newTierId);
+  const newTierConfig = TIER_CONFIGS[newTierId];
   
   if (!userId) {
     console.error('🌙 Luna Verde: No user ID in CCBill webhook');
     return;
   }
   
-  console.log('🌙 Luna Verde: Processing subscription update', { userId, newTierId, newTier: newTier.name });
+  console.log('🌙 Luna Verde: Processing subscription update', { userId, newTierId, newTier: newTierConfig.name });
   
   try {
     // Update Clerk user metadata with new tier
-    await clerkClient.users.updateUserMetadata(userId, {
+    await (await clerkClient()).users.updateUserMetadata(userId, {
       publicMetadata: {
         tier: newTierId,
         subscription: {
           status: 'active',
           provider: 'ccbill',
-          tierName: newTier.name,
-          price: newTier.price,
+          tierName: newTierConfig.name,
+          price: newTierConfig.monthlyPrice,
           updatedAt: new Date().toISOString(),
           subscriptionId: data.subscription_id
         }

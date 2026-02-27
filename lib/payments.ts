@@ -68,7 +68,7 @@ export function getPaymentProvider(tierId: string): PaymentProvider {
         `currencyCode=${CCBILL_CONFIG.currencyCode}&` +
         `custom1=${userId}`;
     },
-    getSubscribeButton: () => CCBillSubscribeButton
+    getSubscribeButton: () => null as any // Lazy loaded to avoid circular dependency
   };
 }
 
@@ -92,11 +92,11 @@ export function getTestingPaymentProvider(tierId: string): PaymentProvider {
         `return_url=${process.env.NEXT_PUBLIC_APP_URL}/subscription/success&` +
         `cancel_url=${process.env.NEXT_PUBLIC_APP_URL}/subscription/cancel`;
     },
-    getSubscribeButton: () => PaddleSubscribeButton
+    getSubscribeButton: () => null as any // Lazy loaded to avoid circular dependency
   };
 }
 
-function getTierPrice(tierId: string): number {
+export function getTierPrice(tierId: string): number {
   const prices: Record<string, number> = {
     'basic-bittie': 0,
     'mistress': 33,
