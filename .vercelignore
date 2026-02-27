@@ -1,0 +1,8 @@
+ollama-models/
+models/
+coverage/
+.git/
+*.log
+.DS_Store
+.env
+.env.local

@@ -1,2 +1,43 @@
+# Dependencies
 node_modules/
+.pnpm-store/
+
+# Build outputs
 .next/
+out/
+dist/
+build/
+
+# Vercel
+.vercel
+
+# Large model files
+ollama-models/
+models/*.gguf
+models/*.bin
+*.gguf
+*.bin
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage
+coverage/
+
+# IDE
+.vscode/
+.idea/
+
+# Temporary
+tmp/
+temp/
