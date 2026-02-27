@@ -1,34 +1,54 @@
+@import "tailwindcss";
 @import '../styles/bimbo-enhancements.css';
 
-:root {
-  /* Deep black background */
-  --background: #030303;
-  /* Primary text - soft white */
-  --foreground: #f5f5f5;
-  /* Surface colors for cards, containers */
-  --surface: #0a0a0a;
-  --surface-elevated: #111111;
-  --surface-hover: #1a1a1a;
-  /* Border colors */
-  --border: #262626;
-  --border-subtle: #1c1c1c;
-  /* Vibrant purple-pink accent */
-  --accent: #c084fc;
-  --accent-muted: #a855f7;
-  --accent-glow: rgba(192, 132, 252, 0.4);
-  /* Muted text */
-  --muted: #737373;
-  --muted-foreground: #a3a3a3;
+@theme {
+  /* Colors */
+  --color-background: #030303;
+  --color-foreground: #f5f5f5;
+  --color-surface: #0a0a0a;
+  --color-surface-elevated: #111111;
+  --color-surface-hover: #1a1a1a;
+  --color-border: #262626;
+  --color-border-subtle: #1c1c1c;
+  --color-accent: #c084fc;
+  --color-accent-muted: #a855f7;
+  --color-accent-glow: rgba(192, 132, 252, 0.4);
+  --color-muted: #737373;
+  --color-muted-foreground: #a3a3a3;
+  
+  /* Font families */
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), monospace;
+  
+  /* Animations */
+  --animate-fade-in: fadeIn 0.5s ease-out;
+  --animate-slide-up: slideUp 0.5s ease-out;
+  --animate-pulse-glow: pulseGlow 2s ease-in-out infinite;
+}
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes slideUp {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 20px var(--accent-glow); }
+  50% { box-shadow: 0 0 40px var(--accent-glow); }
 }
 
 @layer base {
   * {
-    border-color: #e5e7eb;
+    border-color: var(--color-border);
   }
   
   body {
-    background-color: var(--background);
-    color: var(--foreground);
+    background-color: var(--color-background);
+    color: var(--color-foreground);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-feature-settings: "rlig" 1, "calt" 1;
@@ -41,16 +61,16 @@
   }
   
   ::-webkit-scrollbar-track {
-    background: var(--surface);
+    background: var(--color-surface);
   }
   
   ::-webkit-scrollbar-thumb {
-    background: var(--border);
+    background: var(--color-border);
     border-radius: 4px;
   }
   
   ::-webkit-scrollbar-thumb:hover {
-    background: var(--muted);
+    background: var(--color-muted);
   }
 }
 
@@ -64,12 +84,12 @@
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    background-image: linear-gradient(to right, var(--accent), var(--accent-muted));
+    background-image: linear-gradient(to right, var(--color-accent), var(--color-accent-muted));
   }
   
   /* Glow effect for accent elements */
   .glow-accent {
-    box-shadow: 0 0 30px var(--accent-glow);
+    box-shadow: 0 0 30px var(--color-accent-glow);
   }
   
   /* Glass morphism effect */
