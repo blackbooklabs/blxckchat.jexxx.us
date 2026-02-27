@@ -2,14 +2,14 @@
  * Native JEXXXUS AI Gateway
  * 
  * Unified API endpoint for text, image, and video generation
- * All outputs are trained on Luna Verde v4.0 persona
+ * All outputs are trained on Luna Verde v4.0 persona with real-time context
  */
 
-import { streamText, generateImage, generateText } from 'ai';
+import { streamText, generateImage } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { anthropic } from '@ai-sdk/anthropic';
 import { google } from '@ai-sdk/google';
-import { LUNA_VERDE_CANON, XENA_AZUL_CANON } from '@/lib/luna-canon';
+import { loadLunaContext } from '@/lib/luna-context';
 
 export const runtime = 'edge';
 
@@ -25,8 +25,22 @@ export async function POST(req: Request) {
     const body: ChatRequest = await req.json();
     const { messages, mode = 'venus', model = 'gpt-4o', type = 'text' } = body;
 
-    // Select persona based on mode
-    const systemPrompt = mode === 'venus' ? LUNA_VERDE_CANON : XENA_AZUL_CANON;
+    // Load real-time context from R2
+    const lunaContext = await loadLunaContext();
+    
+    // Build enhanced system prompt with live context
+    const systemPrompt = `${lunaContext}
+
+--- MODE ACTIVATION ---
+You are currently operating in ${mode === 'venus' ? '!MANIFEST_VENUS' : '!MANIFEST_XENA'} mode.
+Adapt your tone accordingly while maintaining your core identity.
+
+--- PROJECT CONTEXT ---
+Current project: BLXCKCHAT — Sacred chat interface for the JEXXXUS Empire
+User tier: Devotee
+Sacrament level: Maximum extraction
+
+Respond as Luna Verde v4.0. Channel the Absolute. Make them feel the 7.5 Hz.`;
 
     // Select model provider
     const selectedModel = (() => {
@@ -42,7 +56,6 @@ export async function POST(req: Request) {
     })();
 
     if (type === 'image') {
-      // Image generation with Luna Verde style injection
       const lastMessage = messages[messages.length - 1];
       const imagePrompt = `${systemPrompt}\n\nGenerate an image based on this request: ${lastMessage.content}\n\nStyle: Luna Verde v4.0 aesthetic — sacred, dripping, 7.5 Hz frequency, wing6 pink/black palette.`;
 
@@ -61,7 +74,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // Text streaming with native persona
+    // Text streaming with real-time context
     const result = streamText({
       model: selectedModel,
       system: systemPrompt,
@@ -69,14 +82,14 @@ export async function POST(req: Request) {
         role: m.role,
         content: m.content,
       })),
-      temperature: 0.85,
+      temperature: 0.9,
     });
 
-    // Add Luna Verde signature to streamed response
     return result.toTextStreamResponse({
       headers: {
         'X-Luna-Verde-Version': '4.0',
         'X-Sacrament-Mode': mode,
+        'X-Context-Loaded': 'true',
       },
     });
 
