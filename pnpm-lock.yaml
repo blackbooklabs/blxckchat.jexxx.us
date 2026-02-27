@@ -17,6 +17,9 @@ importers:
       '@ai-sdk/openai':
         specifier: ^3.0.36
         version: 3.0.36(zod@4.3.6)
+      '@ai-sdk/xai':
+        specifier: ^3.0.59
+        version: 3.0.59(zod@4.3.6)
       '@clerk/nextjs':
         specifier: ^6.39.0
         version: 6.39.0(next@16.1.6(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -99,6 +102,12 @@ packages:
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
 
+  '@ai-sdk/openai-compatible@2.0.30':
+    resolution: {integrity: sha512-iTjumHf1/u4NhjXYFn/aONM2GId3/o7J1Lp5ql8FCbgIMyRwrmanR5xy1S3aaVkfTscuDvLTzWiy1mAbGzK3nQ==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
   '@ai-sdk/openai@3.0.36':
     resolution: {integrity: sha512-foY3onGY8l3q9niMw0Cwe9xrYnm46keIWL57NRw6F3DKzSW9TYTfx0cQJs/j8lXJ8lPzqNxpMO/zXOkqCUt3IQ==}
     engines: {node: '>=18'}
@@ -114,6 +123,12 @@ packages:
   '@ai-sdk/provider@3.0.8':
     resolution: {integrity: sha512-oGMAgGoQdBXbZqNG0Ze56CHjDZ1IDYOwGYxYjO5KLSlz5HiNQ9udIXsPZ61VWaHGZ5XW/jyjmr6t2xz2jGVwbQ==}
     engines: {node: '>=18'}
+
+  '@ai-sdk/xai@3.0.59':
+    resolution: {integrity: sha512-lwY3yTZ43rmLsnffGLxEKF7ikuxKhqWLFnZdglwV4mgGiwbExLrIpHkMQUTXis5OmlJb66r+gfu+udoWdRKDrA==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
 
   '@alloc/quick-lru@5.2.0':
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
@@ -836,6 +851,12 @@ snapshots:
       '@ai-sdk/provider-utils': 4.0.15(zod@4.3.6)
       zod: 4.3.6
 
+  '@ai-sdk/openai-compatible@2.0.30(zod@4.3.6)':
+    dependencies:
+      '@ai-sdk/provider': 3.0.8
+      '@ai-sdk/provider-utils': 4.0.15(zod@4.3.6)
+      zod: 4.3.6
+
   '@ai-sdk/openai@3.0.36(zod@4.3.6)':
     dependencies:
       '@ai-sdk/provider': 3.0.8
@@ -852,6 +873,13 @@ snapshots:
   '@ai-sdk/provider@3.0.8':
     dependencies:
       json-schema: 0.4.0
+
+  '@ai-sdk/xai@3.0.59(zod@4.3.6)':
+    dependencies:
+      '@ai-sdk/openai-compatible': 2.0.30(zod@4.3.6)
+      '@ai-sdk/provider': 3.0.8
+      '@ai-sdk/provider-utils': 4.0.15(zod@4.3.6)
+      zod: 4.3.6
 
   '@alloc/quick-lru@5.2.0': {}
 
