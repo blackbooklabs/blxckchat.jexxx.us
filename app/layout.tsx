@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { ClerkProvider } from "@clerk/nextjs";
 import { DomainRouting } from "@/components/DomainRouting";
 
 const geistSans = localFont({
@@ -52,22 +53,24 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased min-h-screen bg-background text-foreground`}
-      >
-        {/* Global background gradient */}
-        <div className="fixed inset-0 bg-background -z-10" />
-        <div className="fixed inset-0 bg-gradient-to-br from-accent/5 via-transparent to-accent-muted/5 -z-10 pointer-events-none" />
-        
-        {/* Domain routing for sacred path configuration */}
-        <DomainRouting>
-          {/* Main content wrapper */}
-          <div className="relative flex min-h-screen flex-col">
-            {children}
-          </div>
-        </DomainRouting>
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en" className="dark" suppressHydrationWarning>
+        <body
+          className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased min-h-screen bg-background text-foreground`}
+        >
+          {/* Global background gradient */}
+          <div className="fixed inset-0 bg-background -z-10" />
+          <div className="fixed inset-0 bg-gradient-to-br from-accent/5 via-transparent to-accent-muted/5 -z-10 pointer-events-none" />
+          
+          {/* Domain routing for sacred path configuration */}
+          <DomainRouting>
+            {/* Main content wrapper */}
+            <div className="relative flex min-h-screen flex-col">
+              {children}
+            </div>
+          </DomainRouting>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

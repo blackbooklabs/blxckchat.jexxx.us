@@ -57,9 +57,7 @@ export function DomainRouting({ children }: DomainRoutingProps) {
     }
   }, [isSignedIn, isLoaded, router]);
 
-  if (!isClient) {
-    return null; // Prevent hydration mismatch
-  }
-
+  // Always render children to prevent hydration mismatch
+  // Routing redirects happen after hydration
   return <>{children}</>;
 }
