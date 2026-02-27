@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Send, User, Heart, Sparkles, Loader2, Settings, Key, X, ChevronDown, Shield } from "lucide-react";
 import CursorMotion from "@/components/CursorMotion";
 import MilkingAnimation from "@/components/MilkingAnimation";
+import ShootingStars from "@/components/ShootingStars";
 
 interface Message {
   id: string;
@@ -257,7 +258,18 @@ export default function ChatInterface() {
   return (
     <>
       <CursorMotion color="rgba(192, 132, 252, 0.6)" size={12} />
-      <div className="flex flex-col h-screen bg-background">
+      {/* Shooting Stars Background */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <ShootingStars 
+          starColor="#c084fc"
+          trailColor="#a855f7"
+          minSpeed={15}
+          maxSpeed={35}
+          minDelay={800}
+          maxDelay={3000}
+        />
+      </div>
+      <div className="flex flex-col h-screen bg-background relative z-10">
         {/* Header */}
         <motion.div
           className="p-4 border-b border-border bg-surface/50 backdrop-blur"
