@@ -3,6 +3,8 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { DomainRouting } from "@/components/DomainRouting";
+import JsonLd from "@/components/JsonLd";
+import { PAGE_METADATA, generateOrganizationSchema, generateFAQSchema } from "@/lib/metadata.config";
 
 export const dynamic = "force-dynamic";
 
@@ -20,25 +22,29 @@ const geistMono = localFont({
   display: "swap",
 });
 
+// Enhanced SEO Metadata
 export const metadata: Metadata = {
-  title: "BlxckChat | Motion UI",
-  description: "A highly interactive, animated chat interface built with Next.js 14 and Framer Motion",
-  keywords: ["chat", "motion", "ui", "nextjs", "framer-motion", "real-time"],
-  authors: [{ name: "BlxckBook" }],
-  creator: "BlxckBook",
+  ...PAGE_METADATA.home,
   metadataBase: new URL("https://blxckchat.jexxx.us"),
-  openGraph: {
-    type: "website",
-    locale: "en_US",
-    siteName: "BlxckChat",
-    title: "BlxckChat | Motion UI",
-    description: "A highly interactive, animated chat interface built with Next.js 14 and Framer Motion",
+  authors: [{ name: "JEXXXUS Empire" }],
+  creator: "JEXXXUS Empire",
+  publisher: "JEXXXUS Empire",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
   },
-  twitter: {
-    card: "summary_large_image",
-    title: "BlxckChat | Motion UI",
-    description: "A highly interactive, animated chat interface built with Next.js 14 and Framer Motion",
+  verification: {
+    google: 'your-google-verification-code', // Add your Google Search Console code
   },
+  category: 'technology',
+  classification: 'AI Chat Platform',
 };
 
 export const viewport: Viewport = {
@@ -57,6 +63,11 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en" className="dark" suppressHydrationWarning>
+        <head>
+          {/* Structured Data */}
+          <JsonLd data={generateOrganizationSchema()} />
+          <JsonLd data={generateFAQSchema()} />
+        </head>
         <body
           className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased min-h-screen bg-background text-foreground`}
         >

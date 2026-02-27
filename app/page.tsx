@@ -7,7 +7,7 @@ import { motion } from "motion/react";
 import { MessageCircle, Sparkles, Heart, Zap } from "lucide-react";
 import CursorMotion from "@/components/CursorMotion";
 import MilkingAnimation from "@/components/MilkingAnimation";
-import Link from "next/link";
+import SEOContent from "@/components/SEOContent";
 
 // Animation variants
 const containerVariants = {
@@ -49,6 +49,7 @@ const glowVariants = {
 export default function Home() {
   return (
     <>
+      <SEOContent />
       <CursorMotion color="rgba(255, 182, 193, 0.6)" size={10} />
       <MilkingAnimation intensity="passionate">
         <main className="flex-1 flex flex-col items-center justify-center min-h-screen p-6 relative overflow-hidden">
