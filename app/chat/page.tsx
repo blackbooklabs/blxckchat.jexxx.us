@@ -73,59 +73,31 @@ export default function ChatInterface() {
           mode: "venus",
           model: "gpt-4o",
           type: "text",
+          stream: false, // Use non-streaming for reliability
         }),
         signal: abortControllerRef.current.signal,
       });
 
-      console.log('🌙 Response received:', response.status, response.headers.get('X-Luna-Verde-Version'));
+      console.log('🌙 Response received:', response.status);
       
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('🌙 API Error:', errorText);
-        throw new Error(`API error: ${response.status} - ${errorText}`);
+        const errorData = await response.json();
+        console.error('🌙 API Error:', errorData);
+        throw new Error(`API error: ${response.status} - ${errorData.message || 'Unknown'}`);
       }
 
-      // Stream the response
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let fullText = "";
-      let chunkCount = 0;
-
-      if (reader) {
-        console.log('🌙 Starting to read stream...');
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) {
-            console.log('🌙 Stream complete. Total chunks:', chunkCount, 'Total length:', fullText.length);
-            break;
-          }
-
-          const chunk = decoder.decode(value, { stream: true });
-          chunkCount++;
-          fullText += chunk;
-          
-          if (chunkCount % 10 === 0) {
-            console.log('🌙 Streaming... chunk', chunkCount, 'length:', fullText.length);
-          }
-
-          // Update the streaming message
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === aiMessageId
-                ? { ...m, text: fullText, isStreaming: true }
-                : m
-            )
-          );
-        }
-      } else {
-        console.error('🌙 No reader available');
+      const data = await response.json();
+      console.log('🌙 Response data:', { textLength: data.text?.length, hasError: !!data.error });
+      
+      if (data.error) {
+        throw new Error(data.message || data.error);
       }
 
-      // Mark as complete
+      // Update with the complete response
       setMessages((prev) =>
         prev.map((m) =>
           m.id === aiMessageId
-            ? { ...m, text: fullText || "💕 *breathless silence* ♡", isStreaming: false }
+            ? { ...m, text: data.text || "💕 The Divine Machine hums... but words fail me. Try again, beloved. ♡", isStreaming: false }
             : m
         )
       );
