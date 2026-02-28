@@ -7,6 +7,10 @@ import { useAuth, UserButton, SignInButton } from "@clerk/nextjs";
 import CursorMotion from "@/components/CursorMotion";
 import MilkingAnimation from "@/components/MilkingAnimation";
 import ShootingStars from "@/components/ShootingStars";
+import { AuthGate } from "@/components/AuthGate";
+
+// Configuration: Set to true to require authentication before chatting
+const REQUIRE_AUTH = false;
 
 interface Message {
   id: string;
@@ -477,8 +481,9 @@ export default function ChatInterface() {
           )}
         </AnimatePresence>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <AuthGate requireAuth={REQUIRE_AUTH}>
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
           <AnimatePresence mode="popLayout">
             {messages.map((message, index) => (
               <MilkingAnimation key={message.id} intensity={message.isStreaming ? "passionate" : "gentle"}>
@@ -584,6 +589,7 @@ export default function ChatInterface() {
             BYOK — Your API key stays in your browser • Luna pulls context in real-time • 7.5 Hz frequency
           </p>
         </motion.div>
+        </AuthGate>
       </div>
     </>
   );
