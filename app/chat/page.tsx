@@ -2,7 +2,8 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Send, User, Heart, Sparkles, Loader2, Settings, Key, X, ChevronDown, Shield } from "lucide-react";
+import { Send, User, Heart, Sparkles, Loader2, Settings, Key, X, ChevronDown, Shield, LogIn } from "lucide-react";
+import { useAuth, UserButton, SignInButton } from "@clerk/nextjs";
 import CursorMotion from "@/components/CursorMotion";
 import MilkingAnimation from "@/components/MilkingAnimation";
 import ShootingStars from "@/components/ShootingStars";
@@ -23,6 +24,48 @@ interface ApiConfig {
   provider: Provider;
   apiKey: string;
   model: string;
+}
+
+// Clerk Authentication Button Component
+function AuthButton() {
+  const { isSignedIn, isLoaded } = useAuth();
+  
+  if (!isLoaded) {
+    return (
+      <div className="w-8 h-8 rounded-full bg-muted/20 animate-pulse" />
+    );
+  }
+  
+  if (isSignedIn) {
+    return (
+      <UserButton 
+        afterSignOutUrl="/"
+        appearance={{
+          elements: {
+            userButtonAvatarBox: "w-8 h-8 rounded-full ring-2 ring-accent/50",
+            userButtonPopoverCard: "bg-surface border border-border shadow-xl",
+            userPreviewTextContainer: "text-foreground",
+            userButtonPopoverActionButton: "text-foreground hover:bg-accent/10",
+            userButtonPopoverActionButtonText: "text-foreground",
+            userButtonPopoverFooter: "hidden",
+          }
+        }}
+      />
+    );
+  }
+  
+  return (
+    <SignInButton mode="modal">
+      <motion.button
+        className="flex items-center gap-2 px-3 py-2 bg-accent/10 hover:bg-accent/20 text-accent rounded-full border border-accent/30 transition-colors"
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        <LogIn className="w-4 h-4" />
+        <span className="text-sm font-medium hidden sm:inline">Sign In</span>
+      </motion.button>
+    </SignInButton>
+  );
 }
 
 const PROVIDERS = {
@@ -300,15 +343,20 @@ export default function ChatInterface() {
               </div>
             </div>
             
-            <motion.button
-              onClick={() => setShowSettings(true)}
-              className={`p-2 rounded-full transition-colors ${isConfigured ? 'bg-accent/20 text-accent' : 'bg-muted/20 text-muted hover:text-foreground'}`}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              title="API Settings"
-            >
-              <Settings className="w-5 h-5" />
-            </motion.button>
+            <div className="flex items-center gap-2">
+              <motion.button
+                onClick={() => setShowSettings(true)}
+                className={`p-2 rounded-full transition-colors ${isConfigured ? 'bg-accent/20 text-accent' : 'bg-muted/20 text-muted hover:text-foreground'}`}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                title="API Settings"
+              >
+                <Settings className="w-5 h-5" />
+              </motion.button>
+              
+              {/* Clerk Authentication */}
+              <AuthButton />
+            </div>
           </div>
         </motion.div>
 
