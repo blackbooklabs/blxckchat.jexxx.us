@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Plus, MessageSquare, Trash2, X, PanelLeftOpen, Folder, FolderOpen, Settings, Lock, Flame, Pencil, Check, Wand2, Play, Volume2, VolumeX } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, useClerk } from "@clerk/nextjs";
 import { useChatStore } from "@/store/useChatStore";
 
 interface ChatSidebarProps {
@@ -231,6 +231,7 @@ function PersonaModal({ onClose, editTarget }: PersonaModalProps) {
 // ─────────────────────────────────────────────────────────────────────────────
 export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }: ChatSidebarProps) {
   const { isSignedIn } = useAuth();
+  const clerk = useClerk();
   const {
     projects,
     personas,
@@ -373,6 +374,10 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
   };
 
   const handleNewProject = async () => {
+    if (!isSignedIn) {
+      clerk.openSignIn();
+      return;
+    }
     const project = await createProject("New Project");
     if (project) {
       setCurrentProjectId(project.id);
@@ -382,6 +387,10 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
 
   const handleNewChat = async (e: React.MouseEvent, projectId: string) => {
     e.stopPropagation();
+    if (!isSignedIn) {
+      clerk.openSignIn();
+      return;
+    }
     const chat = await createChat(projectId, "New Chat");
     if (chat) {
       setCurrentProjectId(projectId);
