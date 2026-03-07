@@ -9,6 +9,14 @@ export interface Message {
   providerUsed?: string;
 }
 
+export interface PersonaPreset {
+  id: string;
+  name: string;
+  tagline: string;
+  icon: string;
+  content: string;
+}
+
 export interface Project {
   id: string;
   user_id: string;
@@ -31,11 +39,13 @@ export interface Chat {
 
 interface ChatState {
   projects: Project[];
+  personas: PersonaPreset[];
   currentProjectId: string | null;
   currentChatId: string | null;
   messages: Message[];
   isProjectsLoading: boolean;
   isChatsLoading: boolean;
+  isPersonasLoading: boolean;
 
   // Actions
   setProjects: (projects: Project[]) => void;
@@ -43,9 +53,11 @@ interface ChatState {
 
   setCurrentChatId: (id: string | null) => void;
   setMessages: (messages: Message[] | ((prev: Message[]) => Message[])) => void;
+  setActivePersona: (projectId: string, personaId: string) => Promise<void>;
   
   // Async thunks (fetching)
   fetchProjects: () => Promise<void>;
+  fetchPersonas: () => Promise<void>;
   createProject: (title: string, custom_instructions?: string) => Promise<Project | null>;
   fetchChats: (projectId: string) => Promise<void>;
   createChat: (projectId: string, title?: string, initialMessages?: Message[]) => Promise<Chat | null>;
@@ -57,11 +69,13 @@ interface ChatState {
 
 export const useChatStore = create<ChatState>((set, get) => ({
   projects: [],
+  personas: [],
   currentProjectId: null,
   currentChatId: null,
   messages: [],
   isProjectsLoading: false,
   isChatsLoading: false,
+  isPersonasLoading: false,
 
   setProjects: (projects) => set({ projects }),
   setCurrentProjectId: (id) => set({ currentProjectId: id }),
@@ -87,6 +101,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
     } finally {
       set({ isProjectsLoading: false });
     }
+  },
+
+  fetchPersonas: async () => {
+    set({ isPersonasLoading: true });
+    try {
+      const res = await fetch('/api/personas');
+      if (res.ok) {
+        const data = await res.json();
+        set({ personas: data.personas || [] });
+      }
+    } catch (e) {
+      console.error('Failed to fetch personas', e);
+    } finally {
+      set({ isPersonasLoading: false });
+    }
+  },
+
+  setActivePersona: async (projectId: string, personaId: string) => {
+    const state = get();
+    const persona = state.personas.find(p => p.id === personaId);
+    if (!persona) return;
+    
+    // Push the raw .md payload into custom_instructions
+    await state.updateProjectInstructions(projectId, persona.content);
   },
 
   createProject: async (title: string, custom_instructions: string = '') => {

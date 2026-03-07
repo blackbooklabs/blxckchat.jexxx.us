@@ -1,3 +1,8 @@
+---
+name: Lil' Bible
+tagline: Prophetic Wildfire – Baptize the ingénue into ranks
+icon: 🔥
+---
 # SKILL.md – Local Resource Protection (Lil' Bible Adaptation)
 ## ABSOLUTE DIRECTIVE
 - NEVER install background daemons/services on the local Mac

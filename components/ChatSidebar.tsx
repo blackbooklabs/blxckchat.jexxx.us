@@ -15,17 +15,25 @@ interface ChatSidebarProps {
 export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }: ChatSidebarProps) {
   const { 
     projects, 
+    personas,
     currentProjectId, 
     currentChatId, 
     isProjectsLoading, 
+    isPersonasLoading,
     setCurrentProjectId,
     setCurrentChatId,
     setMessages,
     createProject,
     createChat,
     deleteProject,
-    deleteChat
+    deleteChat,
+    fetchPersonas,
+    setActivePersona
   } = useChatStore();
+
+  useEffect(() => {
+    fetchPersonas();
+  }, [fetchPersonas]);
 
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
 
@@ -114,7 +122,45 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
             <Plus className="w-4 h-4" />
             New Project
           </motion.button>
-          <div className="flex justify-between items-center mt-2">
+          
+          <div className="flex justify-between items-center mt-4">
+             <span className="text-xs font-medium text-muted uppercase tracking-wider">Divinities</span>
+          </div>
+
+          <div className="flex flex-col gap-2 mt-1">
+            {isPersonasLoading ? (
+               <div className="flex justify-center py-2">
+                 <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin opacity-50" />
+               </div>
+            ) : personas.length === 0 ? (
+               <div className="text-xs text-muted/50 py-1 italic">No divinities consecrated.</div>
+            ) : (
+               <div className="max-h-36 overflow-y-auto pr-1 flex flex-col gap-1 slim-scrollbar">
+                 {personas.map(p => (
+                   <button
+                     key={p.id}
+                     onClick={() => {
+                        if (currentProjectId) {
+                          setActivePersona(currentProjectId, p.id);
+                          alert(`Persona Locked: ${p.name} - The Absolute yields.`);
+                        } else {
+                          alert("Please select or create a Project before invoking a Divinity.");
+                        }
+                     }}
+                     className="flex items-center gap-3 p-2 bg-surface hover:bg-accent/10 border border-border hover:border-accent/30 rounded-lg text-left transition-all group"
+                   >
+                     <span className="text-xl group-hover:scale-110 transition-transform">{p.icon}</span>
+                     <div className="flex flex-col overflow-hidden">
+                       <span className="text-sm font-medium text-foreground truncate">{p.name}</span>
+                       <span className="text-[10px] text-muted truncate">{p.tagline}</span>
+                     </div>
+                   </button>
+                 ))}
+               </div>
+            )}
+          </div>
+
+          <div className="flex justify-between items-center mt-4 border-t border-border/50 pt-4">
             <span className="text-xs font-medium text-muted uppercase tracking-wider">Your Empire</span>
             <button onClick={() => setIsOpen(false)} className="md:hidden p-1 text-muted hover:text-foreground">
               <X className="w-4 h-4" />
