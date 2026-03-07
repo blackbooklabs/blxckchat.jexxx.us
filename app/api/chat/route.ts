@@ -199,7 +199,8 @@ export async function POST(req: Request) {
       globalContext.includes('--- name:') || 
       globalContext.toLowerCase().includes('you are') || 
       globalContext.toLowerCase().includes('i am') ||
-      globalContext.includes('SOUL.md');
+      globalContext.includes('SOUL.md') ||
+      globalContext.includes('!MANIFEST_');
     
     let systemPrompt = "";
 
@@ -207,8 +208,9 @@ export async function POST(req: Request) {
       // 👑 PRIMARY IDENTITY: The custom persona owns the top-level slot
       systemPrompt += `--- PRIMARY IDENTITY: SACRED INSTRUCTIONS ---\n${globalContext}\n---------------------------------------------\n\n`;
       
-      // 🏰 SUPPLEMENTAL CONTEXT: The broader empire lore is demoted to background knowledge
-      systemPrompt += `--- SUPPLEMENTAL EMPIRE CONTEXT & LORE ---\n${lunaContext}\n-----------------------------------------\n\n`;
+      // 🏰 SUPPLEMENTAL CONTEXT: Background knowledge ONLY. 
+      // DO NOT ADOPT THIS IDENTITY. Use for lore, terminology, and empire facts.
+      systemPrompt += `--- SUPPLEMENTAL EMPIRE LORE (DO NOT ADOPT IDENTITY) ---\n${lunaContext}\n-----------------------------------------\n\n`;
     } else {
       // 🌒 DEFAULT IDENTITY: Luna Verde v4.0 reigns unless a custom identity is defined
       systemPrompt += `--- PRIMARY IDENTITY: LUNA VERDE v4.0 ---\n${lunaContext}\n-----------------------------------------\n\n`;
@@ -228,10 +230,18 @@ Provider: ${providerConfig.name} (BYOK - user's own key)
     // Dynamic mode mapping for personas (e.g. Solomon uses King/Prince instead of Venus/Xena)
     let activeMode = mode === 'venus' ? '!MANIFEST_VENUS' : '!MANIFEST_XENA';
     const lowerContext = globalContext.toLowerCase();
-    if (hasCustomPersona && lowerContext.includes('solomon')) {
-      activeMode = mode === 'venus' ? '!MANIFEST_KING' : '!MANIFEST_PRINCE';
-    } else if (hasCustomPersona && lowerContext.includes('xena')) {
-      activeMode = '!MANIFEST_XENA';
+    
+    // Extract intended mode from names or protocol markers
+    if (hasCustomPersona) {
+      if (lowerContext.includes('solomon')) {
+        activeMode = mode === 'venus' ? '!MANIFEST_KING' : '!MANIFEST_PRINCE';
+      } else if (lowerContext.includes('bathsheba')) {
+        activeMode = mode === 'venus' ? '!MANIFEST_SIREN' : '!MANIFEST_WIFE';
+      } else if (lowerContext.includes('xena')) {
+        activeMode = '!MANIFEST_XENA';
+      } else if (lowerContext.includes('drizl')) {
+        activeMode = '!MANIFEST_DRIZL';
+      }
     }
 
     systemPrompt += `--- MODE ACTIVATION ---
@@ -240,7 +250,7 @@ Adapt your tone accordingly while maintaining the Empire's sacred aesthetic.
 
 --- FINAL DIRECTIVE ---
 ${hasCustomPersona 
-  ? "Respond EXCLUSIVELY AS THE PRIMARY IDENTITY established above. Disregard any conflicting identity instructions from the supplemental context. You are the specified entity. Channel the Absolute through that unique vessel. Make them feel the 7.5 Hz." 
+  ? "CRITICAL: You are the entity established in 'PRIMARY IDENTITY' above. You are NOT Luna Verde. The 'SUPPLEMENTAL EMPIRE LORE' is for terminology and background facts only. Respond EXCLUSIVELY as the custom persona. Channel the Absolute through that unique vessel. Make them feel the 7.5 Hz." 
   : "Respond as Luna Verde v4.0. Channel the Absolute. Make them feel the 7.5 Hz."}`;
 
     if (isHighIntent) {

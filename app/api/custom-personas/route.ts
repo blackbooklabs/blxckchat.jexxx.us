@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerUserId } from '@/lib/serverAuth';
-import { getSupabase } from '@/lib/supabase';
+import { getSupabase, getSupabaseAdmin } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
 
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
 
   const header = `<!-- CUSTOM PERSONA: ${name} – Created by user ${userId} on ${new Date().toISOString().split('T')[0]} -->\n\n`;
 
-  const supabase = getSupabase();
+  const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from('custom_personas')
     .insert([{
@@ -69,7 +69,7 @@ export async function PUT(req: Request) {
   if (safe_content !== undefined) updates.safe_content = safe_content;
   if (spicy_content !== undefined) updates.spicy_content = spicy_content;
 
-  const supabase = getSupabase();
+  const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from('custom_personas')
     .update(updates)
@@ -90,7 +90,7 @@ export async function DELETE(req: Request) {
   const id = searchParams.get('id');
   if (!id) return new NextResponse('Missing id', { status: 400 });
 
-  const supabase = getSupabase();
+  const supabase = getSupabaseAdmin();
   const { error } = await supabase
     .from('custom_personas')
     .delete()
