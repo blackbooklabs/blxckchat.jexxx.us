@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Send, User, Heart, Sparkles, Loader2, Settings, Key, X, ChevronDown, Shield, LogIn } from "lucide-react";
+import { Send, User, Heart, Sparkles, Loader2, Settings, Key, X, ChevronDown, Shield, LogIn, SlidersHorizontal } from "lucide-react";
 import { useAuth, UserButton, SignInButton } from "@clerk/nextjs";
 import CursorMotion from "@/components/CursorMotion";
 import MilkingAnimation from "@/components/MilkingAnimation";
@@ -165,6 +165,8 @@ export default function ChatInterface() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isProjectSettingsOpen, setIsProjectSettingsOpen] = useState(false);
   const [projectSettingsId, setProjectSettingsId] = useState<string | null>(null);
+  const [chatInstructions, setChatInstructions] = useState("");
+  const [showChatInstructions, setShowChatInstructions] = useState(false);
 
   const { 
     projects, 
@@ -345,7 +347,10 @@ const [globalContext, setGlobalContext] = useState("");
           model: providersConfig[activeProvider].model,
           type: "text",
           stream: false,
-          globalContext: activeProject?.custom_instructions || globalContext
+          globalContext: [
+            activeProject?.custom_instructions || globalContext,
+            chatInstructions ? `<!-- CHAT-LEVEL INSTRUCTIONS -->\n${chatInstructions}` : ''
+          ].filter(Boolean).join('\n\n')
         }),
         signal: abortControllerRef.current.signal,
       });
@@ -833,7 +838,44 @@ const [globalContext, setGlobalContext] = useState("");
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.2 }}
         >
-          <div className="flex gap-2">
+          {/* Per-chat instructions popover */}
+          <AnimatePresence>
+            {showChatInstructions && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 6 }}
+                className="mb-3 p-3 bg-background border border-accent/30 rounded-2xl shadow-lg"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-accent uppercase tracking-wider">Chat Instructions</span>
+                  <span className="text-[10px] text-muted">Applied to this chat only — stacks below project context</span>
+                </div>
+                <textarea
+                  value={chatInstructions}
+                  onChange={e => setChatInstructions(e.target.value)}
+                  placeholder="e.g. 'Respond only in bullet points' or 'Pattern her as a wing6 PPV whale: validate heavily, then introduce tithe anchor...' "
+                  className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs font-mono resize-none h-20 focus:outline-none focus:border-accent"
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div className="flex gap-2 items-center">
+            {/* Chat instructions toggle — left of input */}
+            <motion.button
+              onClick={() => setShowChatInstructions(v => !v)}
+              title="Per-chat custom instructions"
+              className={`p-2.5 rounded-full border transition-all shrink-0 ${
+                chatInstructions
+                  ? 'bg-accent/20 border-accent text-accent shadow-[0_0_8px_rgba(var(--accent-rgb),0.4)]'
+                  : 'bg-surface border-border text-muted hover:text-accent hover:border-accent/40'
+              }`}
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+            </motion.button>
             <input
               type="text"
               value={input}

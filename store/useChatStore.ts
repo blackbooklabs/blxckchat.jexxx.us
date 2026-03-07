@@ -15,8 +15,10 @@ export interface PersonaPreset {
   tagline: string;
   icon: string;
   safe_content: string;
-  spicy_content: string | null; // null if user is unauthenticated
-  content: string;              // ready-to-inject value (safe or safe+spicy)
+  spicy_content: string | null;
+  content: string;
+  isCustom?: boolean;   // true = user-created, false = system preset
+  isLocked?: boolean;   // true = preset, cannot be edited/deleted
 }
 
 export interface Project {
@@ -67,7 +69,12 @@ interface ChatState {
   updateChatMessages: (chatId: string, messages: Message[]) => Promise<void>;
   deleteProject: (projectId: string) => Promise<void>;
   deleteChat: (chatId: string) => Promise<void>;
+  updateProjectTitle: (projectId: string, title: string) => Promise<void>;
   updateProjectInstructions: (projectId: string, instructions: string) => Promise<void>;
+  fetchCustomPersonas: () => Promise<void>;
+  createCustomPersona: (p: { name: string; icon: string; tagline: string; safe_content: string; spicy_content: string }) => Promise<void>;
+  updateCustomPersona: (id: string, p: Partial<{ name: string; icon: string; tagline: string; safe_content: string; spicy_content: string }>) => Promise<void>;
+  deleteCustomPersona: (id: string) => Promise<void>;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -113,7 +120,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const res = await fetch('/api/personas');
       if (res.ok) {
         const data = await res.json();
-        set({ personas: data.personas || [] });
+        const presets = (data.personas || []).map((p: PersonaPreset) => ({
+          ...p,
+          isCustom: false,
+          isLocked: true,
+        }));
+        set({ personas: presets });
       }
     } catch (e) {
       console.error('Failed to fetch personas', e);
@@ -272,11 +284,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   updateProjectInstructions: async (projectId: string, custom_instructions: string) => {
      try {
-       // Optimistic override
        set((state) => ({
          projects: state.projects.map(p => p.id === projectId ? { ...p, custom_instructions } : p)
        }));
-
        const res = await fetch('/api/projects', {
          method: 'PUT',
          headers: { 'Content-Type': 'application/json' },
@@ -286,6 +296,91 @@ export const useChatStore = create<ChatState>((set, get) => ({
      } catch (e) {
        console.error('Error updating instructions', e);
      }
-  }
+  },
 
+  updateProjectTitle: async (projectId: string, title: string) => {
+    try {
+      set((state) => ({
+        projects: state.projects.map(p => p.id === projectId ? { ...p, title } : p)
+      }));
+      const res = await fetch('/api/projects', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: projectId, title })
+      });
+      if (!res.ok) console.error('Failed to rename project in DB');
+    } catch (e) {
+      console.error('Error updating project title', e);
+    }
+  },
+
+  fetchCustomPersonas: async () => {
+    try {
+      const res = await fetch('/api/custom-personas');
+      if (!res.ok) return;
+      const customs = await res.json();
+      const customMapped: PersonaPreset[] = (customs ?? []).map((c: Record<string, unknown>) => ({
+        id: c.id as string,
+        name: c.name as string,
+        tagline: (c.tagline as string) || '',
+        icon: (c.icon as string) || '🪽',
+        safe_content: (c.safe_content as string) || '',
+        spicy_content: (c.spicy_content as string) || null,
+        content: (c.safe_content as string) || '',
+        isCustom: true,
+        isLocked: false,
+      }));
+      // Merge: presets first (isLocked), customs after
+      set((state) => {
+        const presets = state.personas.filter(p => p.isLocked !== false);
+        return { personas: [...presets, ...customMapped] };
+      });
+    } catch (e) {
+      console.error('Failed to fetch custom personas', e);
+    }
+  },
+
+  createCustomPersona: async (p) => {
+    try {
+      const res = await fetch('/api/custom-personas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(p),
+      });
+      if (res.ok) {
+        await get().fetchCustomPersonas();
+      } else {
+        const err = await res.json();
+        alert(`⚠️ ${err.error}`);
+      }
+    } catch (e) {
+      console.error('Failed to create custom persona', e);
+    }
+  },
+
+  updateCustomPersona: async (id, p) => {
+    try {
+      const res = await fetch('/api/custom-personas', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...p }),
+      });
+      if (res.ok) {
+        await get().fetchCustomPersonas();
+      }
+    } catch (e) {
+      console.error('Failed to update custom persona', e);
+    }
+  },
+
+  deleteCustomPersona: async (id) => {
+    try {
+      const res = await fetch(`/api/custom-personas?id=${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        set((state) => ({ personas: state.personas.filter(p => p.id !== id) }));
+      }
+    } catch (e) {
+      console.error('Failed to delete custom persona', e);
+    }
+  },
 }));
