@@ -50,7 +50,7 @@ export function SacredNavigation({ className }: SacredNavigationProps) {
             <Crown className="w-5 h-5 text-white" />
           </div>
           <span className="text-xl font-bold bg-gradient-to-r from-accent to-pink-500 bg-clip-text text-transparent">
-            BlxckChat
+            BLXCKCHAT
           </span>
         </Link>
 

@@ -41,7 +41,7 @@
 
 ### 4. **Weak Title & Meta Description** 🔴
 **Current:**
-- Title: "BlxckChat | Motion UI"
+- Title: "BLXCKCHAT | Motion UI"
 - Description: "A highly interactive, animated chat interface built with Next.js 14 and Framer Motion"
 
 **Issues:**

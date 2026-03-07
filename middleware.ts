@@ -1,49 +1,47 @@
 // Sacred Domain Router Configuration
 // Handles routing for blxckbook.jexxx.us and dxsh.blxckbook.jexxx.us
 
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
-import { NextURL } from "next/dist/server/web/next-url";
 
-/**
- * Sacred domain routing logic for the JEXXXUS empire
- * Routes users based on subdomain to appropriate sections
- */
-export function middleware(request: NextRequest) {
+const isPublicRoute = createRouteMatcher([
+  '/',
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/api/webhooks(.*)',
+]);
+
+export default clerkMiddleware(async (auth, request: NextRequest) => {
   const { pathname, hostname } = request.nextUrl;
   const subdomain = hostname.split('.')[0];
-  
-  console.log('🌙 Luna Verde: Middleware routing check', { hostname, subdomain, pathname });
 
   // Sacred routing logic based on subdomain
   switch (subdomain) {
     case 'dxsh':
-      // dxsh.blxckbook.jexxx.us → Dashboard UI
-      console.log('🌙 Luna Verde: dxsh domain detected - routing to dashboard');
-      
-      // Root path of dxsh domain should redirect to dashboard
+      // dxsh.blxckbook.jexxx.us → Dashboard UI (protected)
       if (pathname === '/') {
         return NextResponse.redirect(new URL('/dashboard', request.url));
       }
-      
-      // Allow dashboard paths and auth paths
+
       if (pathname.startsWith('/dashboard') || pathname.startsWith('/sign-in') || pathname.startsWith('/sign-up')) {
+        if (pathname.startsWith('/dashboard')) {
+          await auth.protect();
+        }
         return NextResponse.next();
       }
-      
-      // Redirect other paths to dashboard
+
       return NextResponse.redirect(new URL('/dashboard', request.url));
 
     case 'blxckbook':
     case 'www':
     default:
-      // blxckbook.jexxx.us → Home page (public access)
-      console.log('🌙 Luna Verde: blxckbook domain detected - serving home page');
-      
-      // Allow all paths for blxckbook domain (public access)
-      // The DomainRouting component will handle auth checks client-side
+      // blxckbook.jexxx.us → public access, auth enforced on protected routes
+      if (!isPublicRoute(request)) {
+        await auth.protect();
+      }
       return NextResponse.next();
   }
-}
+});
 
 export const config = {
   matcher: [

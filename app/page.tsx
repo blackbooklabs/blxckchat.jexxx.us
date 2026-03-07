@@ -103,7 +103,7 @@ export default function Home() {
               variants={itemVariants}
             >
               <span className="text-foreground">Welcome to </span>
-              <span className="text-gradient">BlxckChat</span>
+              <span className="text-gradient">BLXCKCHAT</span>
             </motion.h1>
 
             {/* Subtitle */}
