@@ -266,8 +266,9 @@ export default function ChatInterface() {
     try {
       setIsLoading(true);
       const res = await fetch(`/api/sessions/${id}`);
-      if (!res.ok) throw new Error("Failed to load session");
-      const data = await res.json();
+      const text = await res.text();
+      if (!res.ok) throw new Error(`Failed to load session: ${text}`);
+      const data = text ? JSON.parse(text) : {};
       setActiveSessionId(data.id);
       setMessages(data.messages || []);
       if (window.innerWidth < 768) setIsSidebarOpen(false); // Auto close on mobile
@@ -311,9 +312,9 @@ export default function ChatInterface() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, title: newTitle })
       });
-      if (res.ok) {
-        setSessions(prev => prev.map(s => s.id === id ? { ...s, title: newTitle } : s));
-      }
+      const text = await res.text();
+      if (!res.ok) throw new Error(`Status ${res.status}: ${text}`);
+      setSessions(prev => prev.map(s => s.id === id ? { ...s, title: newTitle } : s));
     } catch (e) {
       console.error("Failed to update title", e);
     }
@@ -427,13 +428,22 @@ export default function ChatInterface() {
 
       console.log('🌙 Response received:', response.status);
       
-      const data = await response.json();
-      console.log('🌙 Response data:', { hasText: !!data.text, hasError: !!data.error, provider: data.provider, model: data.model, fullError: data });
+      let data: any = {};
+      const textResponse = await response.text();
+      try {
+        if (textResponse) {
+          data = JSON.parse(textResponse);
+        }
+      } catch (e) {
+        console.error('🌙 Failed to parse JSON response:', textResponse);
+      }
+      
+      console.log('🌙 Response data:', { hasText: !!data.text, hasError: !!data.error, provider: data.provider, model: data.model, fullError: data, rawText: textResponse });
       
       if (!response.ok || data.error) {
         const errorDetails = data.provider && data.model 
-          ? `[${data.provider} / ${data.model}] ${data.message || data.error}`
-          : (data.message || data.error || `API error: ${response.status}`);
+          ? `[${data.provider} / ${data.model}] ${data.message || data.error || textResponse}`
+          : (data.message || data.error || textResponse || `API error: ${response.status}`);
         throw new Error(errorDetails);
       }
 
@@ -455,14 +465,17 @@ export default function ChatInterface() {
 
       // SYNC TO SUPABASE AFTER RESPONSE
       if (isSignedIn) {
-        if (!activeSessionId) {
+        try {
+          if (!activeSessionId) {
           const title = input.length > 30 ? input.substring(0, 30) + "..." : input;
           const sessionRes = await fetch("/api/sessions", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ title, messages: nextMessages })
           });
-          const sessionData = await sessionRes.json();
+          const text = await sessionRes.text();
+          if (!sessionRes.ok) throw new Error(`DB Error ${sessionRes.status}: ${text}`);
+          const sessionData = text ? JSON.parse(text) : {};
           if (sessionData.id) {
             setActiveSessionId(sessionData.id);
             setSessions(prev => [{ id: sessionData.id, title: sessionData.title, updated_at: sessionData.updated_at, created_at: sessionData.created_at }, ...prev]);
@@ -473,10 +486,15 @@ export default function ChatInterface() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id: activeSessionId, messages: nextMessages })
           });
-          const sessionData = await sessionRes.json();
+          const text = await sessionRes.text();
+          if (!sessionRes.ok) throw new Error(`DB Error ${sessionRes.status}: ${text}`);
+          const sessionData = text ? JSON.parse(text) : {};
           if (sessionData.updated_at) {
              setSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, updated_at: sessionData.updated_at } : s).sort((a,b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
           }
+        }
+        } catch (dbError) {
+          console.error("🌙 Luna Verde: Failed to sync session to database, but message was delivered.", dbError);
         }
       }
 
