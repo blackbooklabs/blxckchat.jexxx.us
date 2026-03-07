@@ -411,11 +411,16 @@ const [globalContext, setGlobalContext] = useState("");
 
   // Initial data fetch
   useEffect(() => {
-    if (isLoaded && isSignedIn && !hasFetchedInitialData.current) {
-      hasFetchedInitialData.current = true;
-      fetchProjects();
+    if (isLoaded) {
+      // Unauthenticated fetches (system presets)
       useChatStore.getState().fetchPersonas();
-      useChatStore.getState().fetchCustomPersonas();
+
+      // Authenticated fetches
+      if (isSignedIn && !hasFetchedInitialData.current) {
+        hasFetchedInitialData.current = true;
+        fetchProjects();
+        useChatStore.getState().fetchCustomPersonas();
+      }
     }
   }, [isLoaded, isSignedIn, fetchProjects]);
 
