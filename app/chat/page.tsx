@@ -9,7 +9,7 @@ import MilkingAnimation from "@/components/MilkingAnimation";
 import ShootingStars from "@/components/ShootingStars";
 import { AuthGate } from "@/components/AuthGate";
 import ChatSidebar from "@/components/ChatSidebar";
-import { useChatStore, Message } from "@/store/useChatStore";
+import { useChatStore, Message, MessageAttachment } from "@/store/useChatStore";
 
 // Configuration: Set to true to require authentication before chatting
 const REQUIRE_AUTH = false;
@@ -498,17 +498,35 @@ const [globalContext, setGlobalContext] = useState("");
     }
 
     let finalInput = input;
+    const currentStagedImages = [...stagedImages]; // Capture for this request
+
     if (!isRegenerating) {
       // Append file context if present
       const fullInput = extractedContext 
         ? `${extractedContext}\n\n${input}`
         : input;
 
+      const newAttachments: MessageAttachment[] = [
+        ...currentStagedImages.map(img => ({
+          type: 'image' as const,
+          mimeType: 'image/jpeg',
+          name: img.name,
+          url: img.data,
+        })),
+        ...stagedFiles.map(file => ({
+          type: 'file' as const,
+          mimeType: file.type || 'application/octet-stream',
+          name: file.name,
+          size: file.size,
+        }))
+      ];
+
       const userMessage: Message = {
         id: Date.now().toString(),
         text: input, // Display only user's text in UI
         sender: "user",
         timestamp: new Date(),
+        attachments: newAttachments.length > 0 ? newAttachments : undefined,
       };
 
       const isFirstFirstPrompt = messageList.length === 0;
@@ -527,8 +545,6 @@ const [globalContext, setGlobalContext] = useState("");
       // If regenerating, use the last message text as input
       finalInput = messageList[messageList.length - 1].text;
     }
-
-    const currentStagedImages = [...stagedImages]; // Capture for this request
 
     setIsLoading(true);
 
@@ -1173,14 +1189,38 @@ const [globalContext, setGlobalContext] = useState("");
                         </div>
                       </div>
                     ) : (
-                      <div 
-                        className="text-sm leading-relaxed whitespace-pre-wrap"
-                        dangerouslySetInnerHTML={{ 
-                          __html: (message.text || "")
-                            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                            .replace(/\n/g, '<br />')
-                        }}
-                      />
+                      <div className="flex flex-col">
+                        <div 
+                          className="text-sm leading-relaxed whitespace-pre-wrap"
+                          dangerouslySetInnerHTML={{ 
+                            __html: (message.text || "")
+                              .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                              .replace(/\n/g, '<br />')
+                          }}
+                        />
+                        {message.attachments && message.attachments.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {message.attachments.map((att, i) => (
+                              <div key={i} className="mt-1">
+                                {att.type === 'image' && att.url && (
+                                  <img 
+                                    src={att.url} 
+                                    alt={att.name} 
+                                    className="max-h-48 rounded-lg object-contain border border-accent/20 shadow-sm hover:shadow-md transition cursor-pointer"
+                                  />
+                                )}
+                                {att.type === 'file' && (
+                                  <div className="flex items-center gap-2 bg-surface/50 p-2 rounded-lg border border-border">
+                                    <FileText className="h-4 w-4 text-accent" />
+                                    <span className="text-xs truncate max-w-[150px]">{att.name}</span>
+                                    {att.size && <span className="text-[10px] text-muted">({(att.size / 1024).toFixed(1)} KB)</span>}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     )}
                     {message.isStreaming && (
                       <span className="inline-flex ml-1">
@@ -1269,17 +1309,29 @@ const [globalContext, setGlobalContext] = useState("");
             )}
           </AnimatePresence>
 
-          {/* Staged files preview */}
+          {/* Staged files and images preview */}
           <AnimatePresence>
-            {stagedFiles.length > 0 && (
+            {(stagedFiles.length > 0 || stagedImages.length > 0) && (
               <motion.div 
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
                 className="flex flex-wrap gap-2 mb-3"
               >
+                {stagedImages.map((img, i) => (
+                  <div key={`img-${i}`} className="relative group">
+                    <img src={img.data} alt={img.name} className="h-16 w-16 object-cover rounded-lg border border-accent/30 transition-all group-hover:border-red-500/50" />
+                    <button 
+                      onClick={() => setStagedImages(prev => prev.filter((_, idx) => idx !== i))} 
+                      className="absolute -top-1.5 -right-1.5 bg-surface border border-border p-0.5 rounded-full text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                
                 {stagedFiles.map((file, i) => (
-                  <div key={i} className="flex items-center gap-2 px-2 py-1 bg-surface border border-border rounded-lg text-[10px] text-muted">
+                  <div key={`file-${i}`} className="flex items-center gap-2 px-2 py-1 bg-surface border border-border rounded-lg text-[10px] text-muted h-fit">
                     {file.type.startsWith('image/') ? <Image className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
                     <span className="truncate max-w-[100px]">{file.name}</span>
                     <button onClick={() => setStagedFiles(prev => prev.filter((_, idx) => idx !== i))} className="hover:text-accent">

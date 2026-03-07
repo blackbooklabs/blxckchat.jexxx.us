@@ -6,6 +6,15 @@ export interface TTSVoice {
   lang?: string;
 }
 
+export interface MessageAttachment {
+  type: 'image' | 'file' | 'pdf' | 'code';
+  mimeType: string;
+  name: string;
+  url?: string;
+  size?: number;
+  previewUrl?: string;
+}
+
 export interface Message {
   id: string;
   text: string;
@@ -14,6 +23,7 @@ export interface Message {
   isStreaming?: boolean;
   modelUsed?: string;
   providerUsed?: string;
+  attachments?: MessageAttachment[];
 }
 
 export interface PersonaPreset {
