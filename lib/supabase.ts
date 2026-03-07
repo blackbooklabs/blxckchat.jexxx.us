@@ -10,6 +10,7 @@ export function getSupabase() {
 
   return createClient(
     supabaseUrl || 'https://placeholder.supabase.co',
-    supabaseKey || 'placeholder-key'
+    supabaseKey || 'placeholder-key',
+    { db: { schema: 'api' } }
   );
 }
