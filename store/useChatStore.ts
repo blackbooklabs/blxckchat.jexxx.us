@@ -55,7 +55,7 @@ interface ChatState {
 
   setCurrentChatId: (id: string | null) => void;
   setMessages: (messages: Message[] | ((prev: Message[]) => Message[])) => void;
-  setActivePersona: (projectId: string, personaId: string) => Promise<void>;
+  setActivePersona: (projectId: string, personaId: string, contentOverride?: string) => Promise<void>;
   
   // Async thunks (fetching)
   fetchProjects: () => Promise<void>;
@@ -113,7 +113,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const res = await fetch('/api/personas');
       if (res.ok) {
         const data = await res.json();
-        set({ personas: data.personas || [], personasAuthenticated: data.isAuthenticated || false });
+        set({ personas: data.personas || [] });
       }
     } catch (e) {
       console.error('Failed to fetch personas', e);
@@ -122,13 +122,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  setActivePersona: async (projectId: string, personaId: string) => {
+  setActivePersona: async (projectId: string, personaId: string, contentOverride?: string) => {
     const state = get();
     const persona = state.personas.find(p => p.id === personaId);
     if (!persona) return;
     
-    // Push the raw .md payload into custom_instructions
-    await state.updateProjectInstructions(projectId, persona.content);
+    // Use client-provided content (with spicy appended) if supplied, else fall back to safe_content
+    const content = contentOverride ?? persona.safe_content ?? '';
+    await state.updateProjectInstructions(projectId, content);
 
     // Fire-and-forget analytics event — non-blocking
     fetch('/api/admin/divinity-analytics', {

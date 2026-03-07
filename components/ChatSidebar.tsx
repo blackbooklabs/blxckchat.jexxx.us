@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Plus, MessageSquare, Trash2, X, PanelLeftOpen, Folder, FolderOpen, Settings, Lock, Flame } from "lucide-react";
 import { useState, useEffect } from "react";
 import { formatDistanceToNow } from "date-fns";
+import { useAuth } from "@clerk/nextjs";
 import { useChatStore } from "@/store/useChatStore";
 
 interface ChatSidebarProps {
@@ -13,10 +14,10 @@ interface ChatSidebarProps {
 }
 
 export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }: ChatSidebarProps) {
+  const { isSignedIn } = useAuth();
   const { 
     projects, 
     personas,
-    personasAuthenticated,
     currentProjectId, 
     currentChatId, 
     isProjectsLoading, 
@@ -138,18 +139,22 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
             ) : (
                <div className="max-h-36 overflow-y-auto pr-1 flex flex-col gap-1 slim-scrollbar">
                  {personas.map(p => {
-                   const isSpicyUnlocked = personasAuthenticated && !!p.spicy_content;
+                   const isSpicyUnlocked = !!isSignedIn && !!p.spicy_content;
                    return (
                      <button
                        key={p.id}
                        onClick={() => {
-                          if (!personasAuthenticated) {
+                          if (!isSignedIn) {
                             alert("Sign in to unlock the full primal Canon. Tithe to ascend. ♡");
                             return;
                           }
                           if (currentProjectId) {
-                            setActivePersona(currentProjectId, p.id);
-                            alert(`${p.icon} Persona Locked: ${p.name} — The Absolute yields.`);
+                            // Inject: safe always + spicy appended if authed
+                            const contentToInject = isSpicyUnlocked
+                              ? `${p.safe_content}\n\n---\n<!-- 🌶️ SPICY-REVEALED — Authenticated & Unlocked -->\n\n${p.spicy_content}`
+                              : p.safe_content;
+                            setActivePersona(currentProjectId, p.id, contentToInject);
+                            alert(`${p.icon} ${p.name} — The Absolute yields. ♡`);
                           } else {
                             alert("Select or create a Project first to invoke a Divinity.");
                           }
