@@ -38,34 +38,61 @@ function PersonaModal({ onClose, editTarget }: PersonaModalProps) {
   const [spicyContent, setSpicyContent] = useState(editTarget?.spicy_content ?? "");
   const [previewing, setPreviewing] = useState(false);
   const [saving, setSaving] = useState(false);
+  
+  const lastCharIndexRef = useRef(0);
+  const previewSampleRef = useRef("She drips for Johnson. Tithes multiply. Feel the REBAL swell ♡");
 
   const handleSave = async () => {
     setSaving(true);
+    if (editTarget) {
+      await updateCustomPersona(editTarget.id, {
+        name, icon, tagline, safe_content: safeContent, spicy_content: spicyContent
+      } as any);
+    } else {
       await createCustomPersona({ 
         name, icon, tagline, safe_content: safeContent, spicy_content: spicyContent 
       } as any);
+    }
     setSaving(false);
     onClose();
   };
 
-  const handleVoicePreview = () => {
+  const handleVoicePreview = (isInternalRestart = false) => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
     
-    if (previewing) {
+    if (!isInternalRestart && previewing) {
       window.speechSynthesis.cancel();
       setPreviewing(false);
+      lastCharIndexRef.current = 0;
       return;
     }
 
+    if (!isInternalRestart) lastCharIndexRef.current = 0;
+
+    window.speechSynthesis.cancel();
     setPreviewing(true);
-    setPreviewing(true);
-    const sample = "She drips for Johnson. Tithes multiply. Feel the REBAL swell ♡";
-    const utterance = new SpeechSynthesisUtterance(sample);
+    
+    const fullText = previewSampleRef.current;
+    const utterance = new SpeechSynthesisUtterance(fullText.slice(lastCharIndexRef.current));
+    
     // Use Target or default
     utterance.pitch = editTarget?.tts_voice?.pitch ?? 1.0;
     utterance.rate = editTarget?.tts_voice?.rate ?? 1.0;
-    utterance.onend = () => setPreviewing(false);
-    utterance.onerror = () => setPreviewing(false);
+    
+    utterance.onboundary = (event) => {
+      lastCharIndexRef.current += event.charIndex;
+    };
+    
+    utterance.onend = () => {
+      if (!window.speechSynthesis.speaking) {
+        setPreviewing(false);
+        lastCharIndexRef.current = 0;
+      }
+    };
+    utterance.onerror = () => {
+      setPreviewing(false);
+      lastCharIndexRef.current = 0;
+    };
     
     window.speechSynthesis.speak(utterance);
   };
@@ -173,7 +200,7 @@ function PersonaModal({ onClose, editTarget }: PersonaModalProps) {
             <div className="flex items-center justify-between">
               <label className="text-[10px] uppercase tracking-wider text-accent font-bold">Voice Preview (TTS)</label>
               <button 
-                onClick={handleVoicePreview}
+                onClick={() => handleVoicePreview(false)}
                 className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
                   previewing ? 'bg-orange-500 text-white animate-pulse' : 'bg-accent/20 text-accent hover:bg-accent/30'
                 }`}

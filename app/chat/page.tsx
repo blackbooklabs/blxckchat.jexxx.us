@@ -203,6 +203,10 @@ const [globalContext, setGlobalContext] = useState("");
   const [stagedImages, setStagedImages] = useState<{name: string, data: string}[]>([]);
   const [extractedContext, setExtractedContext] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Real-time TTS tracking
+  const lastCharIndexRef = useRef(0);
+  const previewSampleRef = useRef("She drips for Johnson. Project reality calibrated. ♡");
 
   const stopSpeaking = useCallback(() => {
     if (typeof window !== "undefined" && window.speechSynthesis) {
@@ -251,18 +255,31 @@ const [globalContext, setGlobalContext] = useState("");
     }
   }, [speakingId, stopSpeaking, personas, invokingPersonaId, activeProject]);
 
-  const handleProjectVoicePreview = useCallback(() => {
+  const handleProjectVoicePreview = useCallback((isInternalRestart = false) => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
     
-    if (previewingProjectVoice) {
+    // If user clicks manually while playing, just stop.
+    if (!isInternalRestart && previewingProjectVoice) {
       window.speechSynthesis.cancel();
       setPreviewingProjectVoice(false);
+      lastCharIndexRef.current = 0;
       return;
     }
 
+    if (!isInternalRestart) {
+      lastCharIndexRef.current = 0;
+    }
+
+    window.speechSynthesis.cancel();
     setPreviewingProjectVoice(true);
-    const sample = "She drips for Johnson. Project reality calibrated. ♡";
-    const utterance = new SpeechSynthesisUtterance(sample);
+    
+    const fullText = previewSampleRef.current;
+    const remainingText = fullText.slice(lastCharIndexRef.current);
+    if (!remainingText.trim()) {
+       lastCharIndexRef.current = 0;
+    }
+    
+    const utterance = new SpeechSynthesisUtterance(fullText.slice(lastCharIndexRef.current));
     
     const activePersona = personas.find(p => p.id === invokingPersonaId);
     const voiceSettings = activeProject?.tts_voice || activePersona?.tts_voice || { pitch: 1.0, rate: 1.0, lang: "en-US" };
@@ -271,11 +288,31 @@ const [globalContext, setGlobalContext] = useState("");
     utterance.rate = voiceSettings.rate;
     utterance.lang = voiceSettings.lang || "en-US";
     
-    utterance.onend = () => setPreviewingProjectVoice(false);
-    utterance.onerror = () => setPreviewingProjectVoice(false);
+    utterance.onboundary = (event) => {
+      // Offset by the slice start
+      lastCharIndexRef.current += event.charIndex;
+    };
+    
+    utterance.onend = () => {
+       if (!window.speechSynthesis.speaking) {
+         setPreviewingProjectVoice(false);
+         lastCharIndexRef.current = 0;
+       }
+    };
+    utterance.onerror = () => {
+      setPreviewingProjectVoice(false);
+      lastCharIndexRef.current = 0;
+    };
     
     window.speechSynthesis.speak(utterance);
   }, [previewingProjectVoice, activeProject, personas, invokingPersonaId]);
+
+  // Handle real-time TTS updates on slider change
+  useEffect(() => {
+    if (previewingProjectVoice && activeProject?.tts_voice) {
+       handleProjectVoicePreview(true);
+    }
+  }, [activeProject?.tts_voice?.pitch, activeProject?.tts_voice?.rate]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -788,7 +825,7 @@ const [globalContext, setGlobalContext] = useState("");
                             <span className="text-[10px] text-muted capitalize">Adjust pitch and rate for this isolated reality.</span>
                          </div>
                          <button 
-                           onClick={handleProjectVoicePreview}
+                           onClick={() => handleProjectVoicePreview(false)}
                            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
                              previewingProjectVoice ? 'bg-orange-500 text-white animate-pulse' : 'bg-accent/20 text-accent hover:bg-accent/30'
                            }`}
