@@ -185,15 +185,19 @@ export default function ChatInterface() {
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  const [mounted, setMounted] = useState(false);
+
   // Load saved config on mount
   useEffect(() => {
+    setMounted(true);
     const saved = sessionStorage.getItem('luna-api-config');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         if (parsed.providersConfig) {
-          setProvidersConfig(parsed.providersConfig);
-          setActiveProvider(parsed.activeProvider || 'openai');
+          setProvidersConfig(prev => ({ ...prev, ...parsed.providersConfig }));
+          const parsedActive = parsed.activeProvider || 'openai';
+          setActiveProvider(Object.keys(PROVIDERS).includes(parsedActive) ? parsedActive as Provider : 'openai');
         } else if (parsed.provider) {
           // Migration from old to new schema
           const oldProvider = parsed.provider as Provider;
@@ -612,7 +616,7 @@ export default function ChatInterface() {
                         <Sparkles className="w-3 h-3 opacity-70" />
                       )}
                       <p className="text-xs opacity-70">
-                        {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {mounted ? message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "..."}
                       </p>
                       {message.sender === "other" && message.modelUsed && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/20 text-accent/80 font-mono">
