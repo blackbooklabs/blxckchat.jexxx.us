@@ -275,6 +275,8 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
       setCurrentProjectId(projectId);
       setCurrentChatId(chat.id);
       setMessages([]);
+      // Auto-expand
+      setExpandedProjects(prev => new Set([...prev, projectId]));
     }
   };
 
