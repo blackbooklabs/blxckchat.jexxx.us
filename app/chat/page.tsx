@@ -22,7 +22,7 @@ interface Message {
   providerUsed?: string;
 }
 
-type Provider = 'openai' | 'grok' | 'gemini' | 'kimi';
+type Provider = 'openai' | 'grok' | 'gemini' | 'kimi' | 'groq' | 'openrouter';
 
 interface ProviderState {
   apiKey: string;
@@ -126,6 +126,30 @@ const PROVIDERS = {
     keyPlaceholder: 'sk-...',
     color: 'from-purple-500 to-pink-600',
   },
+  groq: {
+    name: 'Groq (Insanely Fast)',
+    models: [
+      'llama3-8b-8192',
+      'llama3-70b-8192',
+      'mixtral-8x7b-32768',
+      'gemma-7b-it',
+    ],
+    defaultModel: 'llama3-8b-8192',
+    keyPlaceholder: 'gsk_...',
+    color: 'from-orange-500 to-red-600',
+  },
+  openrouter: {
+    name: 'OpenRouter (Free Tier Models)',
+    models: [
+      'meta-llama/llama-3-8b-instruct:free',
+      'google/gemma-7b-it:free',
+      'mistralai/mistral-7b-instruct:free',
+      'openrouter/auto',
+    ],
+    defaultModel: 'meta-llama/llama-3-8b-instruct:free',
+    keyPlaceholder: 'sk-or-v1-...',
+    color: 'from-teal-500 to-cyan-600',
+  },
 };
 
 const HEADER_KEYS: Record<Provider, string> = {
@@ -133,6 +157,8 @@ const HEADER_KEYS: Record<Provider, string> = {
   grok: 'x-grok-key',
   gemini: 'x-gemini-key',
   kimi: 'x-kimi-key',
+  groq: 'x-groq-key',
+  openrouter: 'x-openrouter-key',
 };
 
 export default function ChatInterface() {
@@ -152,6 +178,8 @@ export default function ChatInterface() {
     grok: { apiKey: '', model: PROVIDERS.grok.defaultModel, availableModels: PROVIDERS.grok.models },
     gemini: { apiKey: '', model: PROVIDERS.gemini.defaultModel, availableModels: PROVIDERS.gemini.models },
     kimi: { apiKey: '', model: PROVIDERS.kimi.defaultModel, availableModels: PROVIDERS.kimi.models },
+    groq: { apiKey: '', model: PROVIDERS.groq.defaultModel, availableModels: PROVIDERS.groq.models },
+    openrouter: { apiKey: '', model: PROVIDERS.openrouter.defaultModel, availableModels: PROVIDERS.openrouter.models },
   });
   const [activeProvider, setActiveProvider] = useState<Provider>('openai');
   const [isFetchingModels, setIsFetchingModels] = useState(false);

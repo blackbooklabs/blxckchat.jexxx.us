@@ -17,7 +17,7 @@ export const runtime = 'edge';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key, X-Provider',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key, X-Provider, x-openai-key, x-grok-key, x-gemini-key, x-kimi-key, x-groq-key, x-openrouter-key',
 };
 
 export async function OPTIONS(req: Request) {
@@ -30,7 +30,7 @@ export async function OPTIONS(req: Request) {
 interface ChatRequest {
   messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
   mode?: 'venus' | 'innocent';
-  provider?: 'openai' | 'grok' | 'gemini' | 'kimi';
+  provider?: 'openai' | 'grok' | 'gemini' | 'kimi' | 'groq' | 'openrouter';
   model?: string;
   type?: 'text' | 'image';
   stream?: boolean;
@@ -83,6 +83,31 @@ const PROVIDERS: Record<string, ProviderConfig> = {
     }),
     defaultModel: 'kimi-k2-0711',
     models: ['kimi-k3', 'kimi-k2-0711', 'moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
+  },
+  groq: {
+    name: 'Groq',
+    keyHeader: 'x-groq-key',
+    createProvider: (apiKey: string) => createOpenAI({ 
+      apiKey,
+      baseURL: 'https://api.groq.com/openai/v1'
+    }),
+    defaultModel: 'llama3-8b-8192',
+    models: ['llama3-8b-8192', 'llama3-70b-8192', 'mixtral-8x7b-32768', 'gemma-7b-it'],
+  },
+  openrouter: {
+    name: 'OpenRouter',
+    keyHeader: 'x-openrouter-key',
+    createProvider: (apiKey: string) => createOpenAI({ 
+      apiKey,
+      baseURL: 'https://openrouter.ai/api/v1'
+    }),
+    defaultModel: 'meta-llama/llama-3-8b-instruct:free',
+    models: [
+      'meta-llama/llama-3-8b-instruct:free',
+      'google/gemma-7b-it:free',
+      'mistralai/mistral-7b-instruct:free',
+      'openrouter/auto',
+    ],
   },
 };
 
