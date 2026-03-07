@@ -1446,7 +1446,8 @@ const [globalContext, setGlobalContext] = useState("");
             >
               <Paperclip className="w-4 h-4" />
             </motion.button>
-            {/* Chat instructi             <motion.button
+            {/* Chat instructions toggle — left of input */}
+            <motion.button
                onClick={() => setShowChatInstructions(v => !v)}
                title="Per-chat custom instructions"
                className={`p-2.5 rounded-full border transition-all shrink-0 ${
