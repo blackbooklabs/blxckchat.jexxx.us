@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { getServerUserId } from '@/lib/serverAuth';
 import { getSupabase } from '@/lib/supabase';
 
 export async function GET(req: Request) {
-  const { userId } = await auth();
+  const userId = await getServerUserId();
   if (!userId) return new NextResponse('Unauthorized', { status: 401 });
 
   const supabase = getSupabase();
@@ -18,7 +18,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const { userId } = await auth();
+  const userId = await getServerUserId();
   if (!userId) return new NextResponse('Unauthorized', { status: 401 });
   
   const body = await req.json();
@@ -36,7 +36,7 @@ export async function POST(req: Request) {
 }
 
 export async function PUT(req: Request) {
-  const { userId } = await auth();
+  const userId = await getServerUserId();
   if (!userId) return new NextResponse('Unauthorized', { status: 401 });
   
   const body = await req.json();
@@ -44,7 +44,7 @@ export async function PUT(req: Request) {
   
   if (!id) return new NextResponse('Missing project ID', { status: 400 });
 
-  const updates: any = { updated_at: new Date().toISOString() };
+  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (title !== undefined) updates.title = title;
   if (custom_instructions !== undefined) updates.custom_instructions = custom_instructions;
   if (context_json !== undefined) updates.context_json = context_json;
@@ -63,7 +63,7 @@ export async function PUT(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const { userId } = await auth();
+  const userId = await getServerUserId();
   if (!userId) return new NextResponse('Unauthorized', { status: 401 });
   
   const { searchParams } = new URL(req.url);

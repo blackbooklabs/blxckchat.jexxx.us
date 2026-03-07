@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { getServerUserId } from '@/lib/serverAuth';
 import { getSupabase } from '@/lib/supabase';
 
 export async function GET(req: Request) {
-  const { userId } = await auth();
+  const userId = await getServerUserId();
   if (!userId) return new NextResponse('Unauthorized', { status: 401 });
 
   const { searchParams } = new URL(req.url);
@@ -13,7 +13,6 @@ export async function GET(req: Request) {
 
   const supabase = getSupabase();
   
-  // Verify ownership of the parent project first
   const { data: projectCheck, error: projError } = await supabase
     .from('blxckchat_projects')
     .select('id')
@@ -34,7 +33,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const { userId } = await auth();
+  const userId = await getServerUserId();
   if (!userId) return new NextResponse('Unauthorized', { status: 401 });
   
   const body = await req.json();
@@ -44,7 +43,6 @@ export async function POST(req: Request) {
   
   const supabase = getSupabase();
 
-  // Verify ownership
   const { data: projectCheck, error: projError } = await supabase
     .from('blxckchat_projects')
     .select('id')
@@ -65,7 +63,7 @@ export async function POST(req: Request) {
 }
 
 export async function PUT(req: Request) {
-  const { userId } = await auth();
+  const userId = await getServerUserId();
   if (!userId) return new NextResponse('Unauthorized', { status: 401 });
   
   const body = await req.json();
@@ -75,7 +73,6 @@ export async function PUT(req: Request) {
 
   const supabase = getSupabase();
 
-  // Retrieve chat to check project_id and then verify user ownership
   const { data: chatData, error: chatError } = await supabase
       .from('blxckchat_chats')
       .select('project_id')
@@ -93,7 +90,7 @@ export async function PUT(req: Request) {
 
   if (projError || !projectCheck) return new NextResponse('Unauthorized project layout', { status: 403 });
 
-  const updates: any = { updated_at: new Date().toISOString() };
+  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (title !== undefined) updates.title = title;
   if (messages !== undefined) updates.messages = messages;
 
@@ -109,7 +106,7 @@ export async function PUT(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const { userId } = await auth();
+  const userId = await getServerUserId();
   if (!userId) return new NextResponse('Unauthorized', { status: 401 });
   
   const { searchParams } = new URL(req.url);
@@ -119,7 +116,6 @@ export async function DELETE(req: Request) {
 
   const supabase = getSupabase();
 
-  // Retrieve chat to check project_id and then verify user ownership
   const { data: chatData, error: chatError } = await supabase
       .from('blxckchat_chats')
       .select('project_id')
