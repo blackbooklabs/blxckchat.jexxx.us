@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { supabase } from '@/lib/supabase';
+import { getSupabase } from '@/lib/supabase';
 
 export async function GET(req: Request) {
   const { userId } = await auth();
   if (!userId) return new NextResponse('Unauthorized', { status: 401 });
 
+  const supabase = getSupabase();
   const { data, error } = await supabase
     .from('blxckchat_sessions')
     .select('id, title, created_at, updated_at') // omit messages for list view speed
@@ -23,6 +24,7 @@ export async function POST(req: Request) {
   const body = await req.json();
   const { title = 'New Chat', messages = [] } = body;
 
+  const supabase = getSupabase();
   const { data, error } = await supabase
     .from('blxckchat_sessions')
     .insert([{ user_id: userId, title, messages }])
@@ -46,6 +48,7 @@ export async function PUT(req: Request) {
   if (title !== undefined) updates.title = title;
   if (messages !== undefined) updates.messages = messages;
 
+  const supabase = getSupabase();
   const { data, error } = await supabase
     .from('blxckchat_sessions')
     .update(updates)
@@ -67,6 +70,7 @@ export async function DELETE(req: Request) {
   
   if (!id) return new NextResponse('Missing session ID', { status: 400 });
 
+  const supabase = getSupabase();
   const { error } = await supabase
     .from('blxckchat_sessions')
     .delete()

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { supabase } from '@/lib/supabase';
+import { getSupabase } from '@/lib/supabase';
 
 export async function GET(
   req: Request, 
@@ -13,6 +13,7 @@ export async function GET(
   const id = resolvedParams.id;
   if (!id) return new NextResponse('Missing session ID', { status: 400 });
 
+  const supabase = getSupabase();
   const { data, error } = await supabase
     .from('blxckchat_sessions')
     .select('*')
