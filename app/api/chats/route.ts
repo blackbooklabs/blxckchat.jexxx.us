@@ -37,7 +37,7 @@ export async function POST(req: Request) {
   if (!userId) return new NextResponse('Unauthorized', { status: 401 });
   
   const body = await req.json();
-  const { projectId, title = 'New Chat', messages = [] } = body;
+  const { projectId, title = 'New Chat', messages = [], custom_instructions } = body;
   
   if (!projectId) return new NextResponse('Missing projectId', { status: 400 });
   
@@ -52,9 +52,12 @@ export async function POST(req: Request) {
     
   if (projError || !projectCheck) return new NextResponse('Unauthorized project layout', { status: 403 });
 
+  const insertPayload: any = { project_id: projectId, title, messages };
+  if (custom_instructions !== undefined) insertPayload.custom_instructions = custom_instructions;
+
   const { data, error } = await supabase
     .from('blxckchat_chats')
-    .insert([{ project_id: projectId, title, messages }])
+    .insert([insertPayload])
     .select()
     .single();
 
@@ -67,7 +70,7 @@ export async function PUT(req: Request) {
   if (!userId) return new NextResponse('Unauthorized', { status: 401 });
   
   const body = await req.json();
-  const { id, title, messages } = body;
+  const { id, title, messages, custom_instructions } = body;
   
   if (!id) return new NextResponse('Missing chat ID', { status: 400 });
 
@@ -93,6 +96,7 @@ export async function PUT(req: Request) {
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (title !== undefined) updates.title = title;
   if (messages !== undefined) updates.messages = messages;
+  if (custom_instructions !== undefined) updates.custom_instructions = custom_instructions;
 
   const { data, error } = await supabase
     .from('blxckchat_chats')

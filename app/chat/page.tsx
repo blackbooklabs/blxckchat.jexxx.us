@@ -165,7 +165,6 @@ export default function ChatInterface() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isProjectSettingsOpen, setIsProjectSettingsOpen] = useState(false);
   const [projectSettingsId, setProjectSettingsId] = useState<string | null>(null);
-  const [chatInstructions, setChatInstructions] = useState("");
   const [showChatInstructions, setShowChatInstructions] = useState(false);
   const [isSpicy, setIsSpicy] = useState(true);
   const [previewingProjectVoice, setPreviewingProjectVoice] = useState(false);
@@ -182,6 +181,7 @@ export default function ChatInterface() {
     updateProjectInstructions,
     updateProjectTTS,
     updateChatTitle,
+    updateChatInstructions,
     autoRenameChat,
     saveSession,
     restoreLastSession,
@@ -196,6 +196,7 @@ export default function ChatInterface() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   
   const activeProject = projects.find(p => p.id === currentProjectId);
+  const activeChat = activeProject?.chats?.find(c => c.id === currentChatId);
   const { isSignedIn, isLoaded, userId } = useAuth();
   const clerk = useClerk();
   
@@ -631,7 +632,7 @@ const [globalContext, setGlobalContext] = useState("");
           webSearch: webSearchEnabled,
           globalInstructions: globalContext,
           projectInstructions: activeProject?.custom_instructions,
-          chatInstructions: chatInstructions
+          chatInstructions: activeChat?.custom_instructions
         }),
         signal: abortControllerRef.current.signal,
       });
@@ -690,7 +691,7 @@ const [globalContext, setGlobalContext] = useState("");
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [input, isLoading, messages, providersConfig, activeProvider, globalContext, activeProject, chatInstructions, currentChatId, isSpicy, isSignedIn, updateChatMessages, autoRenameChat, setMessages]);
+  }, [input, isLoading, messages, providersConfig, activeProvider, globalContext, activeProject, currentChatId, isSpicy, isSignedIn, updateChatMessages, autoRenameChat, setMessages]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -1379,9 +1380,11 @@ const [globalContext, setGlobalContext] = useState("");
                   </div>
                 </div>
                 <textarea
-                  value={chatInstructions}
-                  onChange={e => setChatInstructions(e.target.value)}
-                  placeholder="e.g. 'Respond only in bullet points' or 'Pattern her as a wing6 PPV whale: validate heavily, then introduce tithe anchor...' "
+                   value={activeChat?.custom_instructions || ""}
+                   onChange={e => {
+                     if (currentChatId) updateChatInstructions(currentChatId, e.target.value);
+                   }}
+                   placeholder="e.g. 'Respond only in bullet points' or 'Pattern her as a wing6 PPV whale: validate heavily, then introduce tithe anchor...' "
                   autoCorrect="off" autoCapitalize="off" spellCheck={false}
                   autoComplete="off" data-gramm="false"
                   className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs font-mono resize-none h-20 focus:outline-none focus:border-accent"
@@ -1442,15 +1445,14 @@ const [globalContext, setGlobalContext] = useState("");
             >
               <Paperclip className="w-4 h-4" />
             </motion.button>
-            {/* Chat instructions toggle — left of input */}
-            <motion.button
-              onClick={() => setShowChatInstructions(v => !v)}
-              title="Per-chat custom instructions"
-              className={`p-2.5 rounded-full border transition-all shrink-0 ${
-                chatInstructions
-                  ? 'bg-accent/20 border-accent text-accent shadow-[0_0_8px_rgba(var(--accent-rgb),0.4)]'
-                  : 'bg-surface border-border text-muted hover:text-accent hover:border-accent/40'
-              }`}
+            {/* Chat instructi             <motion.button
+               onClick={() => setShowChatInstructions(v => !v)}
+               title="Per-chat custom instructions"
+               className={`p-2.5 rounded-full border transition-all shrink-0 ${
+                 activeChat?.custom_instructions
+                   ? 'bg-accent/20 border-accent text-accent shadow-[0_0_8px_rgba(var(--accent-rgb),0.4)]'
+                   : 'bg-surface border-border text-muted hover:text-accent hover:border-accent/40'
+               }`}
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.92 }}
             >

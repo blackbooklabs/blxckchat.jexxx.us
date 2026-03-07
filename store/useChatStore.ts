@@ -70,6 +70,7 @@ export interface Chat {
   messages: Message[];
   created_at: string;
   updated_at: string;
+  custom_instructions?: string;
 }
 
 interface ChatState {
@@ -97,7 +98,7 @@ interface ChatState {
   fetchPersonas: () => Promise<void>;
   createProject: (title: string, custom_instructions?: string) => Promise<Project | null>;
   fetchChats: (projectId: string) => Promise<void>;
-  createChat: (projectId: string, title?: string, initialMessages?: Message[]) => Promise<Chat | null>;
+  createChat: (projectId: string, title?: string, initialMessages?: Message[], custom_instructions?: string) => Promise<Chat | null>;
   updateChatMessages: (chatId: string, messages: Message[]) => Promise<void>;
   deleteProject: (projectId: string) => Promise<void>;
   deleteChat: (chatId: string) => Promise<void>;
@@ -105,6 +106,7 @@ interface ChatState {
   updateProjectInstructions: (projectId: string, instructions: string) => Promise<void>;
   updateProjectTTS: (projectId: string, tts_voice: TTSVoice) => Promise<void>;
   updateChatTitle: (chatId: string, title: string) => Promise<void>;
+  updateChatInstructions: (id: string, instructions: string) => Promise<void>;
   autoRenameChat: (chatId: string, firstMessage: string) => Promise<void>;
   fetchCustomPersonas: () => Promise<void>;
   restoreLastSession: (userId: string) => void;
@@ -300,12 +302,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  createChat: async (projectId: string, title: string = 'New Chat', initialMessages: Message[] = []) => {
+  createChat: async (projectId: string, title = 'New Chat', initialMessages = [], custom_instructions?: string) => {
     try {
+      const payload: any = { projectId, title, messages: initialMessages };
+      if (custom_instructions) payload.custom_instructions = custom_instructions;
+
       const res = await fetch('/api/chats', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId, title, messages: initialMessages })
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         const text = await res.text();
@@ -450,6 +455,26 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (!res.ok) console.error('Failed to update chat title in DB');
     } catch (e) {
       console.error('Failed to update chat title', e);
+    }
+  },
+
+  updateChatInstructions: async (id: string, instructions: string) => {
+    try {
+      const res = await fetch('/api/chats', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, custom_instructions: instructions })
+      });
+      if (res.ok) {
+        set((state) => ({
+          projects: state.projects.map(p => ({
+            ...p,
+            chats: p.chats?.map(c => c.id === id ? { ...c, custom_instructions: instructions, updated_at: new Date().toISOString() } : c)
+          }))
+        }));
+      }
+    } catch (e) {
+      console.error('Failed to update chat instructions', e);
     }
   },
 

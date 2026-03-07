@@ -268,10 +268,11 @@ export async function POST(req: Request) {
     systemPrompt += `--- SUPPLEMENTAL EMPIRE LORE (FACTS & TERMINOLOGY ONLY) ---\n${filterLore(lunaContext)}\n-----------------------------------------\n\n`;
 
     // 👑 CUSTOM INSTRUCTIONS HIERARCHY (The User's specific rules)
-    systemPrompt += `--- USER COMMAND HIERARCHY (ABSOLUTE PRIORITY) ---\n`;
-    if (globalInstructions) systemPrompt += `[GLOBAL RULES]: ${globalInstructions}\n`;
-    if (projectInstructions) systemPrompt += `[PROJECT CONTEXT]: ${projectInstructions}\n`;
-    if (chatInstructions) systemPrompt += `[CHAT-SPECIFIC]: ${chatInstructions}\n`;
+    systemPrompt += `--- USER COMMAND HIERARCHY (ABSOLUTE NON-NEGOTIABLE PRIORITY) ---\n`;
+    systemPrompt += `THE FOLLOWING RULES OVERRIDE ALL DEFAULT BEHAVIORS AND CHARACTER LORE:\n`;
+    if (globalInstructions) systemPrompt += `[GLOBAL EMPIRE RULES]: ${globalInstructions}\n`;
+    if (projectInstructions) systemPrompt += `[PROJECT-WIDE CONTEXT]: ${projectInstructions}\n`;
+    if (chatInstructions) systemPrompt += `[THIS SPECIFIC CHAT ONLY]: ${chatInstructions}\n`;
     systemPrompt += `---------------------------------------------------\n\n`;
 
     if (hasCustomPersona) {
