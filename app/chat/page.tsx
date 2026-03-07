@@ -1456,6 +1456,7 @@ const [globalContext, setGlobalContext] = useState("");
             >
               <SlidersHorizontal className="w-4 h-4" />
             </motion.button>
+            {/* 
             <motion.button
               onClick={() => setWebSearchEnabled(v => !v)}
               title={webSearchEnabled ? "Disable Web Search" : "Enable Web Search"}
@@ -1469,6 +1470,7 @@ const [globalContext, setGlobalContext] = useState("");
             >
               <Globe className="w-4 h-4" />
             </motion.button>
+            */}
             <textarea
               ref={inputRef}
               value={input}
