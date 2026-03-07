@@ -92,7 +92,7 @@ const PROVIDERS: Record<string, ProviderConfig> = {
     keyHeader: 'x-groq-key',
     createProvider: (apiKey: string) => createGroq({ apiKey }),
     defaultModel: 'llama-3.3-70b-versatile',
-    models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768', 'gemma2-9b-it'],
+    models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'],
   },
   openrouter: {
     name: 'OpenRouter',
@@ -101,8 +101,8 @@ const PROVIDERS: Record<string, ProviderConfig> = {
     defaultModel: 'meta-llama/llama-3.3-70b-instruct:free',
     models: [
       'meta-llama/llama-3.3-70b-instruct:free',
-      'google/gemma-2-9b-it:free',
-      'mistralai/mistral-7b-instruct:free',
+      'meta-llama/llama-3.2-3b-instruct:free',
+      'google/gemini-2.5-pro-exp-03-25:free',
       'openrouter/auto',
     ],
   },

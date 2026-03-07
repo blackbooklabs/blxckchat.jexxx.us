@@ -131,8 +131,6 @@ const PROVIDERS = {
     models: [
       'llama-3.3-70b-versatile',
       'llama-3.1-8b-instant',
-      'mixtral-8x7b-32768',
-      'gemma2-9b-it',
     ],
     defaultModel: 'llama-3.3-70b-versatile',
     keyPlaceholder: 'gsk_...',
@@ -142,8 +140,8 @@ const PROVIDERS = {
     name: 'OpenRouter (Free Tier Models)',
     models: [
       'meta-llama/llama-3.3-70b-instruct:free',
-      'google/gemma-2-9b-it:free',
-      'mistralai/mistral-7b-instruct:free',
+      'meta-llama/llama-3.2-3b-instruct:free',
+      'google/gemini-2.5-pro-exp-03-25:free',
       'openrouter/auto',
     ],
     defaultModel: 'meta-llama/llama-3.3-70b-instruct:free',
