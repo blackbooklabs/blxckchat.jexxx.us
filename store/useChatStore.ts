@@ -72,6 +72,8 @@ interface ChatState {
   deleteChat: (chatId: string) => Promise<void>;
   updateProjectTitle: (projectId: string, title: string) => Promise<void>;
   updateProjectInstructions: (projectId: string, instructions: string) => Promise<void>;
+  updateChatTitle: (chatId: string, title: string) => Promise<void>;
+  autoRenameChat: (chatId: string, firstMessage: string) => Promise<void>;
   fetchCustomPersonas: () => Promise<void>;
   restoreLastSession: (userId: string) => void;
   saveSession: (userId: string, projectId: string, chatId: string) => void;
@@ -342,6 +344,37 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (!res.ok) console.error('Failed to rename project in DB');
     } catch (e) {
       console.error('Error updating project title', e);
+    }
+  },
+
+  updateChatTitle: async (chatId, title) => {
+    try {
+      set((state) => ({
+        projects: state.projects.map(p => ({
+          ...p,
+          chats: p.chats?.map(c => c.id === chatId ? { ...c, title } : c)
+        }))
+      }));
+      const res = await fetch('/api/chats', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: chatId, title })
+      });
+      if (!res.ok) console.error('Failed to update chat title in DB');
+    } catch (e) {
+      console.error('Failed to update chat title', e);
+    }
+  },
+
+  autoRenameChat: async (chatId, firstMessage) => {
+    // Generate a summary (first 6 words, max 40 chars)
+    const words = firstMessage.trim().split(/\s+/);
+    let summary = words.slice(0, 6).join(' ');
+    if (summary.length > 40) summary = summary.substring(0, 37) + '...';
+    else if (words.length > 6) summary += '...';
+    
+    if (summary) {
+      await get().updateChatTitle(chatId, summary);
     }
   },
 

@@ -177,6 +177,8 @@ export default function ChatInterface() {
     fetchProjects, 
     updateChatMessages,
     updateProjectInstructions,
+    updateChatTitle,
+    autoRenameChat,
     saveSession,
     restoreLastSession,
     updateProjectTitle
@@ -324,7 +326,14 @@ const [globalContext, setGlobalContext] = useState("");
       timestamp: new Date(),
     };
 
+    const isFirstFirstPrompt = messages.length === 0;
     setMessages((prev) => [...prev, userMessage]);
+    
+    // AUTO-RENAME IF IT'S THE FIRST PROMPT
+    if (isFirstFirstPrompt && currentChatId) {
+       autoRenameChat(currentChatId, input);
+    }
+
     setInput("");
     setIsLoading(true);
 

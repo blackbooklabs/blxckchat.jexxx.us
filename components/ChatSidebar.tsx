@@ -169,6 +169,7 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
     fetchCustomPersonas,
     setActivePersona,
     updateProjectTitle,
+    updateChatTitle,
     deleteCustomPersona,
     invokingPersonaId,
     setInvokingPersonaId,
@@ -187,6 +188,12 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
+
+  // Chat rename state
+  const [renamingChatId, setRenamingChatId] = useState<string | null>(null);
+  const [renameChatValue, setRenameChatValue] = useState("");
+  const chatRenameInputRef = useRef<HTMLInputElement>(null);
+
   // Custom persona modal state
   const [showPersonaModal, setShowPersonaModal] = useState(false);
   const [editingPersona, setEditingPersona] = useState<typeof personas[number] | undefined>(undefined);
@@ -208,6 +215,24 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
     }
     setRenamingId(null);
   };
+
+  const startChatRename = (e: React.MouseEvent, id: string, currentTitle: string) => {
+    e.stopPropagation();
+    setRenamingChatId(id);
+    setRenameChatValue(currentTitle);
+  };
+
+  const commitChatRename = async (id: string) => {
+    const trimmed = renameChatValue.trim();
+    if (trimmed) {
+      await updateChatTitle(id, trimmed);
+    }
+    setRenamingChatId(null);
+  };
+
+  useEffect(() => {
+    if (renamingChatId) chatRenameInputRef.current?.focus();
+  }, [renamingChatId]);
 
   const toggleProject = (id: string) => {
     setExpandedProjects(prev => {
@@ -437,6 +462,9 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
                             if (e.key === "Escape") setRenamingId(null);
                           }}
                           onClick={e => e.stopPropagation()}
+                          autoCorrect="off"
+                          autoCapitalize="off"
+                          spellCheck={false}
                           className="flex-1 bg-transparent border-b border-accent text-sm font-medium focus:outline-none text-foreground"
                         />
                       ) : (
@@ -478,19 +506,54 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
                           project.chats.map(chat => (
                             <div
                               key={chat.id}
-                              onClick={() => handleSelectChat(project.id, chat.id, chat.messages)}
+                              onClick={() => !renamingChatId && handleSelectChat(project.id, chat.id, chat.messages)}
                               className={`group relative flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
                                 currentChatId === chat.id ? "bg-accent/15 text-foreground border border-accent/20" : "text-muted hover:text-foreground hover:bg-muted/10"
                               }`}
                             >
                               <MessageSquare className="w-3 h-3 shrink-0 opacity-70" />
-                              <span className="text-xs truncate flex-1">{chat.title}</span>
-                              <span className="text-[10px] text-muted/50 shrink-0 hidden group-hover:inline">
-                                {formatDistanceToNow(new Date(chat.updated_at), { addSuffix: true })}
-                              </span>
-                              <button onClick={(e) => handleDeleteChat(e, chat.id)} className="p-1 opacity-0 group-hover:opacity-100 text-muted hover:text-red-500 transition-opacity">
-                                <Trash2 className="w-3 h-3" />
-                              </button>
+                              {renamingChatId === chat.id ? (
+                                <input
+                                  ref={chatRenameInputRef}
+                                  value={renameChatValue}
+                                  onChange={e => setRenameChatValue(e.target.value)}
+                                  onBlur={() => commitChatRename(chat.id)}
+                                  onKeyDown={e => {
+                                    if (e.key === "Enter") commitChatRename(chat.id);
+                                    if (e.key === "Escape") setRenamingChatId(null);
+                                  }}
+                                  onClick={e => e.stopPropagation()}
+                                  autoCorrect="off"
+                                  autoCapitalize="off"
+                                  spellCheck={false}
+                                  className="flex-1 bg-transparent border-b border-accent text-xs focus:outline-none text-foreground"
+                                />
+                              ) : (
+                                <span className="text-xs truncate flex-1">{chat.title}</span>
+                              )}
+                              
+                              {!renamingChatId && (
+                                <span className="text-[10px] text-muted/50 shrink-0 hidden group-hover:inline">
+                                  {formatDistanceToNow(new Date(chat.updated_at), { addSuffix: true })}
+                                </span>
+                              )}
+
+                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                {renamingChatId === chat.id ? (
+                                  <button onClick={(e) => { e.stopPropagation(); commitChatRename(chat.id); }} className="p-1 text-green-400">
+                                    <Check className="w-3 h-3" />
+                                  </button>
+                                ) : (
+                                  <>
+                                    <button onClick={(e) => startChatRename(e, chat.id, chat.title)} className="p-1 text-muted hover:text-accent" title="Rename Chat">
+                                      <Pencil className="w-3 h-3" />
+                                    </button>
+                                    <button onClick={(e) => handleDeleteChat(e, chat.id)} className="p-1 text-muted hover:text-red-500">
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           ))
                         )}
