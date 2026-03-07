@@ -87,8 +87,8 @@ interface ChatState {
   fetchCustomPersonas: () => Promise<void>;
   restoreLastSession: (userId: string) => void;
   saveSession: (userId: string, projectId: string, chatId: string) => void;
-  createCustomPersona: (p: { name: string; icon: string; tagline: string; safe_content: string; spicy_content: string }) => Promise<void>;
-  updateCustomPersona: (id: string, p: Partial<{ name: string; icon: string; tagline: string; safe_content: string; spicy_content: string }>) => Promise<void>;
+  createCustomPersona: (p: { name: string; icon: string; tagline: string; safe_content: string; spicy_content: string; tts_voice?: TTSVoice }) => Promise<void>;
+  updateCustomPersona: (id: string, p: Partial<{ name: string; icon: string; tagline: string; safe_content: string; spicy_content: string; tts_voice: TTSVoice }>) => Promise<void>;
   deleteCustomPersona: (id: string) => Promise<void>;
   deleteMessagesAfter: (chatId: string, messageId: string) => Promise<void>;
 }
@@ -416,17 +416,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
     try {
       const res = await fetch('/api/custom-personas');
       if (!res.ok) return;
-      const customs = await res.json();
-      const customMapped: PersonaPreset[] = (customs ?? []).map((c: Record<string, unknown>) => ({
-        id: c.id as string,
-        name: c.name as string,
-        tagline: (c.tagline as string) || '',
-        icon: (c.icon as string) || '🪽',
-        safe_content: (c.safe_content as string) || '',
-        spicy_content: (c.spicy_content as string) || null,
-        safe_excerpt: (c.tagline as string) || '', // For custom personas, tagline is excerpt
+      const data = await res.json();
+      const customs = Array.isArray(data) ? data : (data.personas || []);
+      const customMapped: PersonaPreset[] = (customs ?? []).map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        tagline: c.tagline || '',
+        icon: c.icon || '🪽',
+        safe_content: c.safe_content || '',
+        spicy_content: c.spicy_content || null,
+        safe_excerpt: c.tagline || '', 
         spicy_excerpt: '', 
-        content: (c.safe_content as string) || '',
+        content: c.safe_content || '',
         isCustom: true,
         isLocked: false,
         tts_voice: c.tts_voice as TTSVoice,

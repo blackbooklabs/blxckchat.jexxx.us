@@ -235,7 +235,7 @@ const [globalContext, setGlobalContext] = useState("");
       if (voices.length > 0) {
         const preferredVoice = voices.find(v => 
           v.lang === voiceSettings.lang && 
-          (voiceSettings.voiceName ? v.name.includes(voiceSettings.voiceName.split(" ")[0]) : false)
+          (voiceSettings.voiceName && voiceSettings.voiceName.trim() ? v.name.includes(voiceSettings.voiceName.split(" ")[0]) : false)
         ) || voices.find(v => v.lang === voiceSettings.lang) || voices[0];
         
         if (preferredVoice) utterance.voice = preferredVoice;

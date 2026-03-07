@@ -728,6 +728,7 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
               tagline: editingPersona.tagline,
               safe_content: editingPersona.safe_content,
               spicy_content: editingPersona.spicy_content ?? "",
+              tts_voice: editingPersona.tts_voice,
             } : undefined}
           />
         )}
