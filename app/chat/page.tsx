@@ -24,10 +24,10 @@ interface Message {
 
 type Provider = 'openai' | 'grok' | 'gemini' | 'kimi';
 
-interface ApiConfig {
-  provider: Provider;
+interface ProviderState {
   apiKey: string;
   model: string;
+  availableModels: string[];
 }
 
 // Clerk Authentication Button Component
@@ -145,11 +145,14 @@ export default function ChatInterface() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [apiConfig, setApiConfig] = useState<ApiConfig>({
-    provider: 'openai',
-    apiKey: '',
-    model: PROVIDERS.openai.defaultModel,
+  const [providersConfig, setProvidersConfig] = useState<Record<Provider, ProviderState>>({
+    openai: { apiKey: '', model: PROVIDERS.openai.defaultModel, availableModels: PROVIDERS.openai.models },
+    grok: { apiKey: '', model: PROVIDERS.grok.defaultModel, availableModels: PROVIDERS.grok.models },
+    gemini: { apiKey: '', model: PROVIDERS.gemini.defaultModel, availableModels: PROVIDERS.gemini.models },
+    kimi: { apiKey: '', model: PROVIDERS.kimi.defaultModel, availableModels: PROVIDERS.kimi.models },
   });
+  const [activeProvider, setActiveProvider] = useState<Provider>('openai');
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Load saved config on mount
@@ -158,24 +161,66 @@ export default function ChatInterface() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        setApiConfig(parsed);
+        if (parsed.providersConfig) {
+          setProvidersConfig(parsed.providersConfig);
+          setActiveProvider(parsed.activeProvider || 'openai');
+        } else if (parsed.provider) {
+          // Migration from old to new schema
+          const oldProvider = parsed.provider as Provider;
+          setActiveProvider(oldProvider);
+          setProvidersConfig((prev) => ({
+            ...prev,
+            [oldProvider]: { ...prev[oldProvider], apiKey: parsed.apiKey, model: parsed.model }
+          }));
+        }
       } catch (e) {
         console.error('Failed to parse saved config');
       }
     }
   }, []);
 
-  // Save config when changed
-  const saveConfig = (config: ApiConfig) => {
-    setApiConfig(config);
-    sessionStorage.setItem('luna-api-config', JSON.stringify(config));
+  const saveConfig = (newActive: Provider, newConfigs: Record<Provider, ProviderState>) => {
+    setActiveProvider(newActive);
+    setProvidersConfig(newConfigs);
+    sessionStorage.setItem('luna-api-config', JSON.stringify({ activeProvider: newActive, providersConfig: newConfigs }));
+  };
+
+  const updateProviderConfig = (provider: Provider, updates: Partial<ProviderState>) => {
+    const newConfigs = {
+      ...providersConfig,
+      [provider]: { ...providersConfig[provider], ...updates }
+    };
+    saveConfig(activeProvider, newConfigs);
+  };
+
+  const fetchDynamicModels = async (providerName: Provider, key: string) => {
+    if (!key || key.length < 5) return;
+    setIsFetchingModels(true);
+    try {
+      const res = await fetch('/api/models', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          [HEADER_KEYS[providerName]]: key
+        },
+        body: JSON.stringify({ provider: providerName })
+      });
+      const data = await res.json();
+      if (data.models && data.models.length > 0) {
+        updateProviderConfig(providerName, { availableModels: data.models, model: data.models[0] });
+      }
+    } catch (e) {
+      console.warn("Could not fetch models", e);
+    } finally {
+      setIsFetchingModels(false);
+    }
   };
 
   const sendMessage = useCallback(async () => {
     if (!input.trim() || isLoading) return;
 
     // Check if API key is configured
-    if (!apiConfig.apiKey) {
+    if (!providersConfig[activeProvider].apiKey) {
       setMessages((prev) => [
         ...prev,
         {
@@ -215,13 +260,13 @@ export default function ChatInterface() {
     try {
       abortControllerRef.current = new AbortController();
 
-      console.log('🌙 Sending BYOK request:', { provider: apiConfig.provider, model: apiConfig.model });
+      console.log('🌙 Sending BYOK request:', { provider: activeProvider, model: providersConfig[activeProvider].model });
       
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
-          [HEADER_KEYS[apiConfig.provider]]: apiConfig.apiKey,
+          [HEADER_KEYS[activeProvider]]: providersConfig[activeProvider].apiKey,
         },
         body: JSON.stringify({
           messages: [
@@ -232,8 +277,8 @@ export default function ChatInterface() {
             { role: "user", content: input },
           ],
           mode: "venus",
-          provider: apiConfig.provider,
-          model: apiConfig.model,
+          provider: activeProvider,
+          model: providersConfig[activeProvider].model,
           type: "text",
           stream: false,
         }),
@@ -259,7 +304,7 @@ export default function ChatInterface() {
                 ...m, 
                 text: data.text || "💕 The Divine Machine hums... but words fail me. Try again, beloved. ♡", 
                 isStreaming: false,
-                modelUsed: data.model || apiConfig.model,
+                modelUsed: data.model || providersConfig[activeProvider].model,
                 providerUsed: data.provider || provider.name,
               }
             : m
@@ -290,7 +335,7 @@ export default function ChatInterface() {
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [input, isLoading, messages, apiConfig]);
+  }, [input, isLoading, messages, providersConfig, activeProvider]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -299,8 +344,8 @@ export default function ChatInterface() {
     }
   };
 
-  const provider = PROVIDERS[apiConfig.provider];
-  const isConfigured = !!apiConfig.apiKey;
+  const provider = PROVIDERS[activeProvider];
+  const isConfigured = !!providersConfig[activeProvider].apiKey;
 
   return (
     <>
@@ -339,7 +384,7 @@ export default function ChatInterface() {
                         {provider.name}
                       </span>
                       <span className="px-2 py-0.5 rounded-full text-xs bg-accent/20 text-accent font-mono border border-accent/30">
-                        {apiConfig.model}
+                        {providersConfig[activeProvider].model}
                       </span>
                     </>
                   )}
@@ -402,9 +447,9 @@ export default function ChatInterface() {
                       {(Object.keys(PROVIDERS) as Provider[]).map((p) => (
                         <button
                           key={p}
-                          onClick={() => saveConfig({ ...apiConfig, provider: p, model: PROVIDERS[p].defaultModel })}
+                          onClick={() => saveConfig(p, providersConfig)}
                           className={`p-3 rounded-xl border text-left transition-all ${
-                            apiConfig.provider === p 
+                            activeProvider === p 
                               ? `border-accent bg-accent/10 ring-1 ring-accent` 
                               : 'border-border hover:border-muted'
                           }`}
@@ -420,22 +465,32 @@ export default function ChatInterface() {
                   <div>
                     <label className="block text-sm font-medium mb-2 flex items-center justify-between">
                       <span>Model</span>
-                      <span className="text-xs text-accent font-mono">{provider.models.length} available</span>
+                      <div className="flex items-center gap-3">
+                        {isFetchingModels && <Loader2 className="w-3 h-3 animate-spin text-accent"/>}
+                        <button 
+                          onClick={() => fetchDynamicModels(activeProvider, providersConfig[activeProvider].apiKey)} 
+                          className="text-xs text-accent hover:underline flex items-center gap-1"
+                          disabled={!providersConfig[activeProvider].apiKey || isFetchingModels}
+                        >
+                          Refresh List
+                        </button>
+                        <span className="text-xs text-accent font-mono">{providersConfig[activeProvider].availableModels.length} available</span>
+                      </div>
                     </label>
                     <div className="relative">
                       <select
-                        value={apiConfig.model}
-                        onChange={(e) => saveConfig({ ...apiConfig, model: e.target.value })}
+                        value={providersConfig[activeProvider].model}
+                        onChange={(e) => updateProviderConfig(activeProvider, { model: e.target.value })}
                         className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent appearance-none font-mono text-sm"
                       >
-                        {provider.models.map((m) => (
+                        {providersConfig[activeProvider].availableModels.map((m) => (
                           <option key={m} value={m}>{m}</option>
                         ))}
                       </select>
                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
                     </div>
                     <p className="text-xs text-muted mt-2">
-                      Selected: <span className="text-accent font-mono font-medium">{apiConfig.model}</span>
+                      Selected: <span className="text-accent font-mono font-medium">{providersConfig[activeProvider].model}</span>
                     </p>
                   </div>
 
@@ -447,9 +502,9 @@ export default function ChatInterface() {
                     </label>
                     <input
                       type="password"
-                      value={apiConfig.apiKey}
-                      onChange={(e) => saveConfig({ ...apiConfig, apiKey: e.target.value })}
-                      placeholder=""
+                      value={providersConfig[activeProvider].apiKey}
+                      onChange={(e) => updateProviderConfig(activeProvider, { apiKey: e.target.value })}
+                      placeholder={provider.keyPlaceholder}
                       className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent font-mono text-sm"
                     />
                     <p className="text-xs text-muted mt-2 flex items-center gap-1">
@@ -459,13 +514,16 @@ export default function ChatInterface() {
                   </div>
 
                   {/* Status */}
-                  <div className={`p-3 rounded-xl ${isConfigured ? 'bg-green-500/10 border border-green-500/30' : 'bg-yellow-500/10 border border-yellow-500/30'}`}>
-                    <p className={`text-sm ${isConfigured ? 'text-green-400' : 'text-yellow-400'}`}>
-                      {isConfigured 
-                        ? `✓ Connected to ${provider.name}` 
-                        : '⚠ Add your API key to begin communion'}
-                    </p>
-                  </div>
+                  {(() => {
+                    const hasKey = !!providersConfig[activeProvider].apiKey;
+                    return (
+                      <div className={`p-3 rounded-xl ${hasKey ? 'bg-green-500/10 border border-green-500/30' : 'bg-yellow-500/10 border border-yellow-500/30'}`}>
+                        <p className={`text-sm ${hasKey ? 'text-green-400' : 'text-yellow-400'}`}>
+                          {hasKey ? `✓ Key set for ${provider.name}` : '⚠ Add your API key to begin communion'}
+                        </p>
+                      </div>
+                    );
+                  })()}
 
                   <motion.button
                     onClick={() => setShowSettings(false)}
