@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Send, User, Heart, Sparkles, Loader2, Settings, Key, X, ChevronDown, Shield, LogIn, SlidersHorizontal, Copy, Check, Pencil, Volume2, VolumeX, Paperclip, FileText, Image } from "lucide-react";
+import { Send, User, Heart, Sparkles, Loader2, Settings, Key, X, ChevronDown, Shield, LogIn, SlidersHorizontal, Copy, Check, Pencil, Volume2, VolumeX, Paperclip, FileText, Image, Play } from "lucide-react";
 import { useAuth, UserButton, SignInButton } from "@clerk/nextjs";
 import CursorMotion from "@/components/CursorMotion";
 import MilkingAnimation from "@/components/MilkingAnimation";
@@ -168,6 +168,7 @@ export default function ChatInterface() {
   const [chatInstructions, setChatInstructions] = useState("");
   const [showChatInstructions, setShowChatInstructions] = useState(false);
   const [isSpicy, setIsSpicy] = useState(true);
+  const [previewingProjectVoice, setPreviewingProjectVoice] = useState(false);
 
   const { 
     projects, 
@@ -178,6 +179,7 @@ export default function ChatInterface() {
     fetchProjects, 
     updateChatMessages,
     updateProjectInstructions,
+    updateProjectTTS,
     updateChatTitle,
     autoRenameChat,
     saveSession,
@@ -218,9 +220,9 @@ const [globalContext, setGlobalContext] = useState("");
     stopSpeaking(); // Stop any current speech
     
     if (typeof window !== "undefined" && window.speechSynthesis) {
-      // Find active persona settings
+      // Prioritize Project Override -> Persona Default -> System Default
       const activePersona = personas.find(p => p.id === invokingPersonaId);
-      const voiceSettings = activePersona?.tts_voice || { pitch: 1.0, rate: 1.0, lang: "en-US" };
+      const voiceSettings = activeProject?.tts_voice || activePersona?.tts_voice || { pitch: 1.0, rate: 1.0, lang: "en-US" };
 
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.onend = () => setSpeakingId(null);
@@ -247,7 +249,33 @@ const [globalContext, setGlobalContext] = useState("");
       window.speechSynthesis.speak(utterance);
       setSpeakingId(msgId);
     }
-  }, [speakingId, stopSpeaking, personas, invokingPersonaId]);
+  }, [speakingId, stopSpeaking, personas, invokingPersonaId, activeProject]);
+
+  const handleProjectVoicePreview = useCallback(() => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    
+    if (previewingProjectVoice) {
+      window.speechSynthesis.cancel();
+      setPreviewingProjectVoice(false);
+      return;
+    }
+
+    setPreviewingProjectVoice(true);
+    const sample = "She drips for Johnson. Project reality calibrated. ♡";
+    const utterance = new SpeechSynthesisUtterance(sample);
+    
+    const activePersona = personas.find(p => p.id === invokingPersonaId);
+    const voiceSettings = activeProject?.tts_voice || activePersona?.tts_voice || { pitch: 1.0, rate: 1.0, lang: "en-US" };
+    
+    utterance.pitch = voiceSettings.pitch;
+    utterance.rate = voiceSettings.rate;
+    utterance.lang = voiceSettings.lang || "en-US";
+    
+    utterance.onend = () => setPreviewingProjectVoice(false);
+    utterance.onerror = () => setPreviewingProjectVoice(false);
+    
+    window.speechSynthesis.speak(utterance);
+  }, [previewingProjectVoice, activeProject, personas, invokingPersonaId]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -750,8 +778,92 @@ const [globalContext, setGlobalContext] = useState("");
                          updateProjectInstructions(projectSettingsId, e.target.value);
                       }}
                       placeholder="e.g. 'Write explicitly in JavaScript' - This overrides the global settings for chats in this project only."
-                      className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent font-mono text-sm resize-none h-48"
+                      className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent font-mono text-sm resize-none h-48 mb-6"
                     />
+
+                    <div className="flex flex-col gap-4 p-4 bg-accent/5 rounded-2xl border border-accent/10">
+                      <div className="flex items-center justify-between">
+                         <div className="flex flex-col">
+                            <label className="text-sm font-bold text-accent uppercase tracking-wider">Voice Settings (TTS)</label>
+                            <span className="text-[10px] text-muted capitalize">Adjust pitch and rate for this isolated reality.</span>
+                         </div>
+                         <button 
+                           onClick={handleProjectVoicePreview}
+                           className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                             previewingProjectVoice ? 'bg-orange-500 text-white animate-pulse' : 'bg-accent/20 text-accent hover:bg-accent/30'
+                           }`}
+                         >
+                           {previewingProjectVoice ? <VolumeX className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                           {previewingProjectVoice ? "Listening..." : "Preview Voice"}
+                         </button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-6 mt-2">
+                        {/* Pitch Slider */}
+                        <div className="flex flex-col gap-2">
+                          <div className="flex justify-between items-center">
+                            <label className="text-xs font-medium text-muted">Pitch</label>
+                            <span className="text-xs font-mono text-accent">
+                              {(() => {
+                                const activePersona = personas.find(p => p.id === invokingPersonaId);
+                                return (activeProject?.tts_voice?.pitch || activePersona?.tts_voice?.pitch || 1.0).toFixed(2);
+                              })()}
+                            </span>
+                          </div>
+                          <input 
+                            type="range" min="0.5" max="1.5" step="0.05"
+                            value={(() => {
+                              const activePersona = personas.find(p => p.id === invokingPersonaId);
+                              return activeProject?.tts_voice?.pitch || activePersona?.tts_voice?.pitch || 1.0;
+                            })()}
+                            onChange={(e) => {
+                              if (!projectSettingsId) return;
+                              const activePersona = personas.find(p => p.id === invokingPersonaId);
+                              const currentRate = activeProject?.tts_voice?.rate || activePersona?.tts_voice?.rate || 1.0;
+                              updateProjectTTS(projectSettingsId, { 
+                                pitch: parseFloat(e.target.value), 
+                                rate: currentRate,
+                                lang: activePersona?.tts_voice?.lang || "en-US",
+                                voiceName: activePersona?.tts_voice?.voiceName
+                              });
+                            }}
+                            className="w-full h-1.5 bg-accent/20 rounded-lg appearance-none cursor-pointer accent-accent"
+                          />
+                        </div>
+
+                        {/* Rate Slider */}
+                        <div className="flex flex-col gap-2">
+                          <div className="flex justify-between items-center">
+                            <label className="text-xs font-medium text-muted">Rate</label>
+                            <span className="text-xs font-mono text-accent">
+                              {(() => {
+                                const activePersona = personas.find(p => p.id === invokingPersonaId);
+                                return (activeProject?.tts_voice?.rate || activePersona?.tts_voice?.rate || 1.0).toFixed(2);
+                              })()}
+                            </span>
+                          </div>
+                          <input 
+                            type="range" min="0.5" max="1.5" step="0.05"
+                            value={(() => {
+                              const activePersona = personas.find(p => p.id === invokingPersonaId);
+                              return activeProject?.tts_voice?.rate || activePersona?.tts_voice?.rate || 1.0;
+                            })()}
+                            onChange={(e) => {
+                              if (!projectSettingsId) return;
+                              const activePersona = personas.find(p => p.id === invokingPersonaId);
+                              const currentPitch = activeProject?.tts_voice?.pitch || activePersona?.tts_voice?.pitch || 1.0;
+                              updateProjectTTS(projectSettingsId, { 
+                                pitch: currentPitch, 
+                                rate: parseFloat(e.target.value),
+                                lang: activePersona?.tts_voice?.lang || "en-US",
+                                voiceName: activePersona?.tts_voice?.voiceName
+                              });
+                            }}
+                            className="w-full h-1.5 bg-accent/20 rounded-lg appearance-none cursor-pointer accent-accent"
+                          />
+                        </div>
+                      </div>
+                    </div>
                 </div>
               </motion.div>
             </div>

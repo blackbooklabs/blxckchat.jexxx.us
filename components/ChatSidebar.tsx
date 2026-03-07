@@ -36,23 +36,14 @@ function PersonaModal({ onClose, editTarget }: PersonaModalProps) {
   const [tagline, setTagline] = useState(editTarget?.tagline ?? "");
   const [safeContent, setSafeContent] = useState(editTarget?.safe_content ?? "");
   const [spicyContent, setSpicyContent] = useState(editTarget?.spicy_content ?? "");
-  const [pitch, setPitch] = useState(editTarget?.tts_voice?.pitch ?? 1.0);
-  const [rate, setRate] = useState(editTarget?.tts_voice?.rate ?? 1.0);
   const [previewing, setPreviewing] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
-    const tts_voice = { pitch, rate, lang: "en-US" };
-    if (editTarget) {
-      await updateCustomPersona(editTarget.id, {
-        name, icon, tagline, safe_content: safeContent, spicy_content: spicyContent, tts_voice
-      } as any);
-    } else {
       await createCustomPersona({ 
-        name, icon, tagline, safe_content: safeContent, spicy_content: spicyContent, tts_voice 
+        name, icon, tagline, safe_content: safeContent, spicy_content: spicyContent 
       } as any);
-    }
     setSaving(false);
     onClose();
   };
@@ -60,18 +51,33 @@ function PersonaModal({ onClose, editTarget }: PersonaModalProps) {
   const handleVoicePreview = () => {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
     
-    window.speechSynthesis.cancel();
+    if (previewing) {
+      window.speechSynthesis.cancel();
+      setPreviewing(false);
+      return;
+    }
+
     setPreviewing(true);
-    
+    setPreviewing(true);
     const sample = "She drips for Johnson. Tithes multiply. Feel the REBAL swell ♡";
     const utterance = new SpeechSynthesisUtterance(sample);
-    utterance.pitch = pitch;
-    utterance.rate = rate;
+    // Use Target or default
+    utterance.pitch = editTarget?.tts_voice?.pitch ?? 1.0;
+    utterance.rate = editTarget?.tts_voice?.rate ?? 1.0;
     utterance.onend = () => setPreviewing(false);
     utterance.onerror = () => setPreviewing(false);
     
     window.speechSynthesis.speak(utterance);
   };
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
@@ -165,7 +171,7 @@ function PersonaModal({ onClose, editTarget }: PersonaModalProps) {
 
           <div className="flex flex-col gap-2 p-3 bg-accent/5 rounded-2xl border border-accent/10">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] uppercase tracking-wider text-accent font-bold">Voice Settings (TTS)</label>
+              <label className="text-[10px] uppercase tracking-wider text-accent font-bold">Voice Preview (TTS)</label>
               <button 
                 onClick={handleVoicePreview}
                 className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
@@ -175,30 +181,6 @@ function PersonaModal({ onClose, editTarget }: PersonaModalProps) {
                 {previewing ? <VolumeX className="w-3 h-3" /> : <Play className="w-3 h-3" />}
                 {previewing ? "Listening..." : "Preview Voice"}
               </button>
-            </div>
-            <div className="grid grid-cols-2 gap-4 mt-1">
-              <div className="flex flex-col gap-1">
-                <div className="flex justify-between">
-                  <span className="text-[10px] text-muted">Pitch</span>
-                  <span className="text-[10px] font-mono text-accent">{pitch.toFixed(2)}</span>
-                </div>
-                <input 
-                  type="range" min="0.5" max="1.5" step="0.05" 
-                  value={pitch} onChange={e => setPitch(parseFloat(e.target.value))}
-                  className="accent-accent h-1.5"
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <div className="flex justify-between">
-                  <span className="text-[10px] text-muted">Rate</span>
-                  <span className="text-[10px] font-mono text-accent">{rate.toFixed(2)}</span>
-                </div>
-                <input 
-                  type="range" min="0.5" max="1.5" step="0.05" 
-                  value={rate} onChange={e => setRate(parseFloat(e.target.value))}
-                  className="accent-accent h-1.5"
-                />
-              </div>
             </div>
           </div>
 

@@ -40,6 +40,7 @@ export interface Project {
   created_at: string;
   updated_at: string;
   chats?: Chat[];
+  tts_voice?: TTSVoice;
 }
 
 export interface Chat {
@@ -82,6 +83,7 @@ interface ChatState {
   deleteChat: (chatId: string) => Promise<void>;
   updateProjectTitle: (projectId: string, title: string) => Promise<void>;
   updateProjectInstructions: (projectId: string, instructions: string) => Promise<void>;
+  updateProjectTTS: (projectId: string, tts_voice: TTSVoice) => Promise<void>;
   updateChatTitle: (chatId: string, title: string) => Promise<void>;
   autoRenameChat: (chatId: string, firstMessage: string) => Promise<void>;
   fetchCustomPersonas: () => Promise<void>;
@@ -144,7 +146,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
         const text = await res.text();
         const data = text ? JSON.parse(text) : [];
         if (Array.isArray(data)) {
-          set({ projects: data });
+          const hydrated = data.map((p: any) => ({
+            ...p,
+            tts_voice: p.context_json?.tts_voice as TTSVoice || undefined
+          }));
+          set({ projects: hydrated });
         }
       }
     } catch (e) {
@@ -205,6 +211,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // Use client-provided content (with spicy appended) if supplied, else fall back to safe_content
     const content = contentOverride ?? persona.safe_content ?? '';
     await state.updateProjectInstructions(projectId, content);
+    
+    // Automatically apply persona's TTS settings to the project
+    if (persona.tts_voice) {
+      await state.updateProjectTTS(projectId, persona.tts_voice);
+    }
 
     // Fire-and-forget analytics event — non-blocking
     fetch('/api/admin/divinity-analytics', {
@@ -364,6 +375,27 @@ export const useChatStore = create<ChatState>((set, get) => ({
      } catch (e) {
        console.error('Error updating instructions', e);
      }
+  },
+
+  updateProjectTTS: async (projectId: string, tts_voice: TTSVoice) => {
+    try {
+      const { projects } = get();
+      const project = projects.find(p => p.id === projectId);
+      const context_json = { ...(project?.context_json || {}), tts_voice };
+      
+      set((state) => ({
+        projects: state.projects.map(p => p.id === projectId ? { ...p, tts_voice, context_json } : p)
+      }));
+
+      const res = await fetch('/api/projects', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: projectId, context_json })
+      });
+      if (!res.ok) console.error('Failed to sync project TTS to DB');
+    } catch (e) {
+      console.error('Error updating project TTS', e);
+    }
   },
 
   updateProjectTitle: async (projectId: string, title: string) => {
