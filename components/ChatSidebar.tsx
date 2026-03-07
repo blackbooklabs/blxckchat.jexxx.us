@@ -157,6 +157,7 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
     currentProjectId,
     currentChatId,
     isProjectsLoading,
+    isChatsLoading,
     isPersonasLoading,
     setCurrentProjectId,
     setCurrentChatId,
@@ -167,6 +168,7 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
     deleteChat,
     fetchPersonas,
     fetchCustomPersonas,
+    fetchChats,
     setActivePersona,
     updateProjectTitle,
     updateChatTitle,
@@ -237,7 +239,16 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
   const toggleProject = (id: string) => {
     setExpandedProjects(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      const isExpanding = !next.has(id);
+      if (isExpanding) {
+        next.add(id);
+        const project = projects.find(p => p.id === id);
+        if (!project?.chats || project.chats.length === 0) {
+          fetchChats(id);
+        }
+      } else {
+        next.delete(id);
+      }
       return next;
     });
     setCurrentProjectId(id);
@@ -500,7 +511,11 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
                         initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden pl-4 pr-1 flex flex-col gap-1 border-l ml-3 border-border/50"
                       >
-                        {(!project.chats || project.chats.length === 0) ? (
+                        {isChatsLoading ? (
+                          <div className="flex justify-center p-2">
+                             <div className="w-4 h-4 border-2 border-accent border-t-transparent rounded-full animate-spin opacity-50" />
+                          </div>
+                        ) : (!project.chats || project.chats.length === 0) ? (
                           <div className="text-xs text-muted/50 p-2 italic">No chats in this project.</div>
                         ) : (
                           project.chats.map(chat => (
