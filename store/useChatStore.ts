@@ -72,6 +72,8 @@ interface ChatState {
   updateProjectTitle: (projectId: string, title: string) => Promise<void>;
   updateProjectInstructions: (projectId: string, instructions: string) => Promise<void>;
   fetchCustomPersonas: () => Promise<void>;
+  restoreLastSession: (userId: string) => void;
+  saveSession: (userId: string, projectId: string, chatId: string) => void;
   createCustomPersona: (p: { name: string; icon: string; tagline: string; safe_content: string; spicy_content: string }) => Promise<void>;
   updateCustomPersona: (id: string, p: Partial<{ name: string; icon: string; tagline: string; safe_content: string; spicy_content: string }>) => Promise<void>;
   deleteCustomPersona: (id: string) => Promise<void>;
@@ -90,11 +92,38 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   setProjects: (projects) => set({ projects }),
   setCurrentProjectId: (id) => set({ currentProjectId: id }),
-
   setCurrentChatId: (id) => set({ currentChatId: id }),
   setMessages: (messages) => set((state) => ({
     messages: typeof messages === 'function' ? messages(state.messages) : messages
   })),
+
+  saveSession: (userId, projectId, chatId) => {
+    try {
+      localStorage.setItem(
+        `blxckchat-session-${userId}`,
+        JSON.stringify({ projectId, chatId, ts: Date.now() })
+      );
+    } catch (_) {}
+  },
+
+  restoreLastSession: (userId) => {
+    try {
+      const raw = localStorage.getItem(`blxckchat-session-${userId}`);
+      if (!raw) return;
+      const { projectId, chatId } = JSON.parse(raw);
+      const { projects } = get();
+      const project = projects.find(p => p.id === projectId);
+      if (!project) return;
+      const chat = project.chats?.find(c => c.id === chatId);
+      // Normalize timestamps: stored as strings in Supabase, need Date objects
+      const msgs = (chat?.messages ?? []).map((m: Message) => ({
+        ...m,
+        timestamp: m.timestamp instanceof Date ? m.timestamp : new Date(m.timestamp as unknown as string),
+      }));
+      set({ currentProjectId: projectId, currentChatId: chatId, messages: msgs });
+    } catch (_) {}
+  },
+
 
   fetchProjects: async () => {
     set({ isProjectsLoading: true });

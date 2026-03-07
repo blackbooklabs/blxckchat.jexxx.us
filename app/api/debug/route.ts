@@ -21,14 +21,21 @@ export async function GET() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
     if (url && key) {
-      const res = await fetch(`${url}/rest/v1/blxckchat_projects?limit=1`, {
+      // PROBE — specifically check the 'api' schema and 'custom_personas' table
+      const res = await fetch(`${url}/rest/v1/custom_personas?limit=1`, {
         headers: {
           'apikey': key,
           'Authorization': `Bearer ${key}`,
-          'Accept-Profile': 'public',
+          'Accept-Profile': 'api',
         },
       });
-      supabaseProbe = { status: res.status, body: await res.text() };
+      const body = await res.text();
+      supabaseProbe = { 
+        status: res.status, 
+        tableName: 'custom_personas',
+        schema: 'api',
+        body: body.includes('PGRST106') ? 'SCHEMA_CACHE_MISS' : body
+      };
     } else {
       supabaseProbe = { error: 'Missing URL or key' };
     }

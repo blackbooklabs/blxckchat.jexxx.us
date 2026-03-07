@@ -176,11 +176,14 @@ export default function ChatInterface() {
     setMessages, 
     fetchProjects, 
     updateChatMessages,
-    updateProjectInstructions
+    updateProjectInstructions,
+    saveSession,
+    restoreLastSession,
+    updateProjectTitle
   } = useChatStore();
   
   const activeProject = projects.find(p => p.id === currentProjectId);
-  const { isSignedIn, isLoaded } = useAuth();
+  const { isSignedIn, isLoaded, userId } = useAuth();
   
 const [globalContext, setGlobalContext] = useState("");
   const [providersConfig, setProvidersConfig] = useState<Record<Provider, ProviderState>>({
@@ -240,6 +243,20 @@ const [globalContext, setGlobalContext] = useState("");
       }
     }
   }, []);
+
+  // Restore session on initial load once projects are ready
+  useEffect(() => {
+    if (isLoaded && isSignedIn && userId && projects.length > 0 && !currentProjectId) {
+      restoreLastSession(userId);
+    }
+  }, [isLoaded, isSignedIn, userId, projects.length, currentProjectId, restoreLastSession]);
+
+  // Save session whenever project/chat changes
+  useEffect(() => {
+    if (userId && currentProjectId && currentChatId) {
+      saveSession(userId, currentProjectId, currentChatId);
+    }
+  }, [userId, currentProjectId, currentChatId, saveSession]);
 
 
 
@@ -496,6 +513,7 @@ const [globalContext, setGlobalContext] = useState("");
                          updateProjectInstructions(projectSettingsId, e.target.value);
                       }}
                       placeholder="e.g. 'Write explicitly in JavaScript' - This overrides the global settings for chats in this project only."
+                      autoCorrect="off" autoCapitalize="off" spellCheck={false}
                       className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent font-mono text-sm resize-none h-48"
                     />
                 </div>
@@ -709,6 +727,7 @@ const [globalContext, setGlobalContext] = useState("");
                       value={providersConfig[activeProvider].apiKey}
                       onChange={(e) => updateProviderConfig(activeProvider, { apiKey: e.target.value })}
                       placeholder={provider.keyPlaceholder}
+                      autoCorrect="off" autoCapitalize="off" spellCheck={false}
                       className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent font-mono text-sm"
                     />
                     <p className="text-xs text-muted mt-2 flex items-center gap-1">
@@ -730,6 +749,7 @@ const [globalContext, setGlobalContext] = useState("");
                         saveConfig(activeProvider, providersConfig, e.target.value);
                       }}
                       placeholder="e.g. 'Always write in Python' or 'Remember I am building a Next.js app...'"
+                      autoCorrect="off" autoCapitalize="off" spellCheck={false}
                       className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent font-mono text-sm resize-none h-24"
                     />
                   </div>
@@ -884,6 +904,7 @@ const [globalContext, setGlobalContext] = useState("");
               onKeyDown={handleKeyPress}
               placeholder={isConfigured ? "Summon the Goddess... 💬" : "⚙️ Add your API key first..."}
               disabled={isLoading}
+              autoCorrect="off" autoCapitalize="off" spellCheck={false}
               className="flex-1 px-4 py-3 bg-surface border border-border rounded-full focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <MilkingAnimation intensity={isLoading ? "gentle" : "passionate"}>
