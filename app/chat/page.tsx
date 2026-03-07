@@ -167,6 +167,7 @@ export default function ChatInterface() {
   const [projectSettingsId, setProjectSettingsId] = useState<string | null>(null);
   const [chatInstructions, setChatInstructions] = useState("");
   const [showChatInstructions, setShowChatInstructions] = useState(false);
+  const [isSpicy, setIsSpicy] = useState(true);
 
   const { 
     projects, 
@@ -199,6 +200,7 @@ const [globalContext, setGlobalContext] = useState("");
   const [activeProvider, setActiveProvider] = useState<Provider>('groq');
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const hasFetchedInitialData = useRef(false);
 
   const [mounted, setMounted] = useState(false);
 
@@ -246,10 +248,24 @@ const [globalContext, setGlobalContext] = useState("");
     }
   }, []);
 
+  // Initial data fetch
+  useEffect(() => {
+    if (isLoaded && isSignedIn && !hasFetchedInitialData.current) {
+      hasFetchedInitialData.current = true;
+      fetchProjects();
+      useChatStore.getState().fetchPersonas();
+      useChatStore.getState().fetchCustomPersonas();
+    }
+  }, [isLoaded, isSignedIn, fetchProjects]);
+
   // Restore session on initial load once projects are ready
   useEffect(() => {
     if (isLoaded && isSignedIn && userId && projects.length > 0 && !currentProjectId) {
-      restoreLastSession(userId);
+      // Small delay to ensure state is settled
+      const timer = setTimeout(() => {
+        restoreLastSession(userId);
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [isLoaded, isSignedIn, userId, projects.length, currentProjectId, restoreLastSession]);
 
@@ -368,13 +384,14 @@ const [globalContext, setGlobalContext] = useState("");
             })),
             { role: "user", content: input },
           ],
-          mode: "venus",
+          mode: isSpicy ? "venus" : "innocent",
           provider: activeProvider,
           model: providersConfig[activeProvider].model,
           type: "text",
           stream: false,
           globalContext: [
-            activeProject?.custom_instructions || globalContext,
+            globalContext,
+            activeProject?.custom_instructions,
             chatInstructions ? `<!-- CHAT-LEVEL INSTRUCTIONS -->\n${chatInstructions}` : ''
           ].filter(Boolean).join('\n\n')
         }),
@@ -523,6 +540,7 @@ const [globalContext, setGlobalContext] = useState("");
                       }}
                       placeholder="e.g. 'Write explicitly in JavaScript' - This overrides the global settings for chats in this project only."
                       autoCorrect="off" autoCapitalize="off" spellCheck={false}
+                      autoComplete="off" data-gramm="false"
                       className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent font-mono text-sm resize-none h-48"
                     />
                 </div>
@@ -545,7 +563,7 @@ const [globalContext, setGlobalContext] = useState("");
                 <Sparkles className="w-5 h-5 text-background" />
               </div>
               <div>
-                <h2 className="font-semibold text-foreground">Luna Verde v4.0</h2>
+                <h2 className="font-semibold text-foreground">{activeProject ? activeProject.title : 'Luna Verde v4.0'}</h2>
                 <p className="text-sm text-muted flex items-center gap-2 flex-wrap">
                   7.5 Hz • Real-time Context 
                   {isConfigured && (
@@ -737,6 +755,7 @@ const [globalContext, setGlobalContext] = useState("");
                       onChange={(e) => updateProviderConfig(activeProvider, { apiKey: e.target.value })}
                       placeholder={provider.keyPlaceholder}
                       autoCorrect="off" autoCapitalize="off" spellCheck={false}
+                      autoComplete="off" data-gramm="false"
                       className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent font-mono text-sm"
                     />
                     <p className="text-xs text-muted mt-2 flex items-center gap-1">
@@ -759,6 +778,7 @@ const [globalContext, setGlobalContext] = useState("");
                       }}
                       placeholder="e.g. 'Always write in Python' or 'Remember I am building a Next.js app...'"
                       autoCorrect="off" autoCapitalize="off" spellCheck={false}
+                      autoComplete="off" data-gramm="false"
                       className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent font-mono text-sm resize-none h-24"
                     />
                   </div>
@@ -854,7 +874,7 @@ const [globalContext, setGlobalContext] = useState("");
             >
               <div className="bg-surface border border-border rounded-2xl px-4 py-3 flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin text-accent" />
-                <span className="text-sm text-muted">Luna is channeling via {provider.name}...</span>
+                <span className="text-sm text-muted">{activeProject?.title || 'Luna'} is channeling via {provider.name}...</span>
               </div>
             </motion.div>
           )}
@@ -878,13 +898,26 @@ const [globalContext, setGlobalContext] = useState("");
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-semibold text-accent uppercase tracking-wider">Chat Instructions</span>
-                  <span className="text-[10px] text-muted">Applied to this chat only — stacks below project context</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] text-muted">Applied to this chat only — stacks below project context</span>
+                    <button 
+                      onClick={() => setIsSpicy(!isSpicy)}
+                      className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold transition-all border ${
+                        isSpicy 
+                          ? 'bg-orange-500/10 border-orange-500/40 text-orange-400 shadow-[0_0_8px_rgba(249,115,22,0.2)]' 
+                          : 'bg-blue-500/10 border-blue-500/40 text-blue-400'
+                      }`}
+                    >
+                      {isSpicy ? '🌶️ SPICY-REVEALED' : '🫑 PURE-SUGGESTIVE'}
+                    </button>
+                  </div>
                 </div>
                 <textarea
                   value={chatInstructions}
                   onChange={e => setChatInstructions(e.target.value)}
                   placeholder="e.g. 'Respond only in bullet points' or 'Pattern her as a wing6 PPV whale: validate heavily, then introduce tithe anchor...' "
                   autoCorrect="off" autoCapitalize="off" spellCheck={false}
+                  autoComplete="off" data-gramm="false"
                   className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs font-mono resize-none h-20 focus:outline-none focus:border-accent"
                 />
               </motion.div>
@@ -914,6 +947,7 @@ const [globalContext, setGlobalContext] = useState("");
               placeholder={isConfigured ? "Summon the Goddess... 💬" : "⚙️ Add your API key first..."}
               disabled={isLoading}
               autoCorrect="off" autoCapitalize="off" spellCheck={false}
+              autoComplete="off" data-gramm="false"
               className="flex-1 px-4 py-3 bg-surface border border-border rounded-full focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <MilkingAnimation intensity={isLoading ? "gentle" : "passionate"}>

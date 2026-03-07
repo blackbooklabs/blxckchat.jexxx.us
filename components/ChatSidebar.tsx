@@ -81,8 +81,9 @@ function PersonaModal({ onClose, editTarget }: PersonaModalProps) {
                 value={name}
                 onChange={e => setName(e.target.value)}
                 placeholder="e.g. Redeemed Ingnue"
-                autoCorrect="off" autoCapitalize="off" spellCheck={false}
-                className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-accent"
+                  autoCorrect="off" autoCapitalize="off" spellCheck={false}
+                  autoComplete="off" data-gramm="false"
+                  className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm focus:outline-none focus:border-accent"
               />
             </div>
           </div>
@@ -108,8 +109,9 @@ function PersonaModal({ onClose, editTarget }: PersonaModalProps) {
               value={safeContent}
               onChange={e => setSafeContent(e.target.value)}
               placeholder="The public-facing persona system prompt. Define tone, style, purpose..."
-              autoCorrect="off" autoCapitalize="off" spellCheck={false}
-              className="w-full px-3 py-2 bg-background border border-border rounded-xl text-xs font-mono resize-none h-28 focus:outline-none focus:border-accent"
+                  autoCorrect="off" autoCapitalize="off" spellCheck={false}
+                  autoComplete="off" data-gramm="false"
+                  className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm font-mono resize-none h-32 focus:outline-none focus:border-accent"
             />
             <span className={`text-[10px] text-right ${safeContent.length >= 50 ? 'text-green-400' : 'text-muted'}`}>
               {safeContent.length}/50 min
@@ -177,13 +179,45 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
     setInvokingPersonaId,
   } = useChatStore();
 
+  const [sidebarWidth, setSidebarWidth] = useState(260);
+  const [isResizing, setIsResizing] = useState(false);
+
+  // Load width from localStorage
   useEffect(() => {
-    fetchPersonas();
-  }, [fetchPersonas]);
+    const saved = localStorage.getItem("blxckchat-sidebar-width");
+    if (saved) {
+      const w = parseInt(saved);
+      if (w >= 200 && w <= 500) setSidebarWidth(w);
+    }
+  }, []);
+
+  const startResizing = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
 
   useEffect(() => {
-    if (isSignedIn) fetchCustomPersonas();
-  }, [isSignedIn, fetchCustomPersonas]);
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      let newWidth = e.clientX;
+      if (newWidth < 200) newWidth = 200;
+      if (newWidth > 500) newWidth = 500;
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      localStorage.setItem("blxckchat-sidebar-width", sidebarWidth.toString());
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing, sidebarWidth]);
 
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   // Rename state
@@ -305,11 +339,19 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
       </AnimatePresence>
 
       <motion.div
-        className="fixed md:relative top-0 left-0 h-full bg-surface border-r border-border z-50 flex flex-col shrink-0 overflow-hidden w-64"
+        className="fixed md:relative top-0 left-0 h-full bg-surface border-r border-border z-50 flex flex-col shrink-0 overflow-hidden"
         initial={false}
-        animate={{ width: isOpen ? 256 : 0, opacity: isOpen ? 1 : 0 }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        animate={{ width: isOpen ? sidebarWidth : 0, opacity: isOpen ? 1 : 0 }}
+        transition={isResizing ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 30 }}
+        style={{ width: isOpen ? sidebarWidth : 0 }}
       >
+        {/* Resize Handle */}
+        {isOpen && (
+          <div
+            onMouseDown={startResizing}
+            className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize z-[60] hover:bg-accent/40 transition-colors ${isResizing ? 'bg-accent/60' : 'bg-transparent'}`}
+          />
+        )}
         {/* ── TOP: Divinities ──────────────────────────────────────────────── */}
         <div className="flex flex-col min-h-0 max-h-[55%] overflow-y-auto border-b border-border p-4 gap-3 slim-scrollbar shrink-0">
           {/* New Project button */}
@@ -480,9 +522,8 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
                             if (e.key === "Escape") setRenamingId(null);
                           }}
                           onClick={e => e.stopPropagation()}
-                          autoCorrect="off"
-                          autoCapitalize="off"
-                          spellCheck={false}
+                          autoCorrect="off" autoCapitalize="off" spellCheck={false}
+                          autoComplete="off" data-gramm="false"
                           className="flex-1 bg-transparent border-b border-accent text-sm font-medium focus:outline-none text-foreground"
                         />
                       ) : (
@@ -545,9 +586,8 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
                                     if (e.key === "Escape") setRenamingChatId(null);
                                   }}
                                   onClick={e => e.stopPropagation()}
-                                  autoCorrect="off"
-                                  autoCapitalize="off"
-                                  spellCheck={false}
+                                  autoCorrect="off" autoCapitalize="off" spellCheck={false}
+                                  autoComplete="off" data-gramm="false"
                                   className="flex-1 bg-transparent border-b border-accent text-xs focus:outline-none text-foreground"
                                 />
                               ) : (
