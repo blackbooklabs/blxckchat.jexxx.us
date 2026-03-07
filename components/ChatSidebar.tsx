@@ -365,6 +365,10 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
                           if (existingProject) {
                             targetProjectId = existingProject.id;
                             setCurrentProjectId(targetProjectId);
+                            setExpandedProjects(prev => new Set([...prev, targetProjectId]));
+                            if (!existingProject.chats || existingProject.chats.length === 0) {
+                              await fetchChats(targetProjectId);
+                            }
                             await setActivePersona(targetProjectId, p.id, gatedCanon);
                             await createChat(targetProjectId, `New Chat with ${p.name}`);
                           } else {
@@ -372,6 +376,7 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
                             if (newProject) {
                               targetProjectId = newProject.id;
                               setCurrentProjectId(targetProjectId);
+                              setExpandedProjects(prev => new Set([...prev, targetProjectId]));
                               await createChat(targetProjectId, `Initial invocation: ${p.name}`);
                             }
                           }
