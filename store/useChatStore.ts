@@ -14,7 +14,9 @@ export interface PersonaPreset {
   name: string;
   tagline: string;
   icon: string;
-  content: string;
+  safe_content: string;
+  spicy_content: string | null; // null if user is unauthenticated
+  content: string;              // ready-to-inject value (safe or safe+spicy)
 }
 
 export interface Project {
@@ -58,6 +60,7 @@ interface ChatState {
   // Async thunks (fetching)
   fetchProjects: () => Promise<void>;
   fetchPersonas: () => Promise<void>;
+  personasAuthenticated: boolean;
   createProject: (title: string, custom_instructions?: string) => Promise<Project | null>;
   fetchChats: (projectId: string) => Promise<void>;
   createChat: (projectId: string, title?: string, initialMessages?: Message[]) => Promise<Chat | null>;
@@ -76,6 +79,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   isProjectsLoading: false,
   isChatsLoading: false,
   isPersonasLoading: false,
+  personasAuthenticated: false,
 
   setProjects: (projects) => set({ projects }),
   setCurrentProjectId: (id) => set({ currentProjectId: id }),
@@ -109,7 +113,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const res = await fetch('/api/personas');
       if (res.ok) {
         const data = await res.json();
-        set({ personas: data.personas || [] });
+        set({ personas: data.personas || [], personasAuthenticated: data.isAuthenticated || false });
       }
     } catch (e) {
       console.error('Failed to fetch personas', e);

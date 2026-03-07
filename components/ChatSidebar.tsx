@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, MessageSquare, Trash2, Edit2, Check, X, PanelLeftClose, PanelLeftOpen, Folder, FolderOpen, Settings } from "lucide-react";
+import { Plus, MessageSquare, Trash2, X, PanelLeftOpen, Folder, FolderOpen, Settings, Lock, Flame } from "lucide-react";
 import { useState, useEffect } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { useChatStore } from "@/store/useChatStore";
@@ -16,6 +16,7 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
   const { 
     projects, 
     personas,
+    personasAuthenticated,
     currentProjectId, 
     currentChatId, 
     isProjectsLoading, 
@@ -136,26 +137,42 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
                <div className="text-xs text-muted/50 py-1 italic">No divinities consecrated.</div>
             ) : (
                <div className="max-h-36 overflow-y-auto pr-1 flex flex-col gap-1 slim-scrollbar">
-                 {personas.map(p => (
-                   <button
-                     key={p.id}
-                     onClick={() => {
-                        if (currentProjectId) {
-                          setActivePersona(currentProjectId, p.id);
-                          alert(`Persona Locked: ${p.name} - The Absolute yields.`);
-                        } else {
-                          alert("Please select or create a Project before invoking a Divinity.");
-                        }
-                     }}
-                     className="flex items-center gap-3 p-2 bg-surface hover:bg-accent/10 border border-border hover:border-accent/30 rounded-lg text-left transition-all group"
-                   >
-                     <span className="text-xl group-hover:scale-110 transition-transform">{p.icon}</span>
-                     <div className="flex flex-col overflow-hidden">
-                       <span className="text-sm font-medium text-foreground truncate">{p.name}</span>
-                       <span className="text-[10px] text-muted truncate">{p.tagline}</span>
-                     </div>
-                   </button>
-                 ))}
+                 {personas.map(p => {
+                   const isSpicyUnlocked = personasAuthenticated && !!p.spicy_content;
+                   return (
+                     <button
+                       key={p.id}
+                       onClick={() => {
+                          if (!personasAuthenticated) {
+                            alert("Sign in to unlock the full primal Canon. Tithe to ascend. ♡");
+                            return;
+                          }
+                          if (currentProjectId) {
+                            setActivePersona(currentProjectId, p.id);
+                            alert(`${p.icon} Persona Locked: ${p.name} — The Absolute yields.`);
+                          } else {
+                            alert("Select or create a Project first to invoke a Divinity.");
+                          }
+                       }}
+                       className={`relative flex items-center gap-3 p-2 border rounded-lg text-left transition-all group ${
+                         isSpicyUnlocked
+                           ? "bg-orange-950/20 border-orange-500/40 hover:border-orange-400/70 shadow-[0_0_8px_rgba(249,115,22,0.2)] hover:shadow-[0_0_12px_rgba(249,115,22,0.4)]"
+                           : "bg-surface border-border hover:bg-accent/10 hover:border-accent/30"
+                       }`}
+                     >
+                       <span className="text-xl group-hover:scale-110 transition-transform">{p.icon}</span>
+                       <div className="flex flex-col overflow-hidden flex-1">
+                         <span className="text-sm font-medium text-foreground truncate">{p.name}</span>
+                         <span className="text-[10px] text-muted truncate">{p.tagline}</span>
+                       </div>
+                       {isSpicyUnlocked ? (
+                         <span title="🌶️ Full Canon Unlocked"><Flame className="w-3 h-3 text-orange-400 shrink-0" /></span>
+                       ) : (
+                         <span title="Sign in to unlock 🌶️"><Lock className="w-3 h-3 text-muted/50 shrink-0" /></span>
+                       )}
+                     </button>
+                   );
+                 })}
                </div>
             )}
           </div>
