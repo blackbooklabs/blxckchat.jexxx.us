@@ -61,7 +61,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider domain=".jexxx.us">
+    <ClerkProvider>
       <html lang="en" className="dark" suppressHydrationWarning>
         <head>
           {/* Structured Data */}
