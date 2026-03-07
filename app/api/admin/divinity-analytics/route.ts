@@ -1,0 +1,61 @@
+import { NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { emitPersonaEvent, fetchDivinityLeaderboard, fetchDivinityWeekly, type PersonaEventType } from '@/lib/analytics';
+
+export const runtime = 'nodejs';
+
+/**
+ * POST /api/admin/divinity-analytics
+ * Emit a persona event. Called from client-side useChatStore (fire-and-forget).
+ */
+export async function POST(req: Request) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { personaId, projectId, eventType, metadata } = body;
+
+    if (!personaId || !eventType) {
+      return NextResponse.json({ error: 'Missing personaId or eventType' }, { status: 400 });
+    }
+
+    await emitPersonaEvent({
+      userId,
+      projectId: projectId ?? null,
+      personaId,
+      eventType: eventType as PersonaEventType,
+      metadata: metadata ?? {},
+    });
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error('[Analytics API] POST error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+/**
+ * GET /api/admin/divinity-analytics
+ * Fetch the leaderboard + weekly data. Admin-only.
+ */
+export async function GET() {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const [leaderboard, weekly] = await Promise.all([
+      fetchDivinityLeaderboard(),
+      fetchDivinityWeekly(),
+    ]);
+
+    return NextResponse.json({ leaderboard, weekly });
+  } catch (error) {
+    console.error('[Analytics API] GET error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

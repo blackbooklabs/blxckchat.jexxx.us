@@ -129,6 +129,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
     
     // Push the raw .md payload into custom_instructions
     await state.updateProjectInstructions(projectId, persona.content);
+
+    // Fire-and-forget analytics event — non-blocking
+    fetch('/api/admin/divinity-analytics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        personaId: personaId,
+        projectId,
+        eventType: 'persona_selected',
+      }),
+    }).catch(() => {}); // silent fail — empire must not stall for tracking
   },
 
   createProject: async (title: string, custom_instructions: string = '') => {
