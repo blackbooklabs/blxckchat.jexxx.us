@@ -6,7 +6,7 @@ import { cookies } from 'next/headers';
 import { verifyToken } from '@clerk/nextjs/server';
 
 export async function getServerUserId(): Promise<string | null> {
-  const secretKey = process.env.CLERK_SECRET_KEY;
+  const secretKey = process.env.CLERK_SECRET_KEY ?? process.env.CLERK_SECRET_DEFAULT;
   if (!secretKey) {
     console.warn('[Auth] CLERK_SECRET_KEY not set — cannot verify session.');
     return null;
