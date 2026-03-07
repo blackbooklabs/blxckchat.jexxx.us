@@ -187,6 +187,7 @@ export default function ChatInterface() {
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
   const { isSignedIn, isLoaded } = useAuth();
   
+const [globalContext, setGlobalContext] = useState("");
   const [providersConfig, setProvidersConfig] = useState<Record<Provider, ProviderState>>({
     openai: { apiKey: '', model: PROVIDERS.openai.defaultModel, availableModels: PROVIDERS.openai.models },
     grok: { apiKey: '', model: PROVIDERS.grok.defaultModel, availableModels: PROVIDERS.grok.models },
@@ -208,6 +209,7 @@ export default function ChatInterface() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
+        if (parsed.globalContext) setGlobalContext(parsed.globalContext);
         if (parsed.providersConfig) {
           // Merge old config but force-update the availableModels array to the 2026 latest 
           setProvidersConfig(prev => {
@@ -320,10 +322,12 @@ export default function ChatInterface() {
     }
   };
 
-  const saveConfig = (newActive: Provider, newConfigs: Record<Provider, ProviderState>) => {
+  const saveConfig = (newActive: Provider, newConfigs: Record<Provider, ProviderState>, newContext?: string) => {
+    const contextToSave = newContext !== undefined ? newContext : globalContext;
     setActiveProvider(newActive);
     setProvidersConfig(newConfigs);
-    sessionStorage.setItem('luna-api-config', JSON.stringify({ activeProvider: newActive, providersConfig: newConfigs }));
+    setGlobalContext(contextToSave);
+    sessionStorage.setItem('luna-api-config', JSON.stringify({ activeProvider: newActive, providersConfig: newConfigs, globalContext: contextToSave }));
   };
 
   const updateProviderConfig = (provider: Provider, updates: Partial<ProviderState>) => {
@@ -422,6 +426,7 @@ export default function ChatInterface() {
           model: providersConfig[activeProvider].model,
           type: "text",
           stream: false,
+          globalContext: globalContext
         }),
         signal: abortControllerRef.current.signal,
       });
@@ -723,6 +728,23 @@ export default function ChatInterface() {
                       <Shield className="w-3 h-3" />
                       Expected format: <code className="bg-muted/30 px-1 rounded">{provider.keyPlaceholder}</code> • Never stored on JEXXXUS servers
                     </p>
+                  </div>
+
+                  {/* Global Context / Instructions */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      Global Instructions (System Prompt)
+                      <span className="text-muted font-normal ml-1">(Applied to all chats)</span>
+                    </label>
+                    <textarea
+                      value={globalContext}
+                      onChange={(e) => {
+                        setGlobalContext(e.target.value);
+                        saveConfig(activeProvider, providersConfig, e.target.value);
+                      }}
+                      placeholder="e.g. 'Always write in Python' or 'Remember I am building a Next.js app...'"
+                      className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent font-mono text-sm resize-none h-24"
+                    />
                   </div>
 
                   {/* Status */}
