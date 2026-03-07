@@ -1,0 +1,28 @@
+/**
+ * Temporary debug endpoint — returns auth state, cookie names, and env var presence.
+ * Visit: /api/debug to see what the server sees.
+ * REMOVE after debugging.
+ */
+import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { getServerUserId } from '@/lib/serverAuth';
+
+export const runtime = 'nodejs';
+
+export async function GET() {
+  const cookieStore = await cookies();
+  const allCookies = cookieStore.getAll();
+
+  const userId = await getServerUserId();
+
+  return NextResponse.json({
+    userId,
+    authenticated: !!userId,
+    cookieNames: allCookies.map(c => c.name),
+    hasClerkSession: allCookies.some(c => c.name === '__session'),
+    hasClerkDbJwt: allCookies.some(c => c.name === '__clerk_db_jwt'),
+    hasClerkKey: !!process.env.CLERK_SECRET_KEY,
+    hasPublishableKey: !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+    env: process.env.NODE_ENV,
+  });
+}

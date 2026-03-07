@@ -157,9 +157,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
           set((state) => ({ projects: [newProject, ...state.projects] }));
           return newProject;
         }
+      } else {
+        const errText = await res.text();
+        console.error(`[createProject] ${res.status} ${res.statusText}:`, errText);
+        // Surface the error to the user
+        alert(`⚠️ Failed to create project (${res.status}): ${errText || res.statusText}`);
       }
     } catch (e) {
       console.error('Failed to create project', e);
+      alert('⚠️ Network error creating project. Check console.');
     }
     return null;
   },
