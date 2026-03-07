@@ -170,6 +170,8 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
     setActivePersona,
     updateProjectTitle,
     deleteCustomPersona,
+    invokingPersonaId,
+    setInvokingPersonaId,
   } = useChatStore();
 
   useEffect(() => {
@@ -309,26 +311,55 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
                 return (
                   <div key={p.id} className="group relative">
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         if (!isSignedIn) { alert("Sign in to unlock the full primal Canon. Tithe to ascend. ♡"); return; }
-                        if (currentProjectId) {
-                          const contentToInject = isSpicyUnlocked
+                        
+                        setInvokingPersonaId(p.id);
+                        try {
+                          const isSpicyUnlocked = !!isSignedIn && !!p.spicy_content;
+                          const gatedCanon = isSpicyUnlocked
                             ? `${p.safe_content}\n\n---\n<!-- 🌶️ SPICY-REVEALED — Authenticated & Unlocked -->\n\n${p.spicy_content}`
                             : p.safe_content;
-                          setActivePersona(currentProjectId, p.id, contentToInject);
-                          // Auto-rename. project to persona name (user can override anytime)
-                          updateProjectTitle(currentProjectId, p.name);
-                          alert(`${p.icon} ${p.name} — The Absolute yields. ♡`);
-                        } else {
-                          alert("Select or create a Project first to invoke a Divinity.");
+
+                          let targetProjectId = "";
+                          const existingProject = projects.find(proj => 
+                            proj.title.trim().toLowerCase() === p.name.trim().toLowerCase()
+                          );
+
+                          if (existingProject) {
+                            targetProjectId = existingProject.id;
+                            setCurrentProjectId(targetProjectId);
+                            await setActivePersona(targetProjectId, p.id, gatedCanon);
+                            await createChat(targetProjectId, `New Chat with ${p.name}`);
+                          } else {
+                            const newProject = await createProject(p.name, gatedCanon);
+                            if (newProject) {
+                              targetProjectId = newProject.id;
+                              setCurrentProjectId(targetProjectId);
+                              await createChat(targetProjectId, `Initial invocation: ${p.name}`);
+                            }
+                          }
+                        } finally {
+                          setInvokingPersonaId(null);
                         }
                       }}
-                      className={`w-full flex items-center gap-3 p-2 border rounded-lg text-left transition-all ${
-                        isSpicyUnlocked
-                          ? "bg-orange-950/20 border-orange-500/40 hover:border-orange-400/70 shadow-[0_0_8px_rgba(249,115,22,0.2)]"
-                          : "bg-surface border-border hover:bg-accent/10 hover:border-accent/30"
+                      className={`w-full flex items-center gap-3 p-2 border rounded-lg text-left transition-all relative overflow-hidden ${
+                        invokingPersonaId === p.id 
+                          ? "border-accent ring-2 ring-accent/20"
+                          : isSpicyUnlocked
+                            ? "bg-orange-950/20 border-orange-500/40 hover:border-orange-400/70 shadow-[0_0_8px_rgba(249,115,22,0.2)]"
+                            : "bg-surface border-border hover:bg-accent/10 hover:border-accent/30"
                       }`}
                     >
+                      {invokingPersonaId === p.id && (
+                        <motion.div 
+                          layoutId="toroidal-pulse"
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.1, 0.3] }}
+                          transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                          className="absolute inset-0 bg-accent/10 pointer-events-none rounded-lg"
+                        />
+                      )}
                       <span className="text-xl group-hover:scale-110 transition-transform">{p.icon}</span>
                       <div className="flex flex-col overflow-hidden flex-1">
                         <span className="text-sm font-medium text-foreground truncate">{p.name}</span>

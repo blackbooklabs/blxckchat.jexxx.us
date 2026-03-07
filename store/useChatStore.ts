@@ -50,10 +50,12 @@ interface ChatState {
   isProjectsLoading: boolean;
   isChatsLoading: boolean;
   isPersonasLoading: boolean;
+  invokingPersonaId: string | null;
 
   // Actions
   setProjects: (projects: Project[]) => void;
   setCurrentProjectId: (id: string | null) => void;
+  setInvokingPersonaId: (id: string | null) => void;
 
   setCurrentChatId: (id: string | null) => void;
   setMessages: (messages: Message[] | ((prev: Message[]) => Message[])) => void;
@@ -62,7 +64,6 @@ interface ChatState {
   // Async thunks (fetching)
   fetchProjects: () => Promise<void>;
   fetchPersonas: () => Promise<void>;
-  personasAuthenticated: boolean;
   createProject: (title: string, custom_instructions?: string) => Promise<Project | null>;
   fetchChats: (projectId: string) => Promise<void>;
   createChat: (projectId: string, title?: string, initialMessages?: Message[]) => Promise<Chat | null>;
@@ -88,10 +89,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
   isProjectsLoading: false,
   isChatsLoading: false,
   isPersonasLoading: false,
-  personasAuthenticated: false,
+  invokingPersonaId: null,
 
   setProjects: (projects) => set({ projects }),
   setCurrentProjectId: (id) => set({ currentProjectId: id }),
+  setInvokingPersonaId: (id) => set({ invokingPersonaId: id }),
   setCurrentChatId: (id) => set({ currentChatId: id }),
   setMessages: (messages) => set((state) => ({
     messages: typeof messages === 'function' ? messages(state.messages) : messages
