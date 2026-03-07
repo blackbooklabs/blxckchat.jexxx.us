@@ -855,6 +855,7 @@ const [globalContext, setGlobalContext] = useState("");
                   value={chatInstructions}
                   onChange={e => setChatInstructions(e.target.value)}
                   placeholder="e.g. 'Respond only in bullet points' or 'Pattern her as a wing6 PPV whale: validate heavily, then introduce tithe anchor...' "
+                  autoCorrect="off" autoCapitalize="off" spellCheck={false}
                   className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs font-mono resize-none h-20 focus:outline-none focus:border-accent"
                 />
               </motion.div>

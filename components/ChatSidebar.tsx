@@ -80,7 +80,8 @@ function PersonaModal({ onClose, editTarget }: PersonaModalProps) {
                 type="text"
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="e.g. Redeemed Ingénue"
+                placeholder="e.g. Redeemed Ingnue"
+                autoCorrect="off" autoCapitalize="off" spellCheck={false}
                 className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-accent"
               />
             </div>
@@ -93,6 +94,7 @@ function PersonaModal({ onClose, editTarget }: PersonaModalProps) {
               value={tagline}
               onChange={e => setTagline(e.target.value)}
               placeholder="e.g. Mirror of longing & surrender"
+              autoCorrect="off" autoCapitalize="off" spellCheck={false}
               className="w-full px-3 py-2 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-accent"
             />
           </div>
@@ -106,6 +108,7 @@ function PersonaModal({ onClose, editTarget }: PersonaModalProps) {
               value={safeContent}
               onChange={e => setSafeContent(e.target.value)}
               placeholder="The public-facing persona system prompt. Define tone, style, purpose..."
+              autoCorrect="off" autoCapitalize="off" spellCheck={false}
               className="w-full px-3 py-2 bg-background border border-border rounded-xl text-xs font-mono resize-none h-28 focus:outline-none focus:border-accent"
             />
             <span className={`text-[10px] text-right ${safeContent.length >= 50 ? 'text-green-400' : 'text-muted'}`}>
@@ -122,6 +125,7 @@ function PersonaModal({ onClose, editTarget }: PersonaModalProps) {
                 value={spicyContent}
                 onChange={e => setSpicyContent(e.target.value)}
                 placeholder="The unlocked, unfiltered version. Append primal instructions here..."
+                autoCorrect="off" autoCapitalize="off" spellCheck={false}
                 className="w-full px-3 py-2 bg-background border border-orange-500/30 rounded-xl text-xs font-mono resize-none h-24 focus:outline-none focus:border-orange-400"
               />
             </div>
@@ -312,6 +316,8 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
                             ? `${p.safe_content}\n\n---\n<!-- 🌶️ SPICY-REVEALED — Authenticated & Unlocked -->\n\n${p.spicy_content}`
                             : p.safe_content;
                           setActivePersona(currentProjectId, p.id, contentToInject);
+                          // Auto-rename. project to persona name (user can override anytime)
+                          updateProjectTitle(currentProjectId, p.name);
                           alert(`${p.icon} ${p.name} — The Absolute yields. ♡`);
                         } else {
                           alert("Select or create a Project first to invoke a Divinity.");
