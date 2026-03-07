@@ -9,6 +9,7 @@ import { streamText, generateText, generateImage } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createXai } from '@ai-sdk/xai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createGroq } from '@ai-sdk/groq';
 import { loadLunaContext } from '@/lib/luna-context';
 
 export const runtime = 'edge';
@@ -79,18 +80,16 @@ const PROVIDERS: Record<string, ProviderConfig> = {
     // Kimi uses OpenAI-compatible API
     createProvider: (apiKey: string) => createOpenAI({ 
       apiKey,
-      baseURL: 'https://api.moonshot.cn/v1'
-    }),
+      baseURL: 'https://api.moonshot.cn/v1',
+      compatibility: 'compatible',
+    } as any),
     defaultModel: 'kimi-k2-0711',
     models: ['kimi-k3', 'kimi-k2-0711', 'moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
   },
   groq: {
     name: 'Groq',
     keyHeader: 'x-groq-key',
-    createProvider: (apiKey: string) => createOpenAI({ 
-      apiKey,
-      baseURL: 'https://api.groq.com/openai/v1'
-    }),
+    createProvider: (apiKey: string) => createGroq({ apiKey }),
     defaultModel: 'llama3-8b-8192',
     models: ['llama3-8b-8192', 'llama3-70b-8192', 'mixtral-8x7b-32768', 'gemma-7b-it'],
   },
@@ -99,8 +98,9 @@ const PROVIDERS: Record<string, ProviderConfig> = {
     keyHeader: 'x-openrouter-key',
     createProvider: (apiKey: string) => createOpenAI({ 
       apiKey,
-      baseURL: 'https://openrouter.ai/api/v1'
-    }),
+      baseURL: 'https://openrouter.ai/api/v1',
+      compatibility: 'compatible',
+    } as any),
     defaultModel: 'meta-llama/llama-3-8b-instruct:free',
     models: [
       'meta-llama/llama-3-8b-instruct:free',
