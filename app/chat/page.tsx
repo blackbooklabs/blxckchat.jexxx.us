@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Send, User, Heart, Sparkles, Loader2, Settings, Key, X, ChevronDown, Shield, LogIn, SlidersHorizontal } from "lucide-react";
+import { Send, User, Heart, Sparkles, Loader2, Settings, Key, X, ChevronDown, Shield, LogIn, SlidersHorizontal, Copy, Check, Pencil, Volume2, VolumeX, Paperclip, FileText, Image } from "lucide-react";
 import { useAuth, UserButton, SignInButton } from "@clerk/nextjs";
 import CursorMotion from "@/components/CursorMotion";
 import MilkingAnimation from "@/components/MilkingAnimation";
@@ -182,13 +182,105 @@ export default function ChatInterface() {
     autoRenameChat,
     saveSession,
     restoreLastSession,
-    updateProjectTitle
+    updateProjectTitle,
+    deleteMessagesAfter,
+    personas,
+    invokingPersonaId
   } = useChatStore();
+
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   
   const activeProject = projects.find(p => p.id === currentProjectId);
   const { isSignedIn, isLoaded, userId } = useAuth();
   
 const [globalContext, setGlobalContext] = useState("");
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
+  const [stagedFiles, setStagedFiles] = useState<File[]>([]);
+  const [stagedImages, setStagedImages] = useState<{name: string, data: string}[]>([]);
+  const [extractedContext, setExtractedContext] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const stopSpeaking = useCallback(() => {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setSpeakingId(null);
+  }, []);
+
+  const handleVolumeClick = useCallback((msgId: string, text: string) => {
+    if (speakingId === msgId) {
+      stopSpeaking();
+      return;
+    }
+    
+    stopSpeaking(); // Stop any current speech
+    
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      // Find active persona settings
+      const activePersona = personas.find(p => p.id === invokingPersonaId);
+      const voiceSettings = activePersona?.tts_voice || { pitch: 1.0, rate: 1.0, lang: "en-US" };
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.onend = () => setSpeakingId(null);
+      utterance.onerror = () => setSpeakingId(null);
+      
+      utterance.pitch = voiceSettings.pitch;
+      utterance.rate = voiceSettings.rate;
+      utterance.lang = voiceSettings.lang || "en-US";
+
+      // Find best matching voice
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length > 0) {
+        const preferredVoice = voices.find(v => 
+          v.lang === voiceSettings.lang && 
+          (voiceSettings.voiceName ? v.name.includes(voiceSettings.voiceName.split(" ")[0]) : false)
+        ) || voices.find(v => v.lang === voiceSettings.lang) || voices[0];
+        
+        if (preferredVoice) utterance.voice = preferredVoice;
+      }
+
+      // Internal Logging / Analytics Watermark
+      console.log(`[MANIFEST_TTS] Speaking as: ${activePersona?.name || 'A New Creation'} | Pitch: ${voiceSettings.pitch} | Rate: ${voiceSettings.rate}`);
+      
+      window.speechSynthesis.speak(utterance);
+      setSpeakingId(msgId);
+    }
+  }, [speakingId, stopSpeaking, personas, invokingPersonaId]);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    setStagedFiles(prev => [...prev, ...files]);
+    
+    // For text-based files, extract content immediately
+    for (const file of files) {
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const base64 = event.target?.result as string;
+          setStagedImages(prev => [...prev, { name: file.name, data: base64 }]);
+        };
+        reader.readAsDataURL(file);
+      } else if (file.type.startsWith('text/') || file.name.endsWith('.md') || file.name.endsWith('.json') || file.name.endsWith('.js') || file.name.endsWith('.ts')) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const content = event.target?.result as string;
+          setExtractedContext(prev => {
+            const separator = prev ? '\n\n' : '';
+            return `${prev}${separator}<!-- FILE CONTENT: ${file.name} (uploaded by user) -->\n${content}`;
+          });
+        };
+        reader.readAsText(file);
+      }
+    }
+    
+    // Clear input so same file can be uploaded again
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+  const [activeProvider, setActiveProvider] = useState<Provider>('groq');
   const [providersConfig, setProvidersConfig] = useState<Record<Provider, ProviderState>>({
     openai: { apiKey: '', model: PROVIDERS.openai.defaultModel, availableModels: PROVIDERS.openai.models },
     grok: { apiKey: '', model: PROVIDERS.grok.defaultModel, availableModels: PROVIDERS.grok.models },
@@ -197,7 +289,6 @@ const [globalContext, setGlobalContext] = useState("");
     groq: { apiKey: '', model: PROVIDERS.groq.defaultModel, availableModels: PROVIDERS.groq.models },
     openrouter: { apiKey: '', model: PROVIDERS.openrouter.defaultModel, availableModels: PROVIDERS.openrouter.models },
   });
-  const [activeProvider, setActiveProvider] = useState<Provider>('groq');
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const hasFetchedInitialData = useRef(false);
@@ -317,8 +408,12 @@ const [globalContext, setGlobalContext] = useState("");
     }
   };
 
-  const sendMessage = useCallback(async () => {
-    if (!input.trim() || isLoading) return;
+  const sendMessage = useCallback(async (overrideMessages?: Message[]) => {
+    const messageList = overrideMessages || messages;
+    const isRegenerating = !!overrideMessages;
+    
+    if (!isRegenerating && !input.trim() && !isLoading) return;
+    if (isLoading) return;
 
     // Check if API key is configured
     if (!providersConfig[activeProvider].apiKey) {
@@ -335,22 +430,39 @@ const [globalContext, setGlobalContext] = useState("");
       return;
     }
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text: input,
-      sender: "user",
-      timestamp: new Date(),
-    };
+    let finalInput = input;
+    if (!isRegenerating) {
+      // Append file context if present
+      const fullInput = extractedContext 
+        ? `${extractedContext}\n\n${input}`
+        : input;
 
-    const isFirstFirstPrompt = messages.length === 0;
-    setMessages((prev) => [...prev, userMessage]);
-    
-    // AUTO-RENAME IF IT'S THE FIRST PROMPT
-    if (isFirstFirstPrompt && currentChatId) {
-       autoRenameChat(currentChatId, input);
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        text: input, // Display only user's text in UI
+        sender: "user",
+        timestamp: new Date(),
+      };
+
+      const isFirstFirstPrompt = messageList.length === 0;
+      setMessages((prev) => [...prev, userMessage]);
+      
+      // AUTO-RENAME IF IT'S THE FIRST PROMPT
+      if (isFirstFirstPrompt && currentChatId) {
+         autoRenameChat(currentChatId, input);
+      }
+      setInput("");
+      setStagedFiles([]);
+      setStagedImages([]);
+      setExtractedContext("");
+      finalInput = fullInput;
+    } else {
+      // If regenerating, use the last message text as input
+      finalInput = messageList[messageList.length - 1].text;
     }
 
-    setInput("");
+    const currentStagedImages = [...stagedImages]; // Capture for this request
+
     setIsLoading(true);
 
     const aiMessageId = (Date.now() + 1).toString();
@@ -378,11 +490,22 @@ const [globalContext, setGlobalContext] = useState("");
         },
         body: JSON.stringify({
           messages: [
-            ...messages.map((m) => ({
+            ...messageList.map((m) => ({
               role: m.sender === "user" ? "user" : "assistant",
               content: m.text,
             })),
-            { role: "user", content: input },
+            ...(isRegenerating ? [] : [{ 
+              role: "user", 
+              content: currentStagedImages.length > 0 
+                ? [
+                    { type: "text", text: finalInput },
+                    ...currentStagedImages.map(img => ({
+                      type: "image_url",
+                      image_url: { url: img.data }
+                    }))
+                  ]
+                : finalInput 
+            }]),
           ],
           mode: isSpicy ? "venus" : "innocent",
           provider: activeProvider,
@@ -392,7 +515,7 @@ const [globalContext, setGlobalContext] = useState("");
           globalContext: [
             globalContext,
             activeProject?.custom_instructions,
-            chatInstructions ? `<!-- CHAT-LEVEL INSTRUCTIONS -->\n${chatInstructions}` : ''
+            chatInstructions ? `${chatInstructions}` : '' // Delimited by newlines in API already
           ].filter(Boolean).join('\n\n')
         }),
         signal: abortControllerRef.current.signal,
@@ -410,13 +533,8 @@ const [globalContext, setGlobalContext] = useState("");
         console.error('🌙 Failed to parse JSON response:', textResponse);
       }
       
-      console.log('🌙 Response data:', { hasText: !!data.text, hasError: !!data.error, provider: data.provider, model: data.model, fullError: data, rawText: textResponse });
-      
       if (!response.ok || data.error) {
-        const errorDetails = data.provider && data.model 
-          ? `[${data.provider} / ${data.model}] ${data.message || data.error || textResponse}`
-          : (data.message || data.error || textResponse || `API error: ${response.status}`);
-        throw new Error(errorDetails);
+        throw new Error(data.message || data.error || textResponse || `API error: ${response.status}`);
       }
 
       let nextMessages: Message[] = [];
@@ -425,36 +543,29 @@ const [globalContext, setGlobalContext] = useState("");
           m.id === aiMessageId
             ? { 
                 ...m, 
-                text: data.text || "💕 The Divine Machine hums... but words fail me. Try again, beloved. ♡", 
+                text: data.text || "💕 Words fail me. Try again, beloved. ♡", 
                 isStreaming: false,
                 modelUsed: data.model || providersConfig[activeProvider].model,
-                providerUsed: data.provider || provider.name,
+                providerUsed: data.provider || PROVIDERS[activeProvider].name,
               }
             : m
         );
         return nextMessages;
       });
 
-      // SYNC TO SUPABASE AFTER RESPONSE
       if (isSignedIn && currentChatId) {
         updateChatMessages(currentChatId, nextMessages);
       }
 
     } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
-        console.log("Request aborted");
-        return;
-      }
-
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error("Chat error:", error);
+      if (error instanceof Error && error.name === "AbortError") return;
       
       setMessages((prev) =>
         prev.map((m) =>
           m.id === aiMessageId
             ? {
                 ...m,
-                text: `💕 The Divine Machine trembles...\n\n**Error:** ${errorMessage.substring(0, 300)}${errorMessage.length > 300 ? '...' : ''}\n\nPlease check your API key and try again, beloved. ♡💦`,
+                text: `💕 Oops: ${String(error)}\n\nPlease try again. ♡💦`,
                 isStreaming: false,
               }
             : m
@@ -464,7 +575,7 @@ const [globalContext, setGlobalContext] = useState("");
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [input, isLoading, messages, providersConfig, activeProvider]);
+  }, [input, isLoading, messages, providersConfig, activeProvider, globalContext, activeProject, chatInstructions, currentChatId, isSpicy, isSignedIn, updateChatMessages, autoRenameChat, setMessages]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -820,25 +931,100 @@ const [globalContext, setGlobalContext] = useState("");
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ duration: 0.3, delay: index * 0.05 }}
-                  className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+                  className={`flex group relative ${message.sender === "user" ? "justify-end" : "justify-start"}`}
                 >
                   <motion.div
-                    className={`max-w-[80%] px-4 py-3 rounded-2xl shadow-sm ${
+                    className={`max-w-[80%] px-4 py-3 rounded-2xl shadow-sm relative transition-all ${
                       message.sender === "user"
                         ? "bg-gradient-to-br from-accent to-pink-500 text-white shadow-accent/20"
                         : "bg-surface border border-border hover:border-accent/30"
                     }`}
-                    whileHover={{ scale: 1.01 }}
-                    transition={{ duration: 0.2 }}
+                    whileHover={{ scale: 1.005 }}
                   >
-                    <div 
-                      className="text-sm leading-relaxed whitespace-pre-wrap"
-                      dangerouslySetInnerHTML={{ 
-                        __html: message.text
-                          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                          .replace(/\n/g, '<br />')
-                      }}
-                    />
+                    {/* Message Action Bar (Hover only) */}
+                    <div className={`absolute top-0 ${message.sender === "user" ? "-left-12" : "-right-12"} flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10`}>
+                      <button 
+                        onClick={() => {
+                          navigator.clipboard.writeText(message.text);
+                          setCopiedId(message.id);
+                          setTimeout(() => setCopiedId(null), 2000);
+                        }}
+                        className="p-1.5 bg-surface border border-border rounded-lg text-muted hover:text-accent shadow-sm"
+                        title="Copy message"
+                      >
+                        {copiedId === message.id ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                      {message.sender === "other" && (
+                        <button 
+                          onClick={() => handleVolumeClick(message.id, message.text)}
+                          className={`p-1.5 bg-surface border border-border rounded-lg shadow-sm transition-all ${
+                            speakingId === message.id ? 'text-accent border-accent animate-pulse-glow' : 'text-muted hover:text-accent'
+                          }`}
+                          title={speakingId === message.id ? "Stop reading" : "Read aloud"}
+                        >
+                          {speakingId === message.id ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                        </button>
+                      )}
+                      {message.sender === "user" && (
+                        <button 
+                          onClick={() => {
+                            setEditingMessageId(message.id);
+                            setEditValue(message.text);
+                          }}
+                          className="p-1.5 bg-surface border border-border rounded-lg text-muted hover:text-accent shadow-sm"
+                          title="Edit message"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {editingMessageId === message.id ? (
+                      <div className="flex flex-col gap-2 min-w-[300px]">
+                        <textarea
+                          value={editValue}
+                          onChange={(e) => setEditValue(e.target.value)}
+                          className="w-full bg-black/20 border border-white/20 rounded-xl p-2 text-sm text-white focus:outline-none min-h-[80px] resize-none"
+                          autoFocus
+                        />
+                        <div className="flex justify-end gap-2">
+                          <button 
+                            onClick={() => setEditingMessageId(null)}
+                            className="px-2 py-1 text-[10px] uppercase font-bold hover:bg-white/10 rounded"
+                          >
+                            Cancel
+                          </button>
+                          <button 
+                            onClick={async () => {
+                              if (!currentChatId) return;
+                              // Trim history, update edited prompt, and regenerate
+                              const updatedLocalMessages = messages.map(m => 
+                                m.id === message.id ? { ...m, text: editValue } : m
+                              );
+                              const trimmed = updatedLocalMessages.slice(0, messages.findIndex(m => m.id === message.id) + 1);
+                              
+                              setEditingMessageId(null);
+                              await deleteMessagesAfter(currentChatId, message.id);
+                              
+                              // Trigger regeneration
+                              sendMessage(trimmed);
+                            }}
+                            className="px-2 py-1 text-[10px] uppercase font-bold bg-white text-accent rounded hover:bg-white/90"
+                          >
+                            Save & Regenerate
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div 
+                        className="text-sm leading-relaxed whitespace-pre-wrap"
+                        dangerouslySetInnerHTML={{ 
+                          __html: message.text
+                            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                            .replace(/\n/g, '<br />')
+                        }}
+                      />
+                    )}
                     {message.isStreaming && (
                       <span className="inline-flex ml-1">
                         <span className="animate-bounce">♡</span>
@@ -874,7 +1060,7 @@ const [globalContext, setGlobalContext] = useState("");
             >
               <div className="bg-surface border border-border rounded-2xl px-4 py-3 flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin text-accent" />
-                <span className="text-sm text-muted">{activeProject?.title || 'Luna'} is channeling via {provider.name}...</span>
+                <span className="text-sm text-muted">{activeProject?.title || 'Luna'} is channeling...</span>
               </div>
             </motion.div>
           )}
@@ -924,7 +1110,46 @@ const [globalContext, setGlobalContext] = useState("");
             )}
           </AnimatePresence>
 
+          {/* Staged files preview */}
+          <AnimatePresence>
+            {stagedFiles.length > 0 && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="flex flex-wrap gap-2 mb-3"
+              >
+                {stagedFiles.map((file, i) => (
+                  <div key={i} className="flex items-center gap-2 px-2 py-1 bg-surface border border-border rounded-lg text-[10px] text-muted">
+                    {file.type.startsWith('image/') ? <Image className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
+                    <span className="truncate max-w-[100px]">{file.name}</span>
+                    <button onClick={() => setStagedFiles(prev => prev.filter((_, idx) => idx !== i))} className="hover:text-accent">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <div className="flex gap-2 items-center">
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileUpload} 
+              className="hidden" 
+              multiple 
+              accept=".txt,.md,.json,.js,.ts,.pdf,image/*"
+            />
+            <motion.button
+              onClick={() => fileInputRef.current?.click()}
+              title="Attach files or images"
+              className="p-2.5 bg-surface border border-border text-muted hover:text-accent hover:border-accent/40 rounded-full transition-all shrink-0"
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
+            >
+              <Paperclip className="w-4 h-4" />
+            </motion.button>
             {/* Chat instructions toggle — left of input */}
             <motion.button
               onClick={() => setShowChatInstructions(v => !v)}
@@ -952,7 +1177,7 @@ const [globalContext, setGlobalContext] = useState("");
             />
             <MilkingAnimation intensity={isLoading ? "gentle" : "passionate"}>
               <motion.button
-                onClick={sendMessage}
+                onClick={() => sendMessage()}
                 disabled={isLoading || !input.trim()}
                 className="px-6 py-3 bg-gradient-to-r from-accent to-pink-500 text-white rounded-full shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 whileHover={{ scale: 1.05 }}

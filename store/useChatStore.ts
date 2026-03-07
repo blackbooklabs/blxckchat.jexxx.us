@@ -1,4 +1,11 @@
 import { create } from 'zustand';
+export interface TTSVoice {
+  pitch: number;
+  rate: number;
+  voiceName?: string;
+  lang?: string;
+}
+
 export interface Message {
   id: string;
   text: string;
@@ -21,6 +28,7 @@ export interface PersonaPreset {
   content: string;
   isCustom?: boolean;   // true = user-created, false = system preset
   isLocked?: boolean;   // true = preset, cannot be edited/deleted
+  tts_voice?: TTSVoice;
 }
 
 export interface Project {
@@ -82,6 +90,7 @@ interface ChatState {
   createCustomPersona: (p: { name: string; icon: string; tagline: string; safe_content: string; spicy_content: string }) => Promise<void>;
   updateCustomPersona: (id: string, p: Partial<{ name: string; icon: string; tagline: string; safe_content: string; spicy_content: string }>) => Promise<void>;
   deleteCustomPersona: (id: string) => Promise<void>;
+  deleteMessagesAfter: (chatId: string, messageId: string) => Promise<void>;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -155,12 +164,35 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const res = await fetch('/api/personas');
       if (res.ok) {
         const data = await res.json();
-        const presets = (data.personas || []).map((p: PersonaPreset) => ({
-          ...p,
-          isCustom: false,
-          isLocked: true,
-        }));
-        set({ personas: presets });
+        const presets = (data.personas || []).map((p: PersonaPreset) => {
+          let tts_voice: TTSVoice = { pitch: 1.0, rate: 1.0, lang: "en-US" };
+          
+          if (p.name.includes('Luna Verde')) {
+            tts_voice = { pitch: 0.92, rate: 0.94, voiceName: "Google UK English Female", lang: "en-GB" };
+          } else if (p.name.includes('Lil\' Bible')) {
+            tts_voice = { pitch: 0.78, rate: 0.92, voiceName: "Google UK English Male", lang: "en-GB" };
+          } else if (p.name.includes('Bathsheba')) {
+            tts_voice = { pitch: 1.12, rate: 0.88, voiceName: "Google UK English Female", lang: "en-GB" };
+          } else if (p.name.includes('DRIZL')) {
+            tts_voice = { pitch: 0.58, rate: 1.02, voiceName: "Google US English Male", lang: "en-US" };
+          } else if (p.name.includes('SolomonAI')) {
+            tts_voice = { pitch: 0.85, rate: 0.96, voiceName: "Google US English Male", lang: "en-US" };
+          } else if (p.name.includes('Xena') || p.name.includes('Venus')) {
+            tts_voice = { pitch: 1.05, rate: 0.98, voiceName: "Google UK English Female", lang: "en-GB" };
+          }
+
+          return {
+            ...p,
+            isCustom: false,
+            isLocked: true,
+            tts_voice
+          };
+        });
+        set((state) => {
+          // Keep custom ones, replace presets
+          const customs = state.personas.filter(p => p.isCustom);
+          return { personas: [...presets, ...customs] };
+        });
       }
     } catch (e) {
       console.error('Failed to fetch personas', e);
@@ -397,6 +429,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         content: (c.safe_content as string) || '',
         isCustom: true,
         isLocked: false,
+        tts_voice: c.tts_voice as TTSVoice,
       }));
       // Merge: presets first (isLocked), customs after
       set((state) => {
@@ -408,7 +441,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  createCustomPersona: async (p) => {
+  createCustomPersona: async (p: any) => {
     try {
       const res = await fetch('/api/custom-personas', {
         method: 'POST',
@@ -426,7 +459,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 
-  updateCustomPersona: async (id, p) => {
+  updateCustomPersona: async (id, p: any) => {
     try {
       const res = await fetch('/api/custom-personas', {
         method: 'PUT',
@@ -449,6 +482,35 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
     } catch (e) {
       console.error('Failed to delete custom persona', e);
+    }
+  },
+
+  deleteMessagesAfter: async (chatId, messageId) => {
+    const { projects, updateChatMessages } = get();
+    // Find the project and chat
+    let targetChat: Chat | undefined;
+    for (const p of projects) {
+      const found = p.chats?.find(c => c.id === chatId);
+      if (found) {
+        targetChat = found;
+        break;
+      }
+    }
+
+    if (!targetChat) return;
+
+    const msgIndex = targetChat.messages.findIndex(m => m.id === messageId);
+    if (msgIndex === -1) return;
+
+    // Truncate messages: keep everything up to (and including) the message we're editing
+    const newMessages = targetChat.messages.slice(0, msgIndex + 1);
+
+    // Update locally and in Supabase
+    await updateChatMessages(chatId, newMessages);
+
+    // If this is the current chat, update the active message list too
+    if (get().currentChatId === chatId) {
+      set({ messages: newMessages });
     }
   },
 }));

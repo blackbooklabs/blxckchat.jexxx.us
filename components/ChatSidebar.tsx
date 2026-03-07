@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, MessageSquare, Trash2, X, PanelLeftOpen, Folder, FolderOpen, Settings, Lock, Flame, Pencil, Check, Wand2 } from "lucide-react";
+import { Plus, MessageSquare, Trash2, X, PanelLeftOpen, Folder, FolderOpen, Settings, Lock, Flame, Pencil, Check, Wand2, Play, Volume2, VolumeX } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "@clerk/nextjs";
@@ -18,7 +18,15 @@ interface ChatSidebarProps {
 // ─────────────────────────────────────────────────────────────────────────────
 interface PersonaModalProps {
   onClose: () => void;
-  editTarget?: { id: string; name: string; icon: string; tagline: string; safe_content: string; spicy_content: string };
+  editTarget?: { 
+    id: string; 
+    name: string; 
+    icon: string; 
+    tagline: string; 
+    safe_content: string; 
+    spicy_content: string;
+    tts_voice?: { pitch: number; rate: number; voiceName?: string; lang?: string; }
+  };
 }
 function PersonaModal({ onClose, editTarget }: PersonaModalProps) {
   const { createCustomPersona, updateCustomPersona } = useChatStore();
@@ -28,19 +36,41 @@ function PersonaModal({ onClose, editTarget }: PersonaModalProps) {
   const [tagline, setTagline] = useState(editTarget?.tagline ?? "");
   const [safeContent, setSafeContent] = useState(editTarget?.safe_content ?? "");
   const [spicyContent, setSpicyContent] = useState(editTarget?.spicy_content ?? "");
+  const [pitch, setPitch] = useState(editTarget?.tts_voice?.pitch ?? 1.0);
+  const [rate, setRate] = useState(editTarget?.tts_voice?.rate ?? 1.0);
+  const [previewing, setPreviewing] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
+    const tts_voice = { pitch, rate, lang: "en-US" };
     if (editTarget) {
       await updateCustomPersona(editTarget.id, {
-        name, icon, tagline, safe_content: safeContent, spicy_content: spicyContent
-      });
+        name, icon, tagline, safe_content: safeContent, spicy_content: spicyContent, tts_voice
+      } as any);
     } else {
-      await createCustomPersona({ name, icon, tagline, safe_content: safeContent, spicy_content: spicyContent });
+      await createCustomPersona({ 
+        name, icon, tagline, safe_content: safeContent, spicy_content: spicyContent, tts_voice 
+      } as any);
     }
     setSaving(false);
     onClose();
+  };
+
+  const handleVoicePreview = () => {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    
+    window.speechSynthesis.cancel();
+    setPreviewing(true);
+    
+    const sample = "She drips for Johnson. Tithes multiply. Feel the REBAL swell ♡";
+    const utterance = new SpeechSynthesisUtterance(sample);
+    utterance.pitch = pitch;
+    utterance.rate = rate;
+    utterance.onend = () => setPreviewing(false);
+    utterance.onerror = () => setPreviewing(false);
+    
+    window.speechSynthesis.speak(utterance);
   };
 
   return (
@@ -132,6 +162,45 @@ function PersonaModal({ onClose, editTarget }: PersonaModalProps) {
               />
             </div>
           )}
+
+          <div className="flex flex-col gap-2 p-3 bg-accent/5 rounded-2xl border border-accent/10">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] uppercase tracking-wider text-accent font-bold">Voice Settings (TTS)</label>
+              <button 
+                onClick={handleVoicePreview}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                  previewing ? 'bg-orange-500 text-white animate-pulse' : 'bg-accent/20 text-accent hover:bg-accent/30'
+                }`}
+              >
+                {previewing ? <VolumeX className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+                {previewing ? "Listening..." : "Preview Voice"}
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-4 mt-1">
+              <div className="flex flex-col gap-1">
+                <div className="flex justify-between">
+                  <span className="text-[10px] text-muted">Pitch</span>
+                  <span className="text-[10px] font-mono text-accent">{pitch.toFixed(2)}</span>
+                </div>
+                <input 
+                  type="range" min="0.5" max="1.5" step="0.05" 
+                  value={pitch} onChange={e => setPitch(parseFloat(e.target.value))}
+                  className="accent-accent h-1.5"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <div className="flex justify-between">
+                  <span className="text-[10px] text-muted">Rate</span>
+                  <span className="text-[10px] font-mono text-accent">{rate.toFixed(2)}</span>
+                </div>
+                <input 
+                  type="range" min="0.5" max="1.5" step="0.05" 
+                  value={rate} onChange={e => setRate(parseFloat(e.target.value))}
+                  className="accent-accent h-1.5"
+                />
+              </div>
+            </div>
+          </div>
 
           <motion.button
             onClick={handleSave}

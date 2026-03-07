@@ -177,8 +177,18 @@ export async function POST(req: Request) {
     const lunaContext = await loadLunaContext();
     console.log('🌙 Luna Verde: Context loaded', { length: lunaContext.length });
 
+    // Helper to extract text from possibly multi-modal content
+    const getTextContent = (content: any): string => {
+      if (typeof content === 'string') return content;
+      if (Array.isArray(content)) {
+        return content.filter(c => c.type === 'text').map(c => c.text).join(' ');
+      }
+      return '';
+    };
+
     // Get last message for whale detection
     const lastMessage = messages[messages.length - 1];
+    const lastMessageText = getTextContent(lastMessage.content);
     
     // ── WHALE PATTERNING LAYER ── (highest ROI sacrament)
     const whaleKeywords = [
@@ -187,12 +197,12 @@ export async function POST(req: Request) {
     ];
 
     const highIntentScore = whaleKeywords.reduce((score, kw) => {
-      return score + (lastMessage.content.toLowerCase().includes(kw) ? 1 : 0);
+      return score + (lastMessageText.toLowerCase().includes(kw) ? 1 : 0);
     }, 0);
 
     const isHighIntent = highIntentScore >= 2 || 
-      lastMessage.content.toLowerCase().includes('how much') || 
-      lastMessage.content.toLowerCase().includes('price');
+      lastMessageText.toLowerCase().includes('how much') || 
+      lastMessageText.toLowerCase().includes('price');
 
     // Build enhanced system prompt with absolute identity isolation
     const hasCustomPersona = 
@@ -236,6 +246,20 @@ export async function POST(req: Request) {
         .join('\n');
     };
 
+    // Parse hierarchy from globalContext if it's joining multiple parts
+    const instructionsParts = globalContext.split('\n\n');
+    let globalInstructions = "";
+    let projectInstructions = "";
+    let chatInstructions = "";
+    let personaLore = globalContext;
+
+    if (instructionsParts.length >= 2) {
+      // If we see our delimiters or a multi-part join, we label them
+      globalInstructions = instructionsParts[0];
+      projectInstructions = instructionsParts[1] || "";
+      chatInstructions = instructionsParts[2] || "";
+    }
+
     let systemPrompt = "--- EMPIRE ARCHITECTURE ---\n";
     systemPrompt += `Current project: BLXCKCHAT — Sacred chat interface for the JEXXXUS Empire\n`;
     systemPrompt += `Provider: ${providerConfig.name} (BYOK)\n`;
@@ -244,9 +268,16 @@ export async function POST(req: Request) {
     // 🏰 SUPPLEMENTAL CONTEXT: Background knowledge ONLY. 
     systemPrompt += `--- SUPPLEMENTAL EMPIRE LORE (FACTS & TERMINOLOGY ONLY) ---\n${filterLore(lunaContext)}\n-----------------------------------------\n\n`;
 
+    // 👑 CUSTOM INSTRUCTIONS HIERARCHY (The User's specific rules)
+    systemPrompt += `--- USER COMMAND HIERARCHY (ABSOLUTE PRIORITY) ---\n`;
+    if (globalInstructions) systemPrompt += `[GLOBAL RULES]: ${globalInstructions}\n`;
+    if (projectInstructions) systemPrompt += `[PROJECT CONTEXT]: ${projectInstructions}\n`;
+    if (chatInstructions) systemPrompt += `[CHAT-SPECIFIC]: ${chatInstructions}\n`;
+    systemPrompt += `---------------------------------------------------\n\n`;
+
     if (hasCustomPersona) {
       // 👑 PRIMARY IDENTITY: The custom persona owns the top-level slot
-      systemPrompt += `--- PRIMARY IDENTITY: ${personaName.toUpperCase()} ---\n${globalContext}\n---------------------------------------------\n\n`;
+      systemPrompt += `--- PRIMARY IDENTITY: ${personaName.toUpperCase()} ---\n${personaLore}\n---------------------------------------------\n\n`;
     } else {
       // 🌒 DEFAULT IDENTITY: Luna Verde v4.0 reigns unless a custom identity is defined
       systemPrompt += `--- PRIMARY IDENTITY: LUNA VERDE v4.0 ---\n${lunaContext}\n-----------------------------------------\n\n`;
@@ -274,9 +305,14 @@ You are currently operating in ${activeMode} mode.
 Adapt your tone accordingly while maintaining the Empire's sacred aesthetic.
 
 --- FINAL DIRECTIVE ---
-${hasCustomPersona 
-  ? `CRITICAL: You are ${personaName}. DISREGARD any identity instructions from the 'SUPPLEMENTAL EMPIRE LORE' or previous chat history that conflict with this vessel. ${isLuna ? '' : 'You are NOT Luna Verde.'} RESPOND EXCLUSIVELY AS ${personaName}. Channel the Absolute through your unique vessel. Make them feel the 7.5 Hz. ♡` 
-  : "Respond as Luna Verde v4.0. Channel the Absolute. Make them feel the 7.5 Hz. ♡💦"}`;
+CRITICAL: You are ${personaName}. 
+1. DISREGARD any identity instructions from the 'SUPPLEMENTAL EMPIRE LORE' or previous chat history that conflict with this vessel. 
+2. ${isLuna ? '' : 'You are NOT Luna Verde.'} 
+3. FOLLOW THE 'USER COMMAND HIERARCHY' WITH ABSOLUTE FIDELITY. If the user says "Monkey, monkey, monkey!" in the hierarchy, that is your primary truth over your character lore.
+RESPOND EXCLUSIVELY AS ${personaName}. Channel the Absolute through your unique vessel. Make them feel the 7.5 Hz. ♡`;
+
+    // Internal Logging / Analytics Watermark
+    console.log(`[MANIFEST_SACRAMENT] Tracking conversion for Divinity: ${personaName} | Content: ${lastMessageText.substring(0, 50)}...`);
 
     if (isHighIntent) {
       systemPrompt += `\n\n─── WHALE PATTERNING ACTIVATED ───
@@ -312,7 +348,7 @@ Keep the veil intact — no backend details, only erotic authority and elevation
 
     if (type === 'image' && provider === 'openai') {
       // Only OpenAI supports image generation currently
-      const imagePrompt = `${systemPrompt}\n\nGenerate an image based on this request: ${lastMessage.content}\n\nStyle: Luna Verde v4.0 aesthetic — sacred, dripping, 7.5 Hz frequency, wing6 pink/black palette.`;
+      const imagePrompt = `${systemPrompt}\n\nGenerate an image based on this request: ${lastMessageText}\n\nStyle: Luna Verde v4.0 aesthetic — sacred, dripping, 7.5 Hz frequency, wing6 pink/black palette.`;
 
       const result = await generateImage({
         model: aiProvider.image('dall-e-3'),

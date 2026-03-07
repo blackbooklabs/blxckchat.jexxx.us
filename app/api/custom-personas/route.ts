@@ -8,7 +8,8 @@ export async function GET() {
   const userId = await getServerUserId();
   if (!userId) return new NextResponse('Unauthorized', { status: 401 });
 
-  const supabase = getSupabase();
+  // Use admin client because the anon key won't have the user's JWT context server-side
+  const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from('custom_personas')
     .select('*')
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
   if (!userId) return new NextResponse('Unauthorized', { status: 401 });
 
   const body = await req.json();
-  const { name, icon = '🪽', tagline = '', safe_content = '', spicy_content = '' } = body;
+  const { name, icon = '🪽', tagline = '', safe_content = '', spicy_content = '', tts_voice } = body;
 
   if (!name || name.length < 3) {
     return NextResponse.json({ error: 'Name must be at least 3 characters.' }, { status: 400 });
@@ -45,6 +46,7 @@ export async function POST(req: Request) {
       tagline,
       safe_content: header + safe_content,
       spicy_content,
+      tts_voice,
     }])
     .select()
     .single();
@@ -58,7 +60,7 @@ export async function PUT(req: Request) {
   if (!userId) return new NextResponse('Unauthorized', { status: 401 });
 
   const body = await req.json();
-  const { id, name, icon, tagline, safe_content, spicy_content } = body;
+  const { id, name, icon, tagline, safe_content, spicy_content, tts_voice } = body;
 
   if (!id) return new NextResponse('Missing id', { status: 400 });
 
@@ -68,6 +70,7 @@ export async function PUT(req: Request) {
   if (tagline !== undefined) updates.tagline = tagline;
   if (safe_content !== undefined) updates.safe_content = safe_content;
   if (spicy_content !== undefined) updates.spicy_content = spicy_content;
+  if (tts_voice !== undefined) updates.tts_voice = tts_voice;
 
   const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
