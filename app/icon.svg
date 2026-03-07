@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="sacrament" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ec4899" />
+      <stop offset="100%" stop-color="#a855f7" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  
+  <!-- Sleek Chat Bubble -->
+  <path d="M128 24C61.7 24 8 70.8 8 128c0 33.7 18.2 63.6 46.1 82.8-2 15.6-9.8 28.5-10.4 29.5-1.5 2.5-.2 5.8 2.6 6.8 23 8.3 48.7 1.8 62.7-3.9 6.2.8 12.6 1.2 19 1.2 66.3 0 120-46.8 120-104.4S194.3 24 128 24z" fill="url(#sacrament)" filter="url(#glow)"/>
+  
+  <!-- Outer glowing lips inset -->
+  <path d="M70 115 C 90 95, 166 95, 186 115 C 166 125, 90 125, 70 115 Z" fill="#09090b" />
+  <path d="M72 120 C 100 150, 156 150, 184 120 C 156 135, 100 135, 72 120 Z" fill="#09090b" opacity="0.9" />
+
+  <!-- The single drop of sacrament -->
+  <path d="M128 142 C 125 152, 122 165, 128 175 C 134 165, 131 152, 128 142" fill="#09090b" />
+</svg>
