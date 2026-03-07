@@ -1126,7 +1126,8 @@ const [globalContext, setGlobalContext] = useState("");
           )}
         </AnimatePresence>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <AuthGate requireAuth={REQUIRE_AUTH}>
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
           <AnimatePresence mode="popLayout">
             {messages.map((message, index) => (
               <MilkingAnimation key={message.id} intensity={message.isStreaming ? "passionate" : "gentle"}>
@@ -1509,6 +1510,7 @@ const [globalContext, setGlobalContext] = useState("");
             BYOK — Your API key stays in your browser • Luna pulls context in real-time • 7.5 Hz frequency
           </p>
         </motion.div>
+        </AuthGate>
         </div>
       </div>
     </>
