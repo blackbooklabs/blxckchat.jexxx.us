@@ -575,16 +575,24 @@ const [globalContext, setGlobalContext] = useState("");
           messages: [
             ...messageList.map((m) => ({
               role: m.sender === "user" ? "user" : "assistant",
-              content: m.text,
+              content: m.attachments && m.attachments.some(a => a.type === 'image') 
+                ? [
+                    { type: "text" as const, text: m.text },
+                    ...m.attachments.filter(a => a.type === 'image' && a.url).map(img => ({
+                      type: "image" as const,
+                      image: img.url!
+                    }))
+                  ]
+                : m.text,
             })),
             ...(isRegenerating ? [] : [{ 
               role: "user", 
               content: currentStagedImages.length > 0 
                 ? [
-                    { type: "text", text: finalInput },
+                    { type: "text" as const, text: finalInput },
                     ...currentStagedImages.map(img => ({
-                      type: "image_url",
-                      image_url: { url: img.data }
+                      type: "image" as const,
+                      image: img.data
                     }))
                   ]
                 : finalInput 

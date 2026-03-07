@@ -31,7 +31,7 @@ export async function OPTIONS(req: Request) {
 
 
 interface ChatRequest {
-  messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+  messages: Array<{ role: 'user' | 'assistant' | 'system'; content: any }>;
   mode?: 'venus' | 'innocent';
   provider?: 'openai' | 'grok' | 'gemini' | 'kimi' | 'groq' | 'openrouter';
   model?: string;
