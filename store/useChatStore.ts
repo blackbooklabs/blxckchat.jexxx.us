@@ -14,8 +14,10 @@ export interface PersonaPreset {
   name: string;
   tagline: string;
   icon: string;
-  safe_content: string;
-  spicy_content: string | null;
+  safe_content: string;    // The full system prompt (Safe)
+  spicy_content: string | null; // The full system prompt (Spicy)
+  safe_excerpt?: string;   // UI-only short summary
+  spicy_excerpt?: string;  // UI-only short summary (Spicy)
   content: string;
   isCustom?: boolean;   // true = user-created, false = system preset
   isLocked?: boolean;   // true = preset, cannot be edited/deleted
@@ -390,13 +392,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
         icon: (c.icon as string) || '🪽',
         safe_content: (c.safe_content as string) || '',
         spicy_content: (c.spicy_content as string) || null,
+        safe_excerpt: (c.tagline as string) || '', // For custom personas, tagline is excerpt
+        spicy_excerpt: '', 
         content: (c.safe_content as string) || '',
         isCustom: true,
         isLocked: false,
       }));
       // Merge: presets first (isLocked), customs after
       set((state) => {
-        const presets = state.personas.filter(p => p.isLocked !== false);
+        const presets = state.personas.filter(p => !p.isCustom);
         return { personas: [...presets, ...customMapped] };
       });
     } catch (e) {

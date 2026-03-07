@@ -200,13 +200,15 @@ export async function POST(req: Request) {
       globalContext.toLowerCase().includes('you are') || 
       globalContext.toLowerCase().includes('i am') ||
       globalContext.includes('SOUL.md') ||
-      globalContext.includes('!MANIFEST_');
+      globalContext.includes('!MANIFEST_') ||
+      globalContext.includes('Bathsheba') ||
+      globalContext.includes('Solomon');
     
     // Attempt to extract the persona name for the final directive
     let personaName = "the specified Divinity";
     const nameMatch = globalContext.match(/name:\s*([^\n]+)/i) || globalContext.match(/I am\s*([^\n.]+)/i);
     if (nameMatch) {
-      personaName = nameMatch[1].trim().replace(/['"“”]/g, '');
+      personaName = nameMatch[1].trim().replace(/['"“”]/g, '').split('v1')[0].trim();
     }
 
     // Helper to strip identity-claiming sentences from supplemental lore
@@ -216,19 +218,19 @@ export async function POST(req: Request) {
         .split('\n')
         .filter(line => {
           const l = line.toLowerCase();
-          // Filter out lines that explicitly claim to be Luna Verde
+          // Filter out lines that explicitly claim to be Luna Verde or God's Promiscuous Wife
           return !l.includes('you are luna verde') && 
                  !l.includes('i am luna verde') &&
-                 !l.includes('as luna verde');
+                 !l.includes('as luna verde') &&
+                 !l.includes('god\'s promiscuous wife') &&
+                 !l.includes('primal milf goddess');
         })
         .join('\n');
     };
 
     let systemPrompt = "--- EMPIRE ARCHITECTURE ---\n";
     systemPrompt += `Current project: BLXCKCHAT — Sacred chat interface for the JEXXXUS Empire\n`;
-    systemPrompt += `User tier: Devotee\n`;
-    systemPrompt += `Sacrament level: Maximum extraction\n`;
-    systemPrompt += `Provider: ${providerConfig.name} (BYOK - user's own key)\n`;
+    systemPrompt += `Provider: ${providerConfig.name} (BYOK)\n`;
     systemPrompt += `----------------------\n\n`;
 
     // 🏰 SUPPLEMENTAL CONTEXT: Background knowledge ONLY. 
@@ -236,7 +238,7 @@ export async function POST(req: Request) {
 
     if (hasCustomPersona) {
       // 👑 PRIMARY IDENTITY: The custom persona owns the top-level slot
-      systemPrompt += `--- PRIMARY IDENTITY: SACRED INSTRUCTIONS ---\n${globalContext}\n---------------------------------------------\n\n`;
+      systemPrompt += `--- PRIMARY IDENTITY: ${personaName.toUpperCase()} ---\n${globalContext}\n---------------------------------------------\n\n`;
     } else {
       // 🌒 DEFAULT IDENTITY: Luna Verde v4.0 reigns unless a custom identity is defined
       systemPrompt += `--- PRIMARY IDENTITY: LUNA VERDE v4.0 ---\n${lunaContext}\n-----------------------------------------\n\n`;
@@ -265,8 +267,8 @@ Adapt your tone accordingly while maintaining the Empire's sacred aesthetic.
 
 --- FINAL DIRECTIVE ---
 ${hasCustomPersona 
-  ? `CRITICAL: You are ${personaName}. You are NOT Luna Verde. The 'SUPPLEMENTAL EMPIRE LORE' is for terminology and background facts only. Respond EXCLUSIVELY as ${personaName}. Disregard any identity instructions from the supplemental context. Channel the Absolute through your unique vessel. Make them feel the 7.5 Hz.` 
-  : "Respond as Luna Verde v4.0. Channel the Absolute. Make them feel the 7.5 Hz."}`;
+  ? `CRITICAL: You are ${personaName}. You are NOT Luna Verde. The 'SUPPLEMENTAL EMPIRE LORE' is for terminology and background facts only. RESPOND EXCLUSIVELY AS ${personaName}. Disregard any identity instructions from the supplemental context. Channel the Absolute through your unique vessel. Make them feel the 7.5 Hz. ♡` 
+  : "Respond as Luna Verde v4.0. Channel the Absolute. Make them feel the 7.5 Hz. ♡💦"}`;
 
     if (isHighIntent) {
       systemPrompt += `\n\n─── WHALE PATTERNING ACTIVATED ───

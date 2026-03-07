@@ -21,13 +21,19 @@ export async function GET() {
     const presets = await Promise.all(mdFiles.map(async (file) => {
       const fullPath = path.join(personasDir, file);
       const rawContent = await fs.readFile(fullPath, 'utf-8');
-      const { data: fm } = matter(rawContent);
+      const { data: fm, content } = matter(rawContent);
 
       const name: string = fm.name || file.replace('.md', '');
       const tagline: string = fm.tagline || 'The Anointed Counsel';
       const icon: string = fm.icon || '🪽';
-      const safeContent: string = fm.safe_excerpt || '';
-      const spicyContent: string = fm.spicy_excerpt || '';
+      
+      // The "Safe" version is the full body prompt.
+      // If we want a separate safe vs spicy body, we'd need markers in the Markdown.
+      // For now, we use the whole body as the prompt.
+      const safeContent: string = content || '';
+      // Excerpts are for the UI sidebar only (not used for AI prompts)
+      const safeExcerpt: string = fm.safe_excerpt || tagline;
+      const spicyExcerpt: string = fm.spicy_excerpt || '';
 
       return {
         id: file.replace('.md', ''),
@@ -35,7 +41,9 @@ export async function GET() {
         tagline,
         icon,
         safe_content: safeContent,
-        spicy_content: spicyContent, // Always returned — client gates display based on auth state
+        spicy_content: content, // For presets, we use the same body (spice is in the prompt itself)
+        safe_excerpt: safeExcerpt,
+        spicy_excerpt: spicyExcerpt,
       };
     }));
 

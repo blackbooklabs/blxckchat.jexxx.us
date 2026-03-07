@@ -397,9 +397,12 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
                         setInvokingPersonaId(p.id);
                         try {
                           const isSpicyUnlocked = !!isSignedIn && !!p.spicy_content;
-                          const gatedCanon = isSpicyUnlocked
-                            ? `${p.safe_content}\n\n---\n<!-- 🌶️ SPICY-REVEALED — Authenticated & Unlocked -->\n\n${p.spicy_content}`
-                            : p.safe_content;
+                          // If safe and spicy are the same (presets), just use safe.
+                          // Otherwise, join them for custom personas.
+                          let gatedCanon = p.safe_content;
+                          if (isSpicyUnlocked && p.spicy_content && p.spicy_content !== p.safe_content) {
+                            gatedCanon = `${p.safe_content}\n\n---\n<!-- 🌶️ SPICY-REVEALED — Authenticated & Unlocked -->\n\n${p.spicy_content}`;
+                          }
 
                           let targetProjectId = "";
                           const existingProject = projects.find(proj => 
@@ -414,7 +417,7 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
                               await fetchChats(targetProjectId);
                             }
                             await setActivePersona(targetProjectId, p.id, gatedCanon);
-                            await createChat(targetProjectId, `New Chat with ${p.name}`);
+                            await createChat(targetProjectId, `Session with ${p.name}`);
                           } else {
                             const newProject = await createProject(p.name, gatedCanon);
                             if (newProject) {
@@ -428,6 +431,7 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
                           setInvokingPersonaId(null);
                         }
                       }}
+                      title={p.safe_excerpt || p.tagline}
                       className={`w-full flex items-center gap-3 p-2 border rounded-lg text-left transition-all relative overflow-hidden ${
                         invokingPersonaId === p.id 
                           ? "border-accent ring-2 ring-accent/20"
@@ -459,7 +463,7 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
                     {p.isCustom && !p.isLocked && isSignedIn && (
                       <div className="absolute right-1 top-1 hidden group-hover:flex gap-1 z-10">
                         <button
-                          onClick={(e) => { e.stopPropagation(); setEditingPersona(p as typeof editingPersona); setShowPersonaModal(true); }}
+                          onClick={(e) => { e.stopPropagation(); setEditingPersona(p as any); setShowPersonaModal(true); }}
                           className="p-1 bg-surface/90 rounded text-muted hover:text-accent border border-border"
                           title="Edit Divinity"
                         >
