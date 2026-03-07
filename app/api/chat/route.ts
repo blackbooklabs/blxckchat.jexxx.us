@@ -14,6 +14,7 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { loadLunaContext } from '@/lib/luna-context';
 
 export const runtime = 'edge';
+export const maxDuration = 60; // Extend Vercel timeout for slow Web Search requests
 
 // CORS headers for cross-origin requests
 const corsHeaders = {
