@@ -130,11 +130,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const project = projects.find(p => p.id === projectId);
       if (!project) return;
       const chat = project.chats?.find(c => c.id === chatId);
-      // Normalize timestamps: stored as strings in Supabase, need Date objects
-      const msgs = (chat?.messages ?? []).map((m: Message) => ({
-        ...m,
-        timestamp: m.timestamp instanceof Date ? m.timestamp : new Date(m.timestamp as unknown as string),
-      }));
+      const msgs = hydrateMessages(chat?.messages ?? []);
       set({ currentProjectId: projectId, currentChatId: chatId, messages: msgs });
     } catch (_) {}
   },
@@ -256,11 +252,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (res.ok) {
          const text = await res.text();
          const data = text ? JSON.parse(text) : [];
-         if (Array.isArray(data)) {
-           set((state) => ({
-             projects: state.projects.map(p => p.id === projectId ? { ...p, chats: data } : p)
-           }));
-         }
+          if (Array.isArray(data)) {
+            const hydratedData = data.map(chat => ({
+              ...chat,
+              messages: hydrateMessages(chat.messages || [])
+            }));
+            set((state) => ({
+              projects: state.projects.map(p => p.id === projectId ? { ...p, chats: hydratedData } : p)
+            }));
+          }
       }
     } catch (e) {
       console.error('Failed to fetch chats', e);
@@ -280,10 +280,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
         const text = await res.text();
         const newChat = text ? JSON.parse(text) : null;
         if (newChat) {
+           const hydratedMessages = hydrateMessages(newChat.messages || []);
            set((state) => ({
-             projects: state.projects.map(p => p.id === projectId ? { ...p, chats: [newChat, ...(p.chats || [])] } : p),
+             projects: state.projects.map(p => p.id === projectId ? { ...p, chats: [{ ...newChat, messages: hydratedMessages }, ...(p.chats || [])] } : p),
              currentChatId: newChat.id,
-             messages: newChat.messages || []
+             messages: hydratedMessages
            }));
            return newChat;
         }
@@ -515,3 +516,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
 }));
+
+function hydrateMessages(messages: any[]): Message[] {
+  return (messages || []).map(m => ({
+    ...m,
+    text: m.text || m.content || "",
+    timestamp: m.timestamp instanceof Date ? m.timestamp : new Date(m.timestamp),
+  }));
+}

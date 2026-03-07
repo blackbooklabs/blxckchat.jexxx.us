@@ -1019,7 +1019,7 @@ const [globalContext, setGlobalContext] = useState("");
                       <div 
                         className="text-sm leading-relaxed whitespace-pre-wrap"
                         dangerouslySetInnerHTML={{ 
-                          __html: message.text
+                          __html: (message.text || "")
                             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                             .replace(/\n/g, '<br />')
                         }}
@@ -1038,7 +1038,9 @@ const [globalContext, setGlobalContext] = useState("");
                         <Sparkles className="w-3 h-3 opacity-70" />
                       )}
                       <p className="text-xs opacity-70">
-                        {mounted ? message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "..."}
+                        {mounted && message.timestamp instanceof Date && !isNaN(message.timestamp.getTime()) 
+                          ? message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+                          : "..."}
                       </p>
                       {message.sender === "other" && message.modelUsed && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/20 text-accent/80 font-mono">

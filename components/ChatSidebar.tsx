@@ -669,7 +669,12 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
                               
                               {!renamingChatId && (
                                 <span className="text-[10px] text-muted/50 shrink-0 hidden group-hover:inline">
-                                  {formatDistanceToNow(new Date(chat.updated_at), { addSuffix: true })}
+                                  {(() => {
+                                    const date = new Date(chat.updated_at);
+                                    return !isNaN(date.getTime()) 
+                                      ? formatDistanceToNow(date, { addSuffix: true }) 
+                                      : "Just now";
+                                  })()}
                                 </span>
                               )}
 
