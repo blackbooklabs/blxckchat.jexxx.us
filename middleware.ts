@@ -1,5 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest, NextFetchEvent } from "next/server";
 
 // BLXCKCHAT is a BYOK platform. Most routes are public.
 const isProtectedRoute = createRouteMatcher([
@@ -7,12 +7,19 @@ const isProtectedRoute = createRouteMatcher([
   // '/settings(.*)'
 ]);
 
-export default clerkMiddleware(async (auth, request) => {
-  if (isProtectedRoute(request)) {
-    await auth.protect();
+export default function middleware(request: NextRequest, event: NextFetchEvent) {
+  // If Vercel Edge is missing the Clerk keys, degrade gracefully to a public passthrough.
+  if (!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+    return NextResponse.next();
   }
-  return NextResponse.next();
-});
+
+  return clerkMiddleware(async (auth, req) => {
+    if (isProtectedRoute(req)) {
+      await auth.protect();
+    }
+    return NextResponse.next();
+  })(request, event);
+}
 
 export const config = {
   matcher: [
