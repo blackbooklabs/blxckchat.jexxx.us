@@ -15,15 +15,25 @@ export interface MessageAttachment {
   previewUrl?: string;
 }
 
+export interface MessageVersion {
+  content: string;
+  timestamp: Date;
+  model?: string;
+  provider?: string;
+  editedFromId?: string;
+}
+
 export interface Message {
   id: string;
-  text: string;
+  text: string; // active/current version text
   sender: "user" | "other";
   timestamp: Date;
   isStreaming?: boolean;
   modelUsed?: string;
   providerUsed?: string;
   attachments?: MessageAttachment[];
+  versions?: MessageVersion[];
+  currentVersionIndex?: number;
 }
 
 export interface PersonaPreset {

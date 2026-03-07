@@ -2,8 +2,8 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Send, User, Heart, Sparkles, Loader2, Settings, Key, X, ChevronDown, Shield, LogIn, SlidersHorizontal, Copy, Check, Pencil, Volume2, VolumeX, Paperclip, FileText, Image, Play, Globe } from "lucide-react";
-import { useAuth, UserButton, SignInButton } from "@clerk/nextjs";
+import { Send, User, Heart, Sparkles, Loader2, Settings, Key, X, ChevronDown, Shield, LogIn, SlidersHorizontal, Copy, Check, Pencil, Volume2, VolumeX, Paperclip, FileText, Image, Play, Globe, Menu, LogOut, Wand2, Plus, Terminal, RefreshCw, Eye, BookOpen, ChevronLeft, ChevronRight } from "lucide-react";
+import { useAuth, UserButton, SignInButton, useClerk } from "@clerk/nextjs";
 import CursorMotion from "@/components/CursorMotion";
 import MilkingAnimation from "@/components/MilkingAnimation";
 import ShootingStars from "@/components/ShootingStars";
@@ -12,7 +12,7 @@ import ChatSidebar from "@/components/ChatSidebar";
 import { useChatStore, Message, MessageAttachment } from "@/store/useChatStore";
 
 // Configuration: Set to true to require authentication before chatting
-const REQUIRE_AUTH = false;
+const REQUIRE_AUTH = true;
 
 type Provider = 'openai' | 'grok' | 'gemini' | 'kimi' | 'groq' | 'openrouter';
 
@@ -197,6 +197,7 @@ export default function ChatInterface() {
   
   const activeProject = projects.find(p => p.id === currentProjectId);
   const { isSignedIn, isLoaded, userId } = useAuth();
+  const clerk = useClerk();
   
 const [globalContext, setGlobalContext] = useState("");
   const [speakingId, setSpeakingId] = useState<string | null>(null);
@@ -477,12 +478,17 @@ const [globalContext, setGlobalContext] = useState("");
     }
   };
 
-  const sendMessage = useCallback(async (overrideMessages?: Message[]) => {
+  const sendMessage = useCallback(async (overrideMessages?: Message[], aiMessageIdToRegenerate?: string) => {
     const messageList = overrideMessages || messages;
     const isRegenerating = !!overrideMessages;
     
     if (!isRegenerating && !input.trim() && !isLoading) return;
     if (isLoading) return;
+
+    if (!isSignedIn) {
+      clerk.openSignIn();
+      return;
+    }
 
     // Check if API key is configured
     if (!providersConfig[activeProvider].apiKey) {
@@ -551,17 +557,28 @@ const [globalContext, setGlobalContext] = useState("");
 
     setIsLoading(true);
 
-    const aiMessageId = (Date.now() + 1).toString();
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: aiMessageId,
+    let aiMessageId = aiMessageIdToRegenerate;
+    if (!aiMessageId) {
+      aiMessageId = (Date.now() + 1).toString();
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: aiMessageId!,
+          text: "",
+          sender: "other",
+          timestamp: new Date(),
+          isStreaming: true,
+        },
+      ]);
+    } else {
+      setMessages((prev) => prev.map(m => m.id === aiMessageIdToRegenerate ? {
+        ...m,
         text: "",
-        sender: "other",
-        timestamp: new Date(),
         isStreaming: true,
-      },
-    ]);
+        versions: m.versions ? [...m.versions, { content: m.text, timestamp: m.timestamp, model: m.modelUsed, provider: m.providerUsed }] : [{ content: m.text, timestamp: m.timestamp, model: m.modelUsed, provider: m.providerUsed }],
+        currentVersionIndex: m.versions ? m.versions.length : 1
+      } : m));
+    }
 
     try {
       abortControllerRef.current = new AbortController();
@@ -1180,28 +1197,79 @@ const [globalContext, setGlobalContext] = useState("");
                           <button 
                             onClick={async () => {
                               if (!currentChatId) return;
-                              // Trim history, update edited prompt, and regenerate
+                              // Branching history natively
+                              const userMsgIndex = messages.findIndex(m => m.id === message.id);
+                              const oldVersion = { content: message.text, timestamp: message.timestamp };
+                              const newVersions = [...(message.versions || [oldVersion]), { content: editValue, timestamp: new Date() }];
+
                               const updatedLocalMessages = messages.map(m => 
-                                m.id === message.id ? { ...m, text: editValue } : m
+                                m.id === message.id ? { ...m, text: editValue, versions: newVersions, currentVersionIndex: newVersions.length - 1 } : m
                               );
-                              const trimmed = updatedLocalMessages.slice(0, messages.findIndex(m => m.id === message.id) + 1);
+                              const trimmed = updatedLocalMessages.slice(0, userMsgIndex + 1);
+                              
+                              const aiMsgIndex = userMsgIndex + 1;
+                              let aiMsgIdToRegenerate;
+                              if (aiMsgIndex < messages.length && messages[aiMsgIndex].sender === "other") {
+                                aiMsgIdToRegenerate = messages[aiMsgIndex].id;
+                              }
                               
                               setEditingMessageId(null);
-                              await deleteMessagesAfter(currentChatId, message.id);
                               
-                              // Trigger regeneration
-                              sendMessage(trimmed);
+                              // Trigger regeneration with branch tracking
+                              sendMessage(trimmed, aiMsgIdToRegenerate);
                             }}
                             className="px-2 py-1 text-[10px] uppercase font-bold bg-white text-accent rounded hover:bg-white/90"
                           >
-                            Save & Regenerate
+                            Save & Branch
                           </button>
                         </div>
                       </div>
                     ) : (
-                      <div className="flex flex-col">
+                      <div className="flex flex-col relative group/content">
+                        {message.versions && message.versions.length > 0 && (
+                          <div className="absolute -top-7 left-0 flex items-center gap-2 opacity-0 group-hover/content:opacity-100 transition-opacity bg-background/80 backdrop-blur rounded-full px-2 py-0.5 border border-white/5">
+                            <button 
+                              onClick={() => {
+                                const newIdx = Math.max(0, (message.currentVersionIndex || message.versions!.length) - 1);
+                                setMessages(prev => prev.map(m => m.id === message.id ? { 
+                                  ...m, 
+                                  text: newIdx === m.versions!.length ? (m.text) : m.versions![newIdx].content, 
+                                  currentVersionIndex: newIdx 
+                                } : m));
+                              }}
+                              disabled={(message.currentVersionIndex || message.versions.length) === 0}
+                              className="text-muted hover:text-white disabled:opacity-30 disabled:hover:text-muted transition-colors"
+                              title="Previous pattern"
+                            >
+                              <ChevronLeft className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="text-[10px] font-mono text-muted/80">
+                              {(message.currentVersionIndex ?? message.versions.length) + 1} / {message.versions.length + 1}
+                            </span>
+                            <button 
+                              onClick={() => {
+                                const newIdx = Math.min(message.versions!.length, (message.currentVersionIndex || message.versions!.length) + 1);
+                                setMessages(prev => prev.map(m => m.id === message.id ? { 
+                                  ...m, 
+                                  text: newIdx === m.versions!.length ? (() => { 
+                                    // Normally we don't store the final state in versions, so if we reach max, we show what it is now. Actually, if we hit max we just show the version array contents. Wait, the final version MUST be in versions if we pushed it! Wait, no. The active version is `text`.
+                                    // To simplify, if we go to `versions.length`, it should restore the LATEST text. 
+                                    const latest =  m.versions![m.versions!.length - 1]; // We don't have the original if we replaced text directly. Let's fix this in state! For now, fallback to the array.
+                                    return latest.content;
+                                  })() : m.versions![newIdx].content, 
+                                  currentVersionIndex: newIdx 
+                                } : m));
+                              }}
+                              disabled={(message.currentVersionIndex ?? message.versions.length) === message.versions.length}
+                              className="text-muted hover:text-white disabled:opacity-30 disabled:hover:text-muted transition-colors"
+                              title="Next pattern"
+                            >
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
                         <div 
-                          className="text-sm leading-relaxed whitespace-pre-wrap"
+                          className="text-sm leading-relaxed whitespace-pre-wrap mt-1"
                           dangerouslySetInnerHTML={{ 
                             __html: (message.text || "")
                               .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')

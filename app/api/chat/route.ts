@@ -367,6 +367,16 @@ Keep the veil intact — no backend details, only erotic authority and elevation
       });
     }
 
+    const providerMetadata: any = {};
+    if (webSearch) {
+      if (providerConfig.name === 'openrouter') {
+        providerMetadata.openrouter = { plugins: [{ id: "web" }] };
+      } else if (providerConfig.name === 'google' || providerConfig.name === 'gemini') {
+        providerMetadata.google = { useSearchGrounding: true };
+      }
+      systemPrompt += "\n\nYou have access to real-time web search. Use it when current information is required.";
+    }
+
     // Text generation
     if (!stream) {
       console.log('🌙 Luna Verde: Using non-streaming mode');
@@ -381,6 +391,9 @@ Keep the veil intact — no backend details, only erotic authority and elevation
             content: m.content,
           })),
           temperature: 0.9,
+          // @ts-ignore - Vercel AI SDK types for provider metadata vary between 3.0 and 3.1+
+          providerMetadata,
+          experimental_providerMetadata: providerMetadata,
         });
 
         console.log('🌙 Luna Verde: Generated text length:', result.text.length);
@@ -427,6 +440,9 @@ Keep the veil intact — no backend details, only erotic authority and elevation
         content: m.content,
       })),
       temperature: 0.9,
+      // @ts-ignore - Vercel AI SDK types for provider metadata vary between 3.0 and 3.1+
+      providerMetadata,
+      experimental_providerMetadata: providerMetadata,
     });
 
     console.log('🌙 Luna Verde: Stream created');
