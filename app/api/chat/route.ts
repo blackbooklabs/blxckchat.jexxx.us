@@ -101,8 +101,9 @@ const PROVIDERS: Record<string, ProviderConfig> = {
     defaultModel: 'meta-llama/llama-3.3-70b-instruct:free',
     models: [
       'meta-llama/llama-3.3-70b-instruct:free',
-      'meta-llama/llama-3.2-3b-instruct:free',
-      'google/gemini-2.5-pro-exp-03-25:free',
+      'google/gemma-3-27b-it:free',
+      'mistralai/mistral-small-3.1-24b-instruct:free',
+      'nousresearch/hermes-3-llama-3.1-405b:free',
       'openrouter/auto',
     ],
   },
