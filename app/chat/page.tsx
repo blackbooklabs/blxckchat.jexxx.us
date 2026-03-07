@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Send, User, Heart, Sparkles, Loader2, Settings, Key, X, ChevronDown, Shield, LogIn, SlidersHorizontal, Copy, Check, Pencil, Volume2, VolumeX, Paperclip, FileText, Image, Play } from "lucide-react";
+import { Send, User, Heart, Sparkles, Loader2, Settings, Key, X, ChevronDown, Shield, LogIn, SlidersHorizontal, Copy, Check, Pencil, Volume2, VolumeX, Paperclip, FileText, Image, Play, Globe } from "lucide-react";
 import { useAuth, UserButton, SignInButton } from "@clerk/nextjs";
 import CursorMotion from "@/components/CursorMotion";
 import MilkingAnimation from "@/components/MilkingAnimation";
@@ -169,6 +169,7 @@ export default function ChatInterface() {
   const [showChatInstructions, setShowChatInstructions] = useState(false);
   const [isSpicy, setIsSpicy] = useState(true);
   const [previewingProjectVoice, setPreviewingProjectVoice] = useState(false);
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
 
   const { 
     projects, 
@@ -203,6 +204,7 @@ const [globalContext, setGlobalContext] = useState("");
   const [stagedImages, setStagedImages] = useState<{name: string, data: string}[]>([]);
   const [extractedContext, setExtractedContext] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   
   // Real-time TTS tracking
   const lastCharIndexRef = useRef(0);
@@ -537,6 +539,7 @@ const [globalContext, setGlobalContext] = useState("");
          autoRenameChat(currentChatId, input);
       }
       setInput("");
+      if (inputRef.current) inputRef.current.style.height = 'auto';
       setStagedFiles([]);
       setStagedImages([]);
       setExtractedContext("");
@@ -603,11 +606,10 @@ const [globalContext, setGlobalContext] = useState("");
           model: providersConfig[activeProvider].model,
           type: "text",
           stream: false,
-          globalContext: [
-            globalContext,
-            activeProject?.custom_instructions,
-            chatInstructions ? `${chatInstructions}` : '' // Delimited by newlines in API already
-          ].filter(Boolean).join('\n\n')
+          webSearch: webSearchEnabled,
+          globalInstructions: globalContext,
+          projectInstructions: activeProject?.custom_instructions,
+          chatInstructions: chatInstructions
         }),
         signal: abortControllerRef.current.signal,
       });
@@ -1383,16 +1385,34 @@ const [globalContext, setGlobalContext] = useState("");
             >
               <SlidersHorizontal className="w-4 h-4" />
             </motion.button>
-            <input
-              type="text"
+            <motion.button
+              onClick={() => setWebSearchEnabled(v => !v)}
+              title={webSearchEnabled ? "Disable Web Search" : "Enable Web Search"}
+              className={`p-2.5 rounded-full border transition-all shrink-0 ${
+                webSearchEnabled
+                  ? 'bg-blue-500/20 border-blue-500/50 text-blue-400 shadow-[0_0_8px_rgba(59,130,246,0.3)]'
+                  : 'bg-surface border-border text-muted hover:text-accent hover:border-accent/40'
+              }`}
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
+            >
+              <Globe className="w-4 h-4" />
+            </motion.button>
+            <textarea
+              ref={inputRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value);
+                e.target.style.height = 'auto';
+                e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+              }}
               onKeyDown={handleKeyPress}
               placeholder={isConfigured ? "Summon the Goddess... 💬" : "⚙️ Add your API key first..."}
               disabled={isLoading}
+              rows={1}
               autoCorrect="off" autoCapitalize="off" spellCheck={false}
               autoComplete="off" data-gramm="false"
-              className="flex-1 px-4 py-3 bg-surface border border-border rounded-full focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-3 bg-surface border border-border rounded-[24px] focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:opacity-50 disabled:cursor-not-allowed resize-none min-h-[48px] overflow-y-auto w-full leading-snug"
             />
             <MilkingAnimation intensity={isLoading ? "gentle" : "passionate"}>
               <motion.button

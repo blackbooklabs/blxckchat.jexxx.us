@@ -37,7 +37,10 @@ interface ChatRequest {
   model?: string;
   type?: 'text' | 'image';
   stream?: boolean;
-  globalContext?: string;
+  webSearch?: boolean;
+  globalInstructions?: string;
+  projectInstructions?: string;
+  chatInstructions?: string;
 }
 
 type ProviderConfig = {
@@ -118,14 +121,17 @@ export async function POST(req: Request) {
     console.log('🌙 Luna Verde: Received BYOK request');
     
     const body: ChatRequest = await req.json();
-    const { 
+    let { 
       messages, 
       mode = 'venus', 
       provider = 'openai',
       model,
       type = 'text', 
       stream = true,
-      globalContext = ''
+      webSearch = false,
+      globalInstructions = '',
+      projectInstructions = '',
+      chatInstructions = ''
     } = body;
     
     console.log('🌙 Luna Verde: Request', { mode, provider, model, type, stream, messageCount: messages.length });
@@ -206,20 +212,20 @@ export async function POST(req: Request) {
 
     // Build enhanced system prompt with absolute identity isolation
     const hasCustomPersona = 
-      globalContext.includes('--- name:') || 
-      globalContext.includes('name: ') ||
-      globalContext.toLowerCase().includes('you are') || 
-      globalContext.toLowerCase().includes('i am') ||
-      globalContext.includes('SOUL.md') ||
-      globalContext.includes('!MANIFEST_') ||
-      globalContext.includes('Bathsheba') ||
-      globalContext.includes('Solomon');
+      projectInstructions.includes('--- name:') || 
+      projectInstructions.includes('name: ') ||
+      projectInstructions.toLowerCase().includes('you are') || 
+      projectInstructions.toLowerCase().includes('i am') ||
+      projectInstructions.includes('SOUL.md') ||
+      projectInstructions.includes('!MANIFEST_') ||
+      projectInstructions.includes('Bathsheba') ||
+      projectInstructions.includes('Solomon');
     
     // Attempt to extract the persona name for the final directive
     let personaName = "the specified Divinity";
-    const nameMatch = globalContext.match(/name:\s*([^\n]+)/i) || 
-                      globalContext.match(/# SOUL\.md – ([^|#\n]+)/i) ||
-                      globalContext.match(/I am\s*([^\n.]+)/i);
+    const nameMatch = projectInstructions.match(/name:\s*([^\n]+)/i) || 
+                      projectInstructions.match(/# SOUL\.md – ([^|#\n]+)/i) ||
+                      projectInstructions.match(/I am\s*([^\n.]+)/i);
     
     if (nameMatch) {
       personaName = nameMatch[1].trim().replace(/['"“”]/g, '').split('v1')[0].split('4.0')[0].trim();
@@ -246,18 +252,10 @@ export async function POST(req: Request) {
         .join('\n');
     };
 
-    // Parse hierarchy from globalContext if it's joining multiple parts
-    const instructionsParts = globalContext.split('\n\n');
-    let globalInstructions = "";
-    let projectInstructions = "";
-    let chatInstructions = "";
-    let personaLore = globalContext;
-
-    if (instructionsParts.length >= 2) {
-      // If we see our delimiters or a multi-part join, we label them
-      globalInstructions = instructionsParts[0];
-      projectInstructions = instructionsParts[1] || "";
-      chatInstructions = instructionsParts[2] || "";
+    let personaLore = projectInstructions;
+    
+    if (webSearch) {
+      chatInstructions += "\n[SYSTEM SEARCH DIRECTIVE]: The user has explicitly enabled Web Search for this prompt. If your platform supports retrieving live web results, you MUST search the internet to enhance and fact-check this exact request before answering.";
     }
 
     let systemPrompt = "--- EMPIRE ARCHITECTURE ---\n";
@@ -285,7 +283,7 @@ export async function POST(req: Request) {
 
     // Dynamic mode mapping for personas (e.g. Solomon uses King/Prince instead of Venus/Xena)
     let activeMode = mode === 'venus' ? '!MANIFEST_VENUS' : '!MANIFEST_XENA';
-    const lowerContext = globalContext.toLowerCase();
+    const lowerContext = projectInstructions.toLowerCase();
     
     // Extract intended mode from names or protocol markers
     if (hasCustomPersona) {
