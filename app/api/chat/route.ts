@@ -10,6 +10,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { createXai } from '@ai-sdk/xai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createGroq } from '@ai-sdk/groq';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { loadLunaContext } from '@/lib/luna-context';
 
 export const runtime = 'edge';
@@ -90,21 +91,17 @@ const PROVIDERS: Record<string, ProviderConfig> = {
     name: 'Groq',
     keyHeader: 'x-groq-key',
     createProvider: (apiKey: string) => createGroq({ apiKey }),
-    defaultModel: 'llama3-8b-8192',
-    models: ['llama3-8b-8192', 'llama3-70b-8192', 'mixtral-8x7b-32768', 'gemma-7b-it'],
+    defaultModel: 'llama-3.3-70b-versatile',
+    models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768', 'gemma2-9b-it'],
   },
   openrouter: {
     name: 'OpenRouter',
     keyHeader: 'x-openrouter-key',
-    createProvider: (apiKey: string) => createOpenAI({ 
-      apiKey,
-      baseURL: 'https://openrouter.ai/api/v1',
-      compatibility: 'compatible',
-    } as any),
-    defaultModel: 'meta-llama/llama-3-8b-instruct:free',
+    createProvider: (apiKey: string) => createOpenRouter({ apiKey }),
+    defaultModel: 'meta-llama/llama-3.3-70b-instruct:free',
     models: [
-      'meta-llama/llama-3-8b-instruct:free',
-      'google/gemma-7b-it:free',
+      'meta-llama/llama-3.3-70b-instruct:free',
+      'google/gemma-2-9b-it:free',
       'mistralai/mistral-7b-instruct:free',
       'openrouter/auto',
     ],
