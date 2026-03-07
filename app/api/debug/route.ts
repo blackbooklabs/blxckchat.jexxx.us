@@ -15,25 +15,36 @@ export async function GET() {
 
   const userId = await getServerUserId();
 
+  // Raw probe — bypass supabase-js to see the exact PostgREST response
+  let supabaseProbe: unknown = null;
+  try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
+    if (url && key) {
+      const res = await fetch(`${url}/rest/v1/blxckchat_projects?limit=1`, {
+        headers: {
+          'apikey': key,
+          'Authorization': `Bearer ${key}`,
+          'Accept-Profile': 'public',
+        },
+      });
+      supabaseProbe = { status: res.status, body: await res.text() };
+    } else {
+      supabaseProbe = { error: 'Missing URL or key' };
+    }
+  } catch (e: unknown) {
+    supabaseProbe = { fetchError: String(e) };
+  }
+
   return NextResponse.json({
     userId,
     authenticated: !!userId,
-    cookieNames: allCookies.map(c => c.name),
-    hasClerkSession: allCookies.some(c => c.name === '__session'),
-    hasClerkDbJwt: allCookies.some(c => c.name === '__clerk_db_jwt'),
-    hasClerkKey: !!process.env.CLERK_SECRET_KEY,
     hasClerkDefault: !!process.env.CLERK_SECRET_DEFAULT,
-    hasPublishableKey: !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     supabase: {
-      hasNextPublicUrl: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-      hasSupabaseUrl: !!process.env.SUPABASE_URL,
       resolvedUrl: (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || 'MISSING'),
       hasAnonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      hasSupabaseAnonKey: !!process.env.SUPABASE_ANON_KEY,
-      hasServiceKey: !!process.env.SUPABASE_SERVICE_KEY,
-      hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-      // Show all env var names containing SUPABASE
       allSupabaseVarNames: Object.keys(process.env).filter(k => k.includes('SUPABASE')),
+      probe: supabaseProbe,
     },
     env: process.env.NODE_ENV,
   });
