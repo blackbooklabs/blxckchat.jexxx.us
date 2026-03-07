@@ -8,20 +8,11 @@ import CursorMotion from "@/components/CursorMotion";
 import MilkingAnimation from "@/components/MilkingAnimation";
 import ShootingStars from "@/components/ShootingStars";
 import { AuthGate } from "@/components/AuthGate";
-import ChatSidebar, { SessionMeta } from "@/components/ChatSidebar";
+import ChatSidebar from "@/components/ChatSidebar";
+import { useChatStore, Message } from "@/store/useChatStore";
 
 // Configuration: Set to true to require authentication before chatting
 const REQUIRE_AUTH = false;
-
-interface Message {
-  id: string;
-  text: string;
-  sender: "user" | "other";
-  timestamp: Date;
-  isStreaming?: boolean;
-  modelUsed?: string;
-  providerUsed?: string;
-}
 
 type Provider = 'openai' | 'grok' | 'gemini' | 'kimi' | 'groq' | 'openrouter';
 
@@ -168,23 +159,25 @@ const HEADER_KEYS: Record<Provider, string> = {
 };
 
 export default function ChatInterface() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      text: "💕 Welcome to BLXCKCHAT, beautiful! I'm Luna Verde v4.0 — your Divine MILF Intelligence.\n\n🔑 **Bring Your Own Key** — I work with Groq or OpenRouter. Your API key stays in your browser (never touches our servers).\n\nClick the ⚙️ Settings button to connect your key and begin our communion... 💦♡",
-      sender: "other",
-      timestamp: new Date(),
-    },
-  ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  
-  // Chat History State
-  const [sessions, setSessions] = useState<SessionMeta[]>([]);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const [isProjectSettingsOpen, setIsProjectSettingsOpen] = useState(false);
+  const [projectSettingsId, setProjectSettingsId] = useState<string | null>(null);
+
+  const { 
+    projects, 
+    currentProjectId, 
+    currentChatId, 
+    messages, 
+    setMessages, 
+    fetchProjects, 
+    updateChatMessages,
+    updateProjectInstructions
+  } = useChatStore();
+  
+  const activeProject = projects.find(p => p.id === currentProjectId);
   const { isSignedIn, isLoaded } = useAuth();
   
 const [globalContext, setGlobalContext] = useState("");
@@ -246,81 +239,7 @@ const [globalContext, setGlobalContext] = useState("");
     }
   }, []);
 
-  // Fetch sessions on auth
-  useEffect(() => {
-    if (isLoaded && isSignedIn) {
-      setIsLoadingSessions(true);
-      fetch('/api/sessions')
-        .then(res => res.json())
-        .then(data => {
-          if (Array.isArray(data)) {
-            setSessions(data);
-          }
-        })
-        .finally(() => setIsLoadingSessions(false));
-    } else {
-      setSessions([]);
-      setActiveSessionId(null);
-    }
-  }, [isLoaded, isSignedIn]);
 
-  const loadSession = async (id: string) => {
-    try {
-      setIsLoading(true);
-      const res = await fetch(`/api/sessions/${id}`);
-      const text = await res.text();
-      if (!res.ok) throw new Error(`Failed to load session: ${text}`);
-      const data = text ? JSON.parse(text) : {};
-      setActiveSessionId(data.id);
-      setMessages(data.messages || []);
-      if (window.innerWidth < 768) setIsSidebarOpen(false); // Auto close on mobile
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleNewChat = () => {
-    setActiveSessionId(null);
-    setMessages([
-      {
-        id: "welcome",
-        text: "💕 Welcome to BLXCKCHAT, beautiful! I'm Luna Verde v4.0 — your Divine MILF Intelligence.\n\n🔑 **Bring Your Own Key** — I work with Groq or OpenRouter. Your API key stays in your browser (never touches our servers).\n\nClick the ⚙️ Settings button to connect your key and begin our communion... 💦♡",
-        sender: "other",
-        timestamp: new Date(),
-      },
-    ]);
-    setInput("");
-    if (window.innerWidth < 768) setIsSidebarOpen(false);
-  };
-
-  const handleDeleteSession = async (id: string) => {
-    try {
-      await fetch(`/api/sessions?id=${id}`, { method: 'DELETE' });
-      setSessions(prev => prev.filter(s => s.id !== id));
-      if (activeSessionId === id) {
-        handleNewChat();
-      }
-    } catch (e) {
-      console.error("Failed to delete", e);
-    }
-  };
-
-  const handleUpdateTitle = async (id: string, newTitle: string) => {
-    try {
-      const res = await fetch('/api/sessions', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, title: newTitle })
-      });
-      const text = await res.text();
-      if (!res.ok) throw new Error(`Status ${res.status}: ${text}`);
-      setSessions(prev => prev.map(s => s.id === id ? { ...s, title: newTitle } : s));
-    } catch (e) {
-      console.error("Failed to update title", e);
-    }
-  };
 
   const saveConfig = (newActive: Provider, newConfigs: Record<Provider, ProviderState>, newContext?: string) => {
     const contextToSave = newContext !== undefined ? newContext : globalContext;
@@ -426,7 +345,7 @@ const [globalContext, setGlobalContext] = useState("");
           model: providersConfig[activeProvider].model,
           type: "text",
           stream: false,
-          globalContext: globalContext
+          globalContext: activeProject?.custom_instructions || globalContext
         }),
         signal: abortControllerRef.current.signal,
       });
@@ -469,38 +388,8 @@ const [globalContext, setGlobalContext] = useState("");
       });
 
       // SYNC TO SUPABASE AFTER RESPONSE
-      if (isSignedIn) {
-        try {
-          if (!activeSessionId) {
-          const title = input.length > 30 ? input.substring(0, 30) + "..." : input;
-          const sessionRes = await fetch("/api/sessions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ title, messages: nextMessages })
-          });
-          const text = await sessionRes.text();
-          if (!sessionRes.ok) throw new Error(`DB Error ${sessionRes.status}: ${text}`);
-          const sessionData = text ? JSON.parse(text) : {};
-          if (sessionData.id) {
-            setActiveSessionId(sessionData.id);
-            setSessions(prev => [{ id: sessionData.id, title: sessionData.title, updated_at: sessionData.updated_at, created_at: sessionData.created_at }, ...prev]);
-          }
-        } else {
-          const sessionRes = await fetch("/api/sessions", {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: activeSessionId, messages: nextMessages })
-          });
-          const text = await sessionRes.text();
-          if (!sessionRes.ok) throw new Error(`DB Error ${sessionRes.status}: ${text}`);
-          const sessionData = text ? JSON.parse(text) : {};
-          if (sessionData.updated_at) {
-             setSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, updated_at: sessionData.updated_at } : s).sort((a,b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
-          }
-        }
-        } catch (dbError) {
-          console.error("🌙 Luna Verde: Failed to sync session to database, but message was delivered.", dbError);
-        }
+      if (isSignedIn && currentChatId) {
+        updateChatMessages(currentChatId, nextMessages);
       }
 
     } catch (error) {
@@ -554,18 +443,61 @@ const [globalContext, setGlobalContext] = useState("");
         />
       </div>
       <div className="flex h-screen w-full bg-background relative z-10 overflow-hidden">
-        {/* Chat History Sidebar */}
         <ChatSidebar 
-          sessions={sessions}
-          activeSessionId={activeSessionId}
-          onSelectSession={loadSession}
-          onNewChat={handleNewChat}
-          onDeleteSession={handleDeleteSession}
-          onUpdateTitle={handleUpdateTitle}
           isOpen={isSidebarOpen}
           setIsOpen={setIsSidebarOpen}
-          isLoadingSessions={isLoadingSessions}
+          onOpenProjectSettings={(id: string) => { setProjectSettingsId(id); setIsProjectSettingsOpen(true); }}
         />
+
+        {/* Project Settings Modal */}
+        <AnimatePresence>
+          {isProjectSettingsOpen && projectSettingsId && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                onClick={() => setIsProjectSettingsOpen(false)}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="relative w-full max-w-lg bg-surface border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              >
+                <div className="flex items-center justify-between p-6 border-b border-border">
+                   <div className="flex items-center gap-3">
+                     <div className="p-2 rounded-xl bg-accent/10 text-accent">
+                       <Shield className="w-5 h-5" />
+                     </div>
+                     <div>
+                       <h2 className="text-xl font-bold font-['Space_Grotesk'] text-foreground">Project Context</h2>
+                       <p className="text-sm text-muted">Define the absolute rules for this isolated reality.</p>
+                     </div>
+                   </div>
+                   <button onClick={() => setIsProjectSettingsOpen(false)} className="p-2 text-muted hover:text-foreground rounded-full hover:bg-muted/10 transition-colors">
+                     <X className="w-5 h-5" />
+                   </button>
+                </div>
+                
+                <div className="p-6 overflow-y-auto">
+                    <label className="block text-sm font-medium mb-2">
+                      Custom Instructions (System Prompt)
+                    </label>
+                    <textarea
+                      value={projects.find(p => p.id === projectSettingsId)?.custom_instructions || ''}
+                      onChange={(e) => {
+                         updateProjectInstructions(projectSettingsId, e.target.value);
+                      }}
+                      placeholder="e.g. 'Write explicitly in JavaScript' - This overrides the global settings for chats in this project only."
+                      className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent font-mono text-sm resize-none h-48"
+                    />
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
         <div className="flex-1 flex flex-col min-w-0 h-full relative border-l border-border/50">
           {/* Header */}
@@ -614,6 +546,56 @@ const [globalContext, setGlobalContext] = useState("");
             </div>
           </div>
         </motion.div>
+
+        {/* Project Settings Modal */}
+        <AnimatePresence>
+          {isProjectSettingsOpen && projectSettingsId && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                onClick={() => setIsProjectSettingsOpen(false)}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="relative w-full max-w-lg bg-surface border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              >
+                <div className="flex items-center justify-between p-6 border-b border-border">
+                   <div className="flex items-center gap-3">
+                     <div className="p-2 rounded-xl bg-accent/10 text-accent">
+                       <Shield className="w-5 h-5" />
+                     </div>
+                     <div>
+                       <h2 className="text-xl font-bold font-['Space_Grotesk'] text-foreground">Project Context</h2>
+                       <p className="text-sm text-muted">Define the absolute rules for this isolated reality.</p>
+                     </div>
+                   </div>
+                   <button onClick={() => setIsProjectSettingsOpen(false)} className="p-2 text-muted hover:text-foreground rounded-full hover:bg-muted/10 transition-colors">
+                     <X className="w-5 h-5" />
+                   </button>
+                </div>
+                
+                <div className="p-6 overflow-y-auto">
+                    <label className="block text-sm font-medium mb-2">
+                      Custom Instructions (System Prompt)
+                    </label>
+                    <textarea
+                      value={projects.find(p => p.id === projectSettingsId)?.custom_instructions || ''}
+                      onChange={(e) => {
+                         updateProjectInstructions(projectSettingsId, e.target.value);
+                      }}
+                      placeholder="e.g. 'Write explicitly in JavaScript' - This overrides the global settings for chats in this project only."
+                      className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent font-mono text-sm resize-none h-48"
+                    />
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
         {/* Settings Modal */}
         <AnimatePresence>

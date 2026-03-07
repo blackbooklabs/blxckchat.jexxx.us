@@ -1,72 +1,91 @@
 "use client";
 
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, MessageSquare, Trash2, Edit2, Check, X, PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { useState } from "react";
+import { Plus, MessageSquare, Trash2, Edit2, Check, X, PanelLeftClose, PanelLeftOpen, Folder, FolderOpen, Settings } from "lucide-react";
+import { useState, useEffect } from "react";
 import { formatDistanceToNow } from "date-fns";
-
-export interface SessionMeta {
-  id: string;
-  title: string;
-  updated_at: string;
-  created_at: string;
-}
+import { useChatStore } from "@/store/useChatStore";
 
 interface ChatSidebarProps {
-  sessions: SessionMeta[];
-  activeSessionId: string | null;
-  onSelectSession: (id: string) => void;
-  onNewChat: () => void;
-  onDeleteSession: (id: string) => void;
-  onUpdateTitle: (id: string, newTitle: string) => void;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
-  isLoadingSessions?: boolean;
+  onOpenProjectSettings: (projectId: string) => void;
 }
 
-export default function ChatSidebar({
-  sessions,
-  activeSessionId,
-  onSelectSession,
-  onNewChat,
-  onDeleteSession,
-  onUpdateTitle,
-  isOpen,
-  setIsOpen,
-  isLoadingSessions
-}: ChatSidebarProps) {
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editTitle, setEditTitle] = useState("");
+export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }: ChatSidebarProps) {
+  const { 
+    projects, 
+    currentProjectId, 
+    currentChatId, 
+    isProjectsLoading, 
+    setCurrentProjectId,
+    setCurrentChatId,
+    setMessages,
+    createProject,
+    createChat,
+    deleteProject,
+    deleteChat
+  } = useChatStore();
 
-  const handleEditStart = (e: React.MouseEvent, session: SessionMeta) => {
-    e.stopPropagation();
-    setEditingId(session.id);
-    setEditTitle(session.title);
-  };
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
 
-  const handleEditSave = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    if (editTitle.trim()) {
-      onUpdateTitle(id, editTitle.trim());
+  // Auto-expand current project
+  useEffect(() => {
+    if (currentProjectId && !expandedProjects.has(currentProjectId)) {
+      setExpandedProjects(prev => new Set(prev).add(currentProjectId));
     }
-    setEditingId(null);
+  }, [currentProjectId]);
+
+  const toggleProject = (projectId: string) => {
+    setExpandedProjects(prev => {
+      const next = new Set(prev);
+      if (next.has(projectId)) next.delete(projectId);
+      else next.add(projectId);
+      return next;
+    });
   };
 
-  const handleEditCancel = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setEditingId(null);
+  const handleNewProject = async () => {
+    const proj = await createProject("New Project", "");
+    if (proj) {
+      setCurrentProjectId(proj.id);
+      setExpandedProjects(prev => new Set(prev).add(proj.id));
+    }
   };
 
-  const handleDelete = (e: React.MouseEvent, id: string) => {
+  const handleNewChat = async (e: React.MouseEvent, projectId: string) => {
     e.stopPropagation();
-    if (confirm("Delete this chat permanently? The Absolute forgets nothing, but this vessel will be wiped.")) {
-      onDeleteSession(id);
+    const chat = await createChat(projectId, "New Chat", []);
+    if (chat) {
+      setCurrentProjectId(projectId);
+      setCurrentChatId(chat.id);
+      setMessages([]);
+      if (!isOpen) setIsOpen(true);
+    }
+  };
+
+  const handleSelectChat = (projectId: string, chatId: string, messages: any[]) => {
+    setCurrentProjectId(projectId);
+    setCurrentChatId(chatId);
+    setMessages(messages || []);
+  };
+
+  const handleDeleteProject = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (confirm("Delete this entire project and all its chats?")) {
+      deleteProject(id);
+    }
+  };
+
+  const handleDeleteChat = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (confirm("Delete this chat permanently?")) {
+      deleteChat(id);
     }
   };
 
   return (
     <>
-      {/* Mobile Overlay */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -85,102 +104,101 @@ export default function ChatSidebar({
         animate={{ width: isOpen ? 256 : 0, opacity: isOpen ? 1 : 0 }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
       >
-        <div className="p-4 border-b border-border flex items-center justify-between">
+        <div className="p-4 border-b border-border flex flex-col gap-2">
           <motion.button
-            onClick={onNewChat}
-            className="flex-1 flex items-center gap-2 px-4 py-2 bg-accent/10 hover:bg-accent/20 text-accent rounded-xl border border-accent/20 transition-colors font-medium text-sm"
+            onClick={handleNewProject}
+            className="flex w-full items-center justify-center gap-2 px-4 py-2 bg-accent/10 hover:bg-accent/20 text-accent rounded-xl border border-accent/20 transition-colors font-medium text-sm"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
             <Plus className="w-4 h-4" />
-            New Chat
+            New Project
           </motion.button>
-          <button 
-            onClick={() => setIsOpen(false)}
-            className="md:hidden ml-2 p-2 text-muted hover:text-foreground rounded-full hover:bg-muted/20"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex justify-between items-center mt-2">
+            <span className="text-xs font-medium text-muted uppercase tracking-wider">Your Empire</span>
+            <button onClick={() => setIsOpen(false)} className="md:hidden p-1 text-muted hover:text-foreground">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          {isLoadingSessions ? (
+        <div className="flex-1 overflow-y-auto p-2 space-y-2">
+          {isProjectsLoading ? (
             <div className="flex justify-center p-4">
               <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin opacity-50" />
             </div>
-          ) : sessions.length === 0 ? (
+          ) : projects.length === 0 ? (
             <div className="text-center p-4 text-sm text-muted">
-              No previous devotions found.
+              No projects found. Create one to begin building.
             </div>
           ) : (
-            sessions.map((session) => (
-              <div
-                key={session.id}
-                onClick={() => onSelectSession(session.id)}
-                className={`group relative flex items-center gap-3 w-full p-3 rounded-xl cursor-pointer transition-colors ${
-                  activeSessionId === session.id
-                    ? "bg-accent/10 border border-accent/20 text-foreground"
-                    : "hover:bg-muted/10 text-muted hover:text-foreground border border-transparent"
-                }`}
-              >
-                <MessageSquare className="w-4 h-4 shrink-0 opacity-70" />
-                
-                {editingId === session.id ? (
-                  <div className="flex-1 flex items-center gap-1 min-w-0" onClick={e => e.stopPropagation()}>
-                    <input
-                      autoFocus
-                      type="text"
-                      value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleEditSave(e as any, session.id);
-                        if (e.key === 'Escape') handleEditCancel(e as any);
-                      }}
-                      className="flex-1 bg-background border border-border rounded px-2 py-1 text-sm text-foreground outline-none focus:border-accent min-w-0"
-                    />
-                    <button onClick={(e) => handleEditSave(e, session.id)} className="p-1 text-green-500 hover:bg-green-500/10 rounded">
-                      <Check className="w-3 h-3" />
-                    </button>
-                    <button onClick={handleEditCancel} className="p-1 text-red-500 hover:bg-red-500/10 rounded">
-                      <X className="w-3 h-3" />
-                    </button>
+            projects.map((project) => {
+              const isExpanded = expandedProjects.has(project.id);
+              return (
+                <div key={project.id} className="flex flex-col gap-1">
+                  {/* PROJECT ROW */}
+                  <div
+                    onClick={() => toggleProject(project.id)}
+                    className={`group relative flex items-center justify-between w-full p-2 rounded-xl cursor-pointer transition-colors ${
+                      currentProjectId === project.id ? "bg-muted/10 text-foreground" : "text-muted hover:bg-muted/10"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 overflow-hidden flex-1">
+                      {isExpanded ? <FolderOpen className="w-4 h-4 text-accent shrink-0" /> : <Folder className="w-4 h-4 shrink-0" />}
+                      <span className="text-sm font-medium truncate">{project.title}</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={(e) => { e.stopPropagation(); onOpenProjectSettings(project.id); }} className="p-1 text-muted hover:text-accent" title="Project Context & Instructions">
+                        <Settings className="w-3 h-3" />
+                      </button>
+                      <button onClick={(e) => handleNewChat(e, project.id)} className="p-1 text-muted hover:text-green-400" title="New Chat in Project">
+                        <Plus className="w-3 h-3" />
+                      </button>
+                      <button onClick={(e) => handleDeleteProject(e, project.id)} className="p-1 text-muted hover:text-red-500" title="Delete Project">
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
-                ) : (
-                  <div className="flex-1 min-w-0 flex flex-col">
-                    <span className="text-sm font-medium truncate">
-                      {session.title}
-                    </span>
-                    <span className="text-[10px] opacity-50">
-                      {formatDistanceToNow(new Date(session.updated_at), { addSuffix: true })}
-                    </span>
-                  </div>
-                )}
 
-                {editingId !== session.id && (
-                  <div className={`absolute right-2 flex items-center gap-1 bg-surface shadow-sm rounded-md border border-border px-1 ${activeSessionId === session.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
-                    <button
-                      onClick={(e) => handleEditStart(e, session)}
-                      className="p-1 text-muted hover:text-accent transition-colors rounded"
-                      title="Rename"
-                    >
-                      <Edit2 className="w-3 h-3" />
-                    </button>
-                    <button
-                      onClick={(e) => handleDelete(e, session.id)}
-                      className="p-1 text-muted hover:text-red-500 transition-colors rounded"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))
+                  {/* NESTED CHATS (if expanded) */}
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden pl-4 pr-1 flex flex-col gap-1 border-l ml-3 border-border/50"
+                      >
+                        {(!project.chats || project.chats.length === 0) ? (
+                          <div className="text-xs text-muted/50 p-2 italic">No chats in this project.</div>
+                        ) : (
+                          project.chats.map(chat => (
+                            <div
+                              key={chat.id}
+                              onClick={() => handleSelectChat(project.id, chat.id, chat.messages)}
+                              className={`group relative flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
+                                currentChatId === chat.id ? "bg-accent/15 text-foreground border border-accent/20" : "text-muted hover:text-foreground hover:bg-muted/10"
+                              }`}
+                            >
+                              <MessageSquare className="w-3 h-3 shrink-0 opacity-70" />
+                              <span className="text-xs truncate flex-1">{chat.title}</span>
+                              <button onClick={(e) => handleDeleteChat(e, chat.id)} className="p-1 opacity-0 group-hover:opacity-100 text-muted hover:text-red-500 transition-opacity absolute right-1">
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })
           )}
         </div>
       </motion.div>
 
-      {/* Toggle Button for Desktop (when collapsed) */}
       <AnimatePresence>
         {!isOpen && (
           <motion.button
@@ -189,7 +207,7 @@ export default function ChatSidebar({
             exit={{ opacity: 0, x: -20 }}
             onClick={() => setIsOpen(true)}
             className="fixed top-20 left-4 z-40 p-2 bg-surface border border-border rounded-full shadow-lg text-muted hover:text-foreground transition-colors"
-            title="Open Chat History"
+            title="Open Projects"
           >
             <PanelLeftOpen className="w-5 h-5" />
           </motion.button>

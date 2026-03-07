@@ -8,8 +8,8 @@ export async function GET(req: Request) {
 
   const supabase = getSupabase();
   const { data, error } = await supabase
-    .from('blxckchat_sessions')
-    .select('id, title, created_at, updated_at') // omit messages for list view speed
+    .from('blxckchat_projects')
+    .select('*, chats:blxckchat_chats(*)')
     .eq('user_id', userId)
     .order('updated_at', { ascending: false });
     
@@ -22,12 +22,12 @@ export async function POST(req: Request) {
   if (!userId) return new NextResponse('Unauthorized', { status: 401 });
   
   const body = await req.json();
-  const { title = 'New Chat', messages = [] } = body;
+  const { title = 'New Project', custom_instructions = '' } = body;
 
   const supabase = getSupabase();
   const { data, error } = await supabase
-    .from('blxckchat_sessions')
-    .insert([{ user_id: userId, title, messages }])
+    .from('blxckchat_projects')
+    .insert([{ user_id: userId, title, custom_instructions }])
     .select()
     .single();
 
@@ -40,20 +40,21 @@ export async function PUT(req: Request) {
   if (!userId) return new NextResponse('Unauthorized', { status: 401 });
   
   const body = await req.json();
-  const { id, title, messages } = body;
+  const { id, title, custom_instructions, context_json } = body;
   
-  if (!id) return new NextResponse('Missing session ID', { status: 400 });
+  if (!id) return new NextResponse('Missing project ID', { status: 400 });
 
   const updates: any = { updated_at: new Date().toISOString() };
   if (title !== undefined) updates.title = title;
-  if (messages !== undefined) updates.messages = messages;
+  if (custom_instructions !== undefined) updates.custom_instructions = custom_instructions;
+  if (context_json !== undefined) updates.context_json = context_json;
 
   const supabase = getSupabase();
   const { data, error } = await supabase
-    .from('blxckchat_sessions')
+    .from('blxckchat_projects')
     .update(updates)
     .eq('id', id)
-    .eq('user_id', userId) // Security check
+    .eq('user_id', userId)
     .select()
     .single();
 
@@ -68,11 +69,11 @@ export async function DELETE(req: Request) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
   
-  if (!id) return new NextResponse('Missing session ID', { status: 400 });
+  if (!id) return new NextResponse('Missing project ID', { status: 400 });
 
   const supabase = getSupabase();
   const { error } = await supabase
-    .from('blxckchat_sessions')
+    .from('blxckchat_projects')
     .delete()
     .eq('id', id)
     .eq('user_id', userId);
