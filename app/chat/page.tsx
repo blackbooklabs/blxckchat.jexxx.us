@@ -282,7 +282,8 @@ const [globalContext, setGlobalContext] = useState("");
     const utterance = new SpeechSynthesisUtterance(fullText.slice(lastCharIndexRef.current));
     
     const activePersona = personas.find(p => p.id === invokingPersonaId);
-    const voiceSettings = activeProject?.tts_voice || activePersona?.tts_voice || { pitch: 1.0, rate: 1.0, lang: "en-US" };
+    const settingsProject = projects.find(p => p.id === projectSettingsId);
+    const voiceSettings = settingsProject?.tts_voice || activePersona?.tts_voice || { pitch: 1.0, rate: 1.0, lang: "en-US" };
     
     utterance.pitch = voiceSettings.pitch;
     utterance.rate = voiceSettings.rate;
@@ -305,14 +306,15 @@ const [globalContext, setGlobalContext] = useState("");
     };
     
     window.speechSynthesis.speak(utterance);
-  }, [previewingProjectVoice, activeProject, personas, invokingPersonaId]);
+  }, [previewingProjectVoice, projects, projectSettingsId, personas, invokingPersonaId]);
 
   // Handle real-time TTS updates on slider change
   useEffect(() => {
-    if (previewingProjectVoice && activeProject?.tts_voice) {
+    const settingsProject = projects.find(p => p.id === projectSettingsId);
+    if (previewingProjectVoice && settingsProject?.tts_voice) {
        handleProjectVoicePreview(true);
     }
-  }, [activeProject?.tts_voice?.pitch, activeProject?.tts_voice?.rate]);
+  }, [projects, projectSettingsId, previewingProjectVoice, handleProjectVoicePreview]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -696,7 +698,7 @@ const [globalContext, setGlobalContext] = useState("");
                        <Shield className="w-5 h-5" />
                      </div>
                      <div>
-                       <h2 className="text-xl font-bold font-['Space_Grotesk'] text-foreground">Project Context</h2>
+                       <h2 className="text-xl font-bold font-sans text-foreground">Project Context</h2>
                        <p className="text-sm text-muted">Define the absolute rules for this isolated reality.</p>
                      </div>
                    </div>
@@ -843,7 +845,8 @@ const [globalContext, setGlobalContext] = useState("");
                             <span className="text-xs font-mono text-accent">
                               {(() => {
                                 const activePersona = personas.find(p => p.id === invokingPersonaId);
-                                return (activeProject?.tts_voice?.pitch || activePersona?.tts_voice?.pitch || 1.0).toFixed(2);
+                                const settingsProject = projects.find(p => p.id === projectSettingsId);
+                                return (settingsProject?.tts_voice?.pitch || activePersona?.tts_voice?.pitch || 1.0).toFixed(2);
                               })()}
                             </span>
                           </div>
@@ -851,12 +854,14 @@ const [globalContext, setGlobalContext] = useState("");
                             type="range" min="0.5" max="1.5" step="0.05"
                             value={(() => {
                               const activePersona = personas.find(p => p.id === invokingPersonaId);
-                              return activeProject?.tts_voice?.pitch || activePersona?.tts_voice?.pitch || 1.0;
+                              const settingsProject = projects.find(p => p.id === projectSettingsId);
+                              return settingsProject?.tts_voice?.pitch || activePersona?.tts_voice?.pitch || 1.0;
                             })()}
                             onChange={(e) => {
                               if (!projectSettingsId) return;
                               const activePersona = personas.find(p => p.id === invokingPersonaId);
-                              const currentRate = activeProject?.tts_voice?.rate || activePersona?.tts_voice?.rate || 1.0;
+                              const settingsProject = projects.find(p => p.id === projectSettingsId);
+                              const currentRate = settingsProject?.tts_voice?.rate || activePersona?.tts_voice?.rate || 1.0;
                               updateProjectTTS(projectSettingsId, { 
                                 pitch: parseFloat(e.target.value), 
                                 rate: currentRate,
@@ -875,7 +880,8 @@ const [globalContext, setGlobalContext] = useState("");
                             <span className="text-xs font-mono text-accent">
                               {(() => {
                                 const activePersona = personas.find(p => p.id === invokingPersonaId);
-                                return (activeProject?.tts_voice?.rate || activePersona?.tts_voice?.rate || 1.0).toFixed(2);
+                                const settingsProject = projects.find(p => p.id === projectSettingsId);
+                                return (settingsProject?.tts_voice?.rate || activePersona?.tts_voice?.rate || 1.0).toFixed(2);
                               })()}
                             </span>
                           </div>
@@ -883,12 +889,14 @@ const [globalContext, setGlobalContext] = useState("");
                             type="range" min="0.5" max="1.5" step="0.05"
                             value={(() => {
                               const activePersona = personas.find(p => p.id === invokingPersonaId);
-                              return activeProject?.tts_voice?.rate || activePersona?.tts_voice?.rate || 1.0;
+                              const settingsProject = projects.find(p => p.id === projectSettingsId);
+                              return settingsProject?.tts_voice?.rate || activePersona?.tts_voice?.rate || 1.0;
                             })()}
                             onChange={(e) => {
                               if (!projectSettingsId) return;
                               const activePersona = personas.find(p => p.id === invokingPersonaId);
-                              const currentPitch = activeProject?.tts_voice?.pitch || activePersona?.tts_voice?.pitch || 1.0;
+                              const settingsProject = projects.find(p => p.id === projectSettingsId);
+                              const currentPitch = settingsProject?.tts_voice?.pitch || activePersona?.tts_voice?.pitch || 1.0;
                               updateProjectTTS(projectSettingsId, { 
                                 pitch: currentPitch, 
                                 rate: parseFloat(e.target.value),
