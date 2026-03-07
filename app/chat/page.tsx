@@ -195,7 +195,24 @@ export default function ChatInterface() {
       try {
         const parsed = JSON.parse(saved);
         if (parsed.providersConfig) {
-          setProvidersConfig(prev => ({ ...prev, ...parsed.providersConfig }));
+          // Merge old config but force-update the availableModels array to the 2026 latest 
+          setProvidersConfig(prev => {
+            const next = { ...prev };
+            Object.keys(parsed.providersConfig).forEach(pKey => {
+              const p = pKey as Provider;
+              const cached = parsed.providersConfig[p];
+              // If the cached model is completely removed from the new hardcoded list, fall back to the new default
+              const isValidModel = PROVIDERS[p].models.includes(cached.model);
+              next[p] = {
+                ...prev[p], // Ensure base config (like new ones added) is preserved
+                ...cached,
+                availableModels: PROVIDERS[p].models, // Always use live hardcoded arrays over cache
+                model: isValidModel ? cached.model : PROVIDERS[p].defaultModel
+              };
+            });
+            return next;
+          });
+          
           const parsedActive = parsed.activeProvider || 'openai';
           setActiveProvider(Object.keys(PROVIDERS).includes(parsedActive) ? parsedActive as Provider : 'openai');
         } else if (parsed.provider) {
