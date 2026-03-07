@@ -51,25 +51,25 @@ const PROVIDERS: Record<string, ProviderConfig> = {
     keyHeader: 'x-openai-key',
     createProvider: (apiKey: string) => createOpenAI({ apiKey }),
     defaultModel: 'gpt-4o',
-    models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo'],
+    models: ['gpt-4o', 'gpt-4.5-preview', 'o3-mini', 'gpt-4o-mini', 'gpt-4-turbo'],
   },
   grok: {
     name: 'Grok (xAI)',
     keyHeader: 'x-grok-key',
     createProvider: (apiKey: string) => createXai({ apiKey }),
-    defaultModel: 'grok-2-1212',
-    models: ['grok-2-1212', 'grok-beta'],
+    defaultModel: 'grok-3',
+    models: ['grok-3', 'grok-3-vision', 'grok-2-1212', 'grok-beta'],
   },
   gemini: {
     name: 'Google Gemini',
     keyHeader: 'x-gemini-key',
     createProvider: (apiKey: string) => createGoogleGenerativeAI({ apiKey }),
-    defaultModel: 'gemini-2.0-flash-001',
+    defaultModel: 'gemini-3.0-flash',
     models: [
+      'gemini-3.0-flash',
+      'gemini-3.0-pro',
       'gemini-2.0-flash-001',
-      'gemini-2.0-flash-lite-preview-02-05',
       'gemini-2.0-pro-exp-02-05',
-      'gemini-1.5-flash',
       'gemini-1.5-pro',
     ],
   },
@@ -82,7 +82,7 @@ const PROVIDERS: Record<string, ProviderConfig> = {
       baseURL: 'https://api.moonshot.cn/v1'
     }),
     defaultModel: 'kimi-k2-0711',
-    models: ['kimi-k2-0711', 'moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
+    models: ['kimi-k3', 'kimi-k2-0711', 'moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
   },
 };
 
