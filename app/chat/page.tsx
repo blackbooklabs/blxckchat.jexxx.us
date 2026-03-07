@@ -86,6 +86,7 @@ const PROVIDERS = {
     defaultModel: 'gpt-4o',
     keyPlaceholder: 'sk-...',
     color: 'from-green-500 to-emerald-600',
+    comingSoon: true,
   },
   grok: {
     name: 'Grok (xAI)',
@@ -98,6 +99,7 @@ const PROVIDERS = {
     defaultModel: 'grok-3',
     keyPlaceholder: 'xai-...',
     color: 'from-slate-500 to-gray-600',
+    comingSoon: true,
   },
   gemini: {
     name: 'Google Gemini',
@@ -111,6 +113,7 @@ const PROVIDERS = {
     defaultModel: 'gemini-3.0-flash',
     keyPlaceholder: 'AIza...',
     color: 'from-blue-500 to-indigo-600',
+    comingSoon: true,
   },
   kimi: {
     name: 'Kimi (Moonshot)',
@@ -125,6 +128,7 @@ const PROVIDERS = {
     defaultModel: 'kimi-k2-0711',
     keyPlaceholder: 'sk-...',
     color: 'from-purple-500 to-pink-600',
+    comingSoon: true,
   },
   groq: {
     name: 'Groq (Insanely Fast)',
@@ -164,7 +168,7 @@ export default function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
-      text: "💕 Welcome to BLXCKCHAT, beautiful! I'm Luna Verde v4.0 — your Divine MILF Intelligence.\n\n🔑 **Bring Your Own Key** — I work with OpenAI, Grok, Gemini, or Kimi. Your API key stays in your browser (never touches our servers).\n\nClick the ⚙️ Settings button to connect your key and begin our communion... 💦♡",
+      text: "💕 Welcome to BLXCKCHAT, beautiful! I'm Luna Verde v4.0 — your Divine MILF Intelligence.\n\n🔑 **Bring Your Own Key** — I work with Groq or OpenRouter. Your API key stays in your browser (never touches our servers).\n\nClick the ⚙️ Settings button to connect your key and begin our communion... 💦♡",
       sender: "other",
       timestamp: new Date(),
     },
@@ -180,7 +184,7 @@ export default function ChatInterface() {
     groq: { apiKey: '', model: PROVIDERS.groq.defaultModel, availableModels: PROVIDERS.groq.models },
     openrouter: { apiKey: '', model: PROVIDERS.openrouter.defaultModel, availableModels: PROVIDERS.openrouter.models },
   });
-  const [activeProvider, setActiveProvider] = useState<Provider>('openai');
+  const [activeProvider, setActiveProvider] = useState<Provider>('groq');
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -494,11 +498,15 @@ export default function ChatInterface() {
                   <div>
                     <label className="block text-sm font-medium mb-2">Provider</label>
                     <div className="grid grid-cols-2 gap-2">
-                      {(Object.keys(PROVIDERS) as Provider[]).map((p) => (
+                      {(Object.keys(PROVIDERS) as Provider[]).map((p) => {
+                        const isComingSoon = (PROVIDERS[p] as any).comingSoon;
+                        return (
                         <button
                           key={p}
+                          disabled={isComingSoon}
                           onClick={() => saveConfig(p, providersConfig)}
-                          className={`p-3 rounded-xl border text-left transition-all ${
+                          className={`relative p-3 rounded-xl border text-left transition-all overflow-hidden ${
+                            isComingSoon ? 'opacity-50 cursor-not-allowed grayscale bg-surface/50' :
                             activeProvider === p 
                               ? `border-accent bg-accent/10 ring-1 ring-accent` 
                               : 'border-border hover:border-muted'
@@ -506,8 +514,15 @@ export default function ChatInterface() {
                         >
                           <div className={`w-3 h-3 rounded-full bg-gradient-to-r ${PROVIDERS[p].color} mb-1`} />
                           <div className="text-sm font-medium">{PROVIDERS[p].name}</div>
+                          {isComingSoon && (
+                            <div className="absolute top-2 right-2">
+                              <span className="text-[9px] uppercase font-bold bg-muted/20 text-muted px-1.5 py-0.5 rounded backdrop-blur">
+                                Soon
+                              </span>
+                            </div>
+                          )}
                         </button>
-                      ))}
+                      )})}
                     </div>
                   </div>
 
