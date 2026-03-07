@@ -27,10 +27,11 @@ export async function GET() {
       const tagline: string = fm.tagline || 'The Anointed Counsel';
       const icon: string = fm.icon || '🪽';
       
-      // The "Safe" version is the full body prompt.
-      // If we want a separate safe vs spicy body, we'd need markers in the Markdown.
-      // For now, we use the whole body as the prompt.
-      const safeContent: string = content || '';
+      // Prepend the name to the content to ensure our name-extraction regex hits it first,
+      // preventing it from catching generic "I am" statements later in the body (like "I am A New Creation").
+      const safeContent: string = `name: ${name}\n\n${content || ''}`;
+      const spicyContent: string = `name: ${name} (🌶️ SPICY)\n\n${content || ''}`;
+
       // Excerpts are for the UI sidebar only (not used for AI prompts)
       const safeExcerpt: string = fm.safe_excerpt || tagline;
       const spicyExcerpt: string = fm.spicy_excerpt || '';
@@ -41,7 +42,7 @@ export async function GET() {
         tagline,
         icon,
         safe_content: safeContent,
-        spicy_content: content, // For presets, we use the same body (spice is in the prompt itself)
+        spicy_content: spicyContent,
         safe_excerpt: safeExcerpt,
         spicy_excerpt: spicyExcerpt,
       };

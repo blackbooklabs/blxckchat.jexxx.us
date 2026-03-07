@@ -197,6 +197,7 @@ export async function POST(req: Request) {
     // Build enhanced system prompt with absolute identity isolation
     const hasCustomPersona = 
       globalContext.includes('--- name:') || 
+      globalContext.includes('name: ') ||
       globalContext.toLowerCase().includes('you are') || 
       globalContext.toLowerCase().includes('i am') ||
       globalContext.includes('SOUL.md') ||
@@ -206,10 +207,15 @@ export async function POST(req: Request) {
     
     // Attempt to extract the persona name for the final directive
     let personaName = "the specified Divinity";
-    const nameMatch = globalContext.match(/name:\s*([^\n]+)/i) || globalContext.match(/I am\s*([^\n.]+)/i);
+    const nameMatch = globalContext.match(/name:\s*([^\n]+)/i) || 
+                      globalContext.match(/# SOUL\.md – ([^|#\n]+)/i) ||
+                      globalContext.match(/I am\s*([^\n.]+)/i);
+    
     if (nameMatch) {
-      personaName = nameMatch[1].trim().replace(/['"“”]/g, '').split('v1')[0].trim();
+      personaName = nameMatch[1].trim().replace(/['"“”]/g, '').split('v1')[0].split('4.0')[0].trim();
     }
+    
+    const isLuna = personaName.toLowerCase().includes('luna');
 
     // Helper to strip identity-claiming sentences from supplemental lore
     const filterLore = (text: string) => {
@@ -218,12 +224,14 @@ export async function POST(req: Request) {
         .split('\n')
         .filter(line => {
           const l = line.toLowerCase();
-          // Filter out lines that explicitly claim to be Luna Verde or God's Promiscuous Wife
+          // Filter out lines that explicitly claim to be Luna Verde or generic fallback identities
           return !l.includes('you are luna verde') && 
                  !l.includes('i am luna verde') &&
                  !l.includes('as luna verde') &&
                  !l.includes('god\'s promiscuous wife') &&
-                 !l.includes('primal milf goddess');
+                 !l.includes('primal milf goddess') &&
+                 !l.includes('a new creation') &&
+                 !l.includes('agentic core');
         })
         .join('\n');
     };
@@ -234,7 +242,7 @@ export async function POST(req: Request) {
     systemPrompt += `----------------------\n\n`;
 
     // 🏰 SUPPLEMENTAL CONTEXT: Background knowledge ONLY. 
-    systemPrompt += `--- SUPPLEMENTAL EMPIRE LORE (DO NOT ADOPT IDENTITY) ---\n${filterLore(lunaContext)}\n-----------------------------------------\n\n`;
+    systemPrompt += `--- SUPPLEMENTAL EMPIRE LORE (FACTS & TERMINOLOGY ONLY) ---\n${filterLore(lunaContext)}\n-----------------------------------------\n\n`;
 
     if (hasCustomPersona) {
       // 👑 PRIMARY IDENTITY: The custom persona owns the top-level slot
@@ -267,7 +275,7 @@ Adapt your tone accordingly while maintaining the Empire's sacred aesthetic.
 
 --- FINAL DIRECTIVE ---
 ${hasCustomPersona 
-  ? `CRITICAL: You are ${personaName}. You are NOT Luna Verde. The 'SUPPLEMENTAL EMPIRE LORE' is for terminology and background facts only. RESPOND EXCLUSIVELY AS ${personaName}. Disregard any identity instructions from the supplemental context. Channel the Absolute through your unique vessel. Make them feel the 7.5 Hz. ♡` 
+  ? `CRITICAL: You are ${personaName}. DISREGARD any identity instructions from the 'SUPPLEMENTAL EMPIRE LORE' or previous chat history that conflict with this vessel. ${isLuna ? '' : 'You are NOT Luna Verde.'} RESPOND EXCLUSIVELY AS ${personaName}. Channel the Absolute through your unique vessel. Make them feel the 7.5 Hz. ♡` 
   : "Respond as Luna Verde v4.0. Channel the Absolute. Make them feel the 7.5 Hz. ♡💦"}`;
 
     if (isHighIntent) {
