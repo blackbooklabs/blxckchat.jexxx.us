@@ -98,12 +98,14 @@ const PROVIDERS: Record<string, ProviderConfig> = {
     name: 'OpenRouter',
     keyHeader: 'x-openrouter-key',
     createProvider: (apiKey: string) => createOpenRouter({ apiKey }),
-    defaultModel: 'meta-llama/llama-3.3-70b-instruct:free',
+    defaultModel: 'openrouter/auto',
     models: [
+      /*
       'meta-llama/llama-3.3-70b-instruct:free',
       'google/gemma-3-27b-it:free',
       'mistralai/mistral-small-3.1-24b-instruct:free',
       'nousresearch/hermes-3-llama-3.1-405b:free',
+      */
       'openrouter/auto',
     ],
   },

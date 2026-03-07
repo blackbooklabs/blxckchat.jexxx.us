@@ -143,13 +143,15 @@ const PROVIDERS = {
   openrouter: {
     name: 'OpenRouter (Free Tier Models)',
     models: [
+      /*
       'meta-llama/llama-3.3-70b-instruct:free',
       'google/gemma-3-27b-it:free',
       'mistralai/mistral-small-3.1-24b-instruct:free',
       'nousresearch/hermes-3-llama-3.1-405b:free',
+      */
       'openrouter/auto',
     ],
-    defaultModel: 'meta-llama/llama-3.3-70b-instruct:free',
+    defaultModel: 'openrouter/auto',
     keyPlaceholder: 'sk-or-v1-...',
     color: 'from-teal-500 to-cyan-600',
   },
