@@ -14,17 +14,20 @@
     "@clerk/nextjs": "^6.39.0",
     "@clerk/types": "^4.101.20",
     "@openrouter/ai-sdk-provider": "^2.2.5",
+    "@supabase/supabase-js": "^2.98.0",
     "@tailwindcss/postcss": "^4.2.0",
     "ai": "^6.0.104",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
     "lucide-react": "^0.575.0",
     "motion": "^12.34.3",
     "next": "^16.1.6",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "tailwind-merge": "^3.5.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@types/node": "^25.3.0",

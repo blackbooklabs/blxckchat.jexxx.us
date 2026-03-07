@@ -8,6 +8,7 @@ import CursorMotion from "@/components/CursorMotion";
 import MilkingAnimation from "@/components/MilkingAnimation";
 import ShootingStars from "@/components/ShootingStars";
 import { AuthGate } from "@/components/AuthGate";
+import ChatSidebar, { SessionMeta } from "@/components/ChatSidebar";
 
 // Configuration: Set to true to require authentication before chatting
 const REQUIRE_AUTH = false;
@@ -178,6 +179,14 @@ export default function ChatInterface() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  
+  // Chat History State
+  const [sessions, setSessions] = useState<SessionMeta[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const { isSignedIn, isLoaded } = useAuth();
+  
   const [providersConfig, setProvidersConfig] = useState<Record<Provider, ProviderState>>({
     openai: { apiKey: '', model: PROVIDERS.openai.defaultModel, availableModels: PROVIDERS.openai.models },
     grok: { apiKey: '', model: PROVIDERS.grok.defaultModel, availableModels: PROVIDERS.grok.models },
@@ -234,6 +243,81 @@ export default function ChatInterface() {
       }
     }
   }, []);
+
+  // Fetch sessions on auth
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      setIsLoadingSessions(true);
+      fetch('/api/sessions')
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setSessions(data);
+          }
+        })
+        .finally(() => setIsLoadingSessions(false));
+    } else {
+      setSessions([]);
+      setActiveSessionId(null);
+    }
+  }, [isLoaded, isSignedIn]);
+
+  const loadSession = async (id: string) => {
+    try {
+      setIsLoading(true);
+      const res = await fetch(`/api/sessions/${id}`);
+      if (!res.ok) throw new Error("Failed to load session");
+      const data = await res.json();
+      setActiveSessionId(data.id);
+      setMessages(data.messages || []);
+      if (window.innerWidth < 768) setIsSidebarOpen(false); // Auto close on mobile
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleNewChat = () => {
+    setActiveSessionId(null);
+    setMessages([
+      {
+        id: "welcome",
+        text: "💕 Welcome to BLXCKCHAT, beautiful! I'm Luna Verde v4.0 — your Divine MILF Intelligence.\n\n🔑 **Bring Your Own Key** — I work with Groq or OpenRouter. Your API key stays in your browser (never touches our servers).\n\nClick the ⚙️ Settings button to connect your key and begin our communion... 💦♡",
+        sender: "other",
+        timestamp: new Date(),
+      },
+    ]);
+    setInput("");
+    if (window.innerWidth < 768) setIsSidebarOpen(false);
+  };
+
+  const handleDeleteSession = async (id: string) => {
+    try {
+      await fetch(`/api/sessions?id=${id}`, { method: 'DELETE' });
+      setSessions(prev => prev.filter(s => s.id !== id));
+      if (activeSessionId === id) {
+        handleNewChat();
+      }
+    } catch (e) {
+      console.error("Failed to delete", e);
+    }
+  };
+
+  const handleUpdateTitle = async (id: string, newTitle: string) => {
+    try {
+      const res = await fetch('/api/sessions', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, title: newTitle })
+      });
+      if (res.ok) {
+        setSessions(prev => prev.map(s => s.id === id ? { ...s, title: newTitle } : s));
+      }
+    } catch (e) {
+      console.error("Failed to update title", e);
+    }
+  };
 
   const saveConfig = (newActive: Provider, newConfigs: Record<Provider, ProviderState>) => {
     setActiveProvider(newActive);
@@ -353,8 +437,9 @@ export default function ChatInterface() {
         throw new Error(errorDetails);
       }
 
-      setMessages((prev) =>
-        prev.map((m) =>
+      let nextMessages: Message[] = [];
+      setMessages((prev) => {
+        nextMessages = prev.map((m) =>
           m.id === aiMessageId
             ? { 
                 ...m, 
@@ -364,8 +449,36 @@ export default function ChatInterface() {
                 providerUsed: data.provider || provider.name,
               }
             : m
-        )
-      );
+        );
+        return nextMessages;
+      });
+
+      // SYNC TO SUPABASE AFTER RESPONSE
+      if (isSignedIn) {
+        if (!activeSessionId) {
+          const title = input.length > 30 ? input.substring(0, 30) + "..." : input;
+          const sessionRes = await fetch("/api/sessions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title, messages: nextMessages })
+          });
+          const sessionData = await sessionRes.json();
+          if (sessionData.id) {
+            setActiveSessionId(sessionData.id);
+            setSessions(prev => [{ id: sessionData.id, title: sessionData.title, updated_at: sessionData.updated_at, created_at: sessionData.created_at }, ...prev]);
+          }
+        } else {
+          const sessionRes = await fetch("/api/sessions", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: activeSessionId, messages: nextMessages })
+          });
+          const sessionData = await sessionRes.json();
+          if (sessionData.updated_at) {
+             setSessions(prev => prev.map(s => s.id === activeSessionId ? { ...s, updated_at: sessionData.updated_at } : s).sort((a,b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
+          }
+        }
+      }
 
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") {
@@ -417,10 +530,24 @@ export default function ChatInterface() {
           maxDelay={3000}
         />
       </div>
-      <div className="flex flex-col h-screen bg-background relative z-10">
-        {/* Header */}
-        <motion.div
-          className="p-4 border-b border-border bg-surface/50 backdrop-blur"
+      <div className="flex h-screen w-full bg-background relative z-10 overflow-hidden">
+        {/* Chat History Sidebar */}
+        <ChatSidebar 
+          sessions={sessions}
+          activeSessionId={activeSessionId}
+          onSelectSession={loadSession}
+          onNewChat={handleNewChat}
+          onDeleteSession={handleDeleteSession}
+          onUpdateTitle={handleUpdateTitle}
+          isOpen={isSidebarOpen}
+          setIsOpen={setIsSidebarOpen}
+          isLoadingSessions={isLoadingSessions}
+        />
+
+        <div className="flex-1 flex flex-col min-w-0 h-full relative border-l border-border/50">
+          {/* Header */}
+          <motion.div
+            className="p-4 border-b border-border bg-surface/50 backdrop-blur"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
@@ -715,6 +842,7 @@ export default function ChatInterface() {
           </p>
         </motion.div>
         </AuthGate>
+        </div>
       </div>
     </>
   );
