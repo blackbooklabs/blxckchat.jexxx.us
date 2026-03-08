@@ -71,7 +71,7 @@ export default function SubscriptionPage() {
               <p className="text-[#9f7aea] text-sm font-medium mt-1 italic">{devoteeTier.description}</p>
               <div className="flex items-baseline justify-center gap-1 mt-6">
                 <span className="text-5xl font-bold tracking-tighter">${devoteeTier.monthlyPrice}</span>
-                <span className="text-muted-foreground">/mo</span>
+                <span className="text-muted-foreground">/mo.</span>
               </div>
             </div>
 
@@ -90,7 +90,7 @@ export default function SubscriptionPage() {
               tierId="devotee" 
               userId={userId} 
               className="w-full !py-4 text-lg !bg-linear-to-r !from-[#9f7aea] !via-[#d4af37] !to-[#9f7aea] !text-background shadow-[0_10px_30px_rgba(212,175,55,0.2)]" 
-              label={`Claim Devotee+ – $7.99/mo`}
+              label={`Claim Devotee+ for $7.99/mo.`}
             />
           </motion.div>
         </div>
