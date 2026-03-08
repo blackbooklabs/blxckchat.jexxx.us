@@ -5,6 +5,36 @@
 import { cookies } from 'next/headers';
 import { verifyToken } from '@clerk/nextjs/server';
 
+type ClerkMetadataRecord = Record<string, unknown> | null | undefined;
+
+function isTruthy(value: unknown): boolean {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') return ['1', 'true', 'yes', 'admin'].includes(value.trim().toLowerCase());
+  return false;
+}
+
+function parseAdminAllowlist(): Set<string> {
+  const raw = process.env.BLXCKCHAT_ADMIN_USER_IDS ?? process.env.ADMIN_USER_IDS ?? '';
+  return new Set(
+    raw
+      .split(',')
+      .map((v) => v.trim())
+      .filter(Boolean)
+  );
+}
+
+function hasAdminRole(metadata: ClerkMetadataRecord): boolean {
+  if (!metadata || typeof metadata !== 'object') return false;
+  const role = (metadata as Record<string, unknown>).role;
+  return typeof role === 'string' && ['admin', 'owner', 'superadmin'].includes(role.toLowerCase());
+}
+
+function hasAdminFlag(metadata: ClerkMetadataRecord): boolean {
+  if (!metadata || typeof metadata !== 'object') return false;
+  const rec = metadata as Record<string, unknown>;
+  return isTruthy(rec.admin) || isTruthy(rec.isAdmin) || isTruthy(rec.superAdmin);
+}
+
 export async function getServerUserId(): Promise<string | null> {
   const secretKey = process.env.CLERK_SECRET_KEY ?? process.env.CLERK_SECRET_DEFAULT;
   if (!secretKey) {
@@ -28,4 +58,41 @@ export async function getServerUserId(): Promise<string | null> {
     // Token invalid / expired — treat as unauthenticated
     return null;
   }
+}
+
+/**
+ * Server-side admin check.
+ * Priority:
+ *  1) Explicit allowlist via BLXCKCHAT_ADMIN_USER_IDS / ADMIN_USER_IDS
+ *  2) Clerk metadata role/flags (public/private/unsafe)
+ */
+export async function isServerAdminUser(userId: string | null): Promise<boolean> {
+  if (!userId) return false;
+
+  const allowlist = parseAdminAllowlist();
+  if (allowlist.has(userId)) return true;
+
+  try {
+    const { clerkClient } = await import('@clerk/nextjs/server');
+    const client = await clerkClient();
+    const user = await client.users.getUser(userId);
+
+    return (
+      hasAdminRole(user.publicMetadata as ClerkMetadataRecord) ||
+      hasAdminRole(user.privateMetadata as ClerkMetadataRecord) ||
+      hasAdminRole(user.unsafeMetadata as ClerkMetadataRecord) ||
+      hasAdminFlag(user.publicMetadata as ClerkMetadataRecord) ||
+      hasAdminFlag(user.privateMetadata as ClerkMetadataRecord) ||
+      hasAdminFlag(user.unsafeMetadata as ClerkMetadataRecord)
+    );
+  } catch (error) {
+    console.warn('[Auth] Admin metadata lookup failed:', error);
+    return false;
+  }
+}
+
+export async function getServerAuthContext(): Promise<{ userId: string | null; isAdmin: boolean }> {
+  const userId = await getServerUserId();
+  const isAdmin = await isServerAdminUser(userId);
+  return { userId, isAdmin };
 }

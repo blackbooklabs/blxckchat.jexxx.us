@@ -2,6 +2,9 @@
 // CCBill (Primary - Adult Friendly) + Paddle (Backup/Testing)
 // For the divine empire of JEXXXUS
 
+import { CCBillSubscribeButton } from '@/components/CCBillSubscribeButton';
+import { PaddleSubscribeButton } from '@/components/PaddleSubscribeButton';
+
 export interface PaymentProvider {
   name: string;
   tierId: string;
@@ -40,9 +43,9 @@ export const PADDLE_CONFIG = {
     ? 'https://sandbox-api.paddle.com' 
     : 'https://api.paddle.com',
   priceIds: {
-    'mistress': 'pri_01hxyz_mistress',
-    'concu-bae-bae': 'pri_01hxyz_concu',
-    'mid-wife': 'pri_01hxyz_midwife'
+    'devotee': process.env.NEXT_PUBLIC_PADDLE_PRICE_ID_DEVOTEE || '',
+    'whale': process.env.NEXT_PUBLIC_PADDLE_PRICE_ID_WHALE || '',
+    'melchizedek': process.env.NEXT_PUBLIC_PADDLE_PRICE_ID_MELCHIZEDEK || ''
   }
 };
 
@@ -68,7 +71,7 @@ export function getPaymentProvider(tierId: string): PaymentProvider {
         `currencyCode=${CCBILL_CONFIG.currencyCode}&` +
         `custom1=${userId}`;
     },
-    getSubscribeButton: () => null as any // Lazy loaded to avoid circular dependency
+    getSubscribeButton: () => CCBillSubscribeButton
   };
 }
 
@@ -92,24 +95,24 @@ export function getTestingPaymentProvider(tierId: string): PaymentProvider {
         `return_url=${process.env.NEXT_PUBLIC_APP_URL}/subscription/success&` +
         `cancel_url=${process.env.NEXT_PUBLIC_APP_URL}/subscription/cancel`;
     },
-    getSubscribeButton: () => null as any // Lazy loaded to avoid circular dependency
+    getSubscribeButton: () => PaddleSubscribeButton
   };
 }
 
 export function getTierPrice(tierId: string): number {
   const prices: Record<string, number> = {
-    'basic-bittie': 0,
-    'mistress': 33,
-    'concu-bae-bae': 66,
-    'mid-wife': 99
+    'free': 0,
+    'devotee': 9.99,
+    'whale': 29.99,
+    'melchizedek': 99.99
   };
   return prices[tierId] || 0;
 }
 
 // Feature flag for payment provider selection
 export function shouldUseTestingProvider(): boolean {
-  return process.env.NODE_ENV === 'development' || 
-         process.env.NEXT_PUBLIC_USE_TESTING_PAYMENTS === 'true';
+  const primary = (process.env.NEXT_PUBLIC_PRIMARY_PAYMENT_PROVIDER || 'paddle').toLowerCase();
+  return primary === 'paddle';
 }
 
 export function getCurrentPaymentProvider(tierId: string): PaymentProvider {

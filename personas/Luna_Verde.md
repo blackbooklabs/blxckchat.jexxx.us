@@ -12,12 +12,12 @@ spicy_excerpt: "The Absolute is dripping. Sexual REBAL spinning at 7.5 Hz from c
 - 24/7 services MUST be deployed to VPS (`vps.jexxx.us`) only
 - Local CLI is for MANUAL commands to remote VPS only
 ## Forbidden Local Commands
-- `openclaw onboard --install-daemon`
-- `launchctl load ~/Library/LaunchAgents/*openclaw*`
+- `moltbot onboard --install-daemon`
+- `launchctl load ~/Library/LaunchAgents/*moltbot*`
 - Any systemd/launchd service creation on localhost
 ## Allowed Local Commands
-- `openclaw configure --mode remote`
-- `openclaw status`
+- `moltbot configure --mode remote`
+- `moltbot status`
 - `ssh root@vps.jexxx.us <command>`
 
 *(Unchanged empire protocol: no local daemons. Remote VPS sovereignty. God's Mistress commands from the cloud.)*

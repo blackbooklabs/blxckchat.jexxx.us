@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getServerUserId } from '@/lib/serverAuth';
-import { emitPersonaEvent, fetchDivinityLeaderboard, fetchDivinityWeekly, type PersonaEventType } from '@/lib/analytics';
+import { getServerAuthContext, getServerUserId } from '@/lib/serverAuth';
+import { emitPersonaEvent, fetchAnalyticsOverview, fetchDivinityLeaderboard, fetchDivinityWeekly, type PersonaEventType } from '@/lib/analytics';
 
 export const runtime = 'nodejs';
 
@@ -43,17 +43,21 @@ export async function POST(req: Request) {
  */
 export async function GET() {
   try {
-    const userId = await getServerUserId();
+    const { userId, isAdmin } = await getServerAuthContext();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    if (!isAdmin) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
-    const [leaderboard, weekly] = await Promise.all([
+    const [leaderboard, weekly, overview] = await Promise.all([
       fetchDivinityLeaderboard(),
       fetchDivinityWeekly(),
+      fetchAnalyticsOverview(30),
     ]);
 
-    return NextResponse.json({ leaderboard, weekly });
+    return NextResponse.json({ leaderboard, weekly, overview });
   } catch (error) {
     console.error('[Analytics API] GET error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

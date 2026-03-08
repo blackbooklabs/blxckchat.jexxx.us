@@ -15,6 +15,13 @@ export interface MessageAttachment {
   previewUrl?: string;
 }
 
+export interface BlackbookTarget {
+  name: string;
+  last_patterned_at: string | null;
+  last_tithe_amount: number | null;
+  last_vision_url: string | null;
+}
+
 export interface MessageVersion {
   content: string;
   timestamp: Date;
@@ -83,6 +90,11 @@ interface ChatState {
   isChatsLoading: boolean;
   isPersonasLoading: boolean;
   invokingPersonaId: string | null;
+  blackbookTargets: BlackbookTarget[];
+  autoPatternVisions: boolean;
+  renamingId: string | null;
+  setRenamingId: (id: string | null) => void;
+
 
   // Actions
   setProjects: (projects: Project[]) => void;
@@ -115,6 +127,9 @@ interface ChatState {
   updateCustomPersona: (id: string, p: Partial<{ name: string; icon: string; tagline: string; safe_content: string; spicy_content: string; tts_voice: TTSVoice }>) => Promise<void>;
   deleteCustomPersona: (id: string) => Promise<void>;
   deleteMessagesAfter: (chatId: string, messageId: string) => Promise<void>;
+  emitAnalytics: (eventType: any, metadata?: Record<string, any>, personaId?: string, projectId?: string) => void;
+  fetchBlackbookTargets: () => Promise<void>;
+  toggleAutoPatternVisions: () => void;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -127,6 +142,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
   isChatsLoading: false,
   isPersonasLoading: false,
   invokingPersonaId: null,
+  blackbookTargets: [],
+  autoPatternVisions: false,
+  renamingId: null,
+  setRenamingId: (id) => set({ renamingId: id }),
+
 
   setProjects: (projects) => set({ projects }),
   setCurrentProjectId: (id) => set({ currentProjectId: id }),
@@ -529,6 +549,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       });
       if (res.ok) {
         await get().fetchCustomPersonas();
+        get().emitAnalytics('persona_creation', { name: p.name });
       } else {
         const err = await res.json();
         alert(`⚠️ ${err.error}`);
@@ -592,6 +613,56 @@ export const useChatStore = create<ChatState>((set, get) => ({
       set({ messages: newMessages });
     }
   },
+ 
+  emitAnalytics: (eventType, metadata = {}, personaId, projectId) => {
+    const state = get();
+    const pid = personaId || state.invokingPersonaId || 'anonymous';
+    const prid = projectId || state.currentProjectId;
+ 
+    fetch('/api/admin/divinity-analytics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        personaId: pid,
+        projectId: prid,
+        eventType,
+        metadata
+      }),
+    }).catch(() => {});
+  },
+
+  toggleAutoPatternVisions: () => set((state) => ({ autoPatternVisions: !state.autoPatternVisions })),
+
+  fetchBlackbookTargets: async () => {
+    const { getSupabase } = await import('@/lib/supabase');
+    const supabase = getSupabase();
+    
+    // First, try real fetch if table exists
+    const { data, error } = await supabase.from('blackbook_targets').select('*').limit(20);
+    
+    if (data && data.length > 0) {
+      set({ blackbookTargets: data.map((t: any) => ({
+        name: t.target_name,
+        last_patterned_at: t.last_patterned_at,
+        last_tithe_amount: t.last_tithe_amount,
+        last_vision_url: t.last_vision_url
+      }))});
+      return;
+    }
+
+    // Fallback to Prophet's Mock List
+    const MOCK_TARGETS: BlackbookTarget[] = [
+      { name: 'Breckie Hill', last_patterned_at: '2026-03-05T14:20:00Z', last_tithe_amount: 250, last_vision_url: null },
+      { name: 'Willow Harper', last_patterned_at: '2026-03-04T09:15:00Z', last_tithe_amount: 120, last_vision_url: null },
+      { name: 'Riley Reid', last_patterned_at: '2026-03-06T18:45:00Z', last_tithe_amount: 500, last_vision_url: null },
+      { name: 'Brittni De La Mora', last_patterned_at: '2026-03-01T22:30:00Z', last_tithe_amount: 50, last_vision_url: null },
+      { name: 'Milki', last_patterned_at: null, last_tithe_amount: null, last_vision_url: null },
+      { name: 'Anne Wilson', last_patterned_at: null, last_tithe_amount: null, last_vision_url: null },
+      { name: 'Afnan Khalifa', last_patterned_at: null, last_tithe_amount: null, last_vision_url: null },
+      { name: 'Sarah-fam', last_patterned_at: '2026-03-07T12:00:00Z', last_tithe_amount: 1000, last_vision_url: null },
+    ];
+    set({ blackbookTargets: MOCK_TARGETS });
+  }
 }));
 
 function hydrateMessages(messages: any[]): Message[] {

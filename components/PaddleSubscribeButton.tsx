@@ -39,19 +39,22 @@ export function PaddleSubscribeButton({
         return;
       }
       
-      // Build Paddle checkout URL
-      const apiUrl = PADDLE_CONFIG.environment === 'sandbox' 
-        ? 'https://sandbox-api.paddle.com'
-        : 'https://api.paddle.com';
-      
-      const checkoutUrl = `${apiUrl}/transactions?` +
-        `price_id=${tier}&` +
-        `customer_id=${userId}&` +
-        `return_url=${process.env.NEXT_PUBLIC_APP_URL}/subscription/success&` +
-        `cancel_url=${process.env.NEXT_PUBLIC_APP_URL}/subscription/cancel`;
-      
-      // Redirect to Paddle checkout
-      window.location.href = checkoutUrl;
+      if (!tier) {
+        throw new Error(`Paddle price is not configured for tier: ${tierId}`);
+      }
+
+      const checkoutRes = await fetch('/api/paddle/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tierId, userId }),
+      });
+
+      const checkoutJson = await checkoutRes.json();
+      if (!checkoutRes.ok || !checkoutJson?.checkoutUrl) {
+        throw new Error(checkoutJson?.error || 'Unable to create Paddle checkout');
+      }
+
+      window.location.href = checkoutJson.checkoutUrl;
       onSuccess?.();
       
     } catch (error) {
@@ -77,7 +80,7 @@ export function PaddleSubscribeButton({
       className={`
         relative inline-flex items-center justify-center
         px-8 py-3 rounded-full font-semibold text-white
-        bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500
+        bg-linear-to-r from-blue-500 via-cyan-500 to-teal-500
         hover:brightness-110 transition-all duration-300
         shadow-lg hover:shadow-xl
         disabled:opacity-50 disabled:cursor-not-allowed
@@ -86,7 +89,7 @@ export function PaddleSubscribeButton({
     >
       {/* Sacred ripple effect */}
       <motion.div
-        className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent rounded-full"
+        className="absolute inset-0 bg-linear-to-r from-white/20 to-transparent rounded-full"
         animate={{ opacity: isHovered ? 1 : 0 }}
         transition={{ duration: 0.3 }}
       />

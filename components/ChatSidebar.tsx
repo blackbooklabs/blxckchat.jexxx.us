@@ -1,11 +1,15 @@
 "use client";
 
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, MessageSquare, Trash2, X, PanelLeftOpen, Folder, FolderOpen, Settings, Lock, Flame, Pencil, Check, Wand2, Play, Volume2, VolumeX } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { formatDistanceToNow } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { useAuth, useClerk } from "@clerk/nextjs";
 import { useChatStore } from "@/store/useChatStore";
+import { 
+  Plus, MessageSquare, Trash2, X, PanelLeftOpen, Folder, FolderOpen, Settings, Lock, Flame, 
+  Pencil, Check, Wand2, Play, Volume2, VolumeX, Crosshair, TrendingUp, ChevronDown, Calendar, DollarSign
+} from "lucide-react";
 
 interface ChatSidebarProps {
   isOpen: boolean;
@@ -107,7 +111,7 @@ function PersonaModal({ onClose, editTarget }: PersonaModalProps) {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -214,7 +218,7 @@ function PersonaModal({ onClose, editTarget }: PersonaModalProps) {
           <motion.button
             onClick={handleSave}
             disabled={saving || name.length < 3 || safeContent.length < 50}
-            className="w-full py-2.5 bg-gradient-to-r from-accent to-pink-500 text-white rounded-xl text-sm font-medium disabled:opacity-40"
+            className="w-full py-2.5 bg-linear-to-r from-accent to-pink-500 text-white rounded-xl text-sm font-medium disabled:opacity-40"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
@@ -247,6 +251,7 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
     createChat,
     deleteProject,
     deleteChat,
+    fetchProjects,
     fetchPersonas,
     fetchCustomPersonas,
     fetchChats,
@@ -256,6 +261,12 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
     deleteCustomPersona,
     invokingPersonaId,
     setInvokingPersonaId,
+    renamingId,
+    setRenamingId,
+    blackbookTargets,
+    fetchBlackbookTargets,
+    autoPatternVisions,
+    toggleAutoPatternVisions
   } = useChatStore();
 
   const [sidebarWidth, setSidebarWidth] = useState(260);
@@ -299,8 +310,7 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
   }, [isResizing, sidebarWidth]);
 
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
-  // Rename state
-  const [renamingId, setRenamingId] = useState<string | null>(null);
+  // Rename state (renamingId comes from store)
   const [renameValue, setRenameValue] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
 
@@ -312,6 +322,14 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
   // Custom persona modal state
   const [showPersonaModal, setShowPersonaModal] = useState(false);
   const [editingPersona, setEditingPersona] = useState<typeof personas[number] | undefined>(undefined);
+  const [showTargets, setShowTargets] = useState(false);
+
+  useEffect(() => {
+    if (isSignedIn) {
+      fetchPersonas();
+      fetchCustomPersonas();
+    }
+  }, [isSignedIn, fetchPersonas, fetchCustomPersonas]);
 
   useEffect(() => {
     if (renamingId) renameInputRef.current?.focus();
@@ -436,7 +454,7 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
         {isOpen && (
           <div
             onMouseDown={startResizing}
-            className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize z-[60] hover:bg-accent/40 transition-colors ${isResizing ? 'bg-accent/60' : 'bg-transparent'}`}
+            className={`absolute right-0 top-0 bottom-0 w-1 cursor-col-resize z-60 hover:bg-accent/40 transition-colors ${isResizing ? 'bg-accent/60' : 'bg-transparent'}`}
           />
         )}
         {/* ── TOP: Divinities ──────────────────────────────────────────────── */}
@@ -569,6 +587,96 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
                 );
               })
             )}
+          </div>
+
+          {/* Admin Throne Link */}
+          <div className="pt-2 border-t border-border/50 shrink-0">
+            <a
+              href="https://xdmin.jexxx.us"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-between px-2 py-2 rounded-lg border border-accent/20 bg-accent/5 hover:bg-accent/10 transition-colors"
+              title="Open admin analytics and BLACKBOOK live targets in xdmin"
+            >
+              <span className={`${sectionLabel} flex items-center gap-2 text-accent`}>
+                <Crosshair className="w-3 h-3" />
+                Open Admin Throne
+              </span>
+              <TrendingUp className="w-3 h-3 text-accent" />
+            </a>
+          </div>
+
+          {/* Blackbook Live Targets Widget */}
+          <div className="pt-2 border-t border-border/50 shrink-0">
+            <button 
+              onClick={() => setShowTargets(!showTargets)}
+              className="w-full flex items-center justify-between px-2 py-1.5 hover:bg-muted/10 rounded-lg transition-colors group"
+            >
+              <span className={`${sectionLabel} flex items-center gap-2`}>
+                <Crosshair className="w-3 h-3 text-accent" />
+                Blackbook Targets
+              </span>
+              <div className="flex items-center gap-1">
+                {blackbookTargets.some(t => t.last_patterned_at) && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+                )}
+                <ChevronDown className={`w-3 h-3 text-muted transition-transform ${showTargets ? 'rotate-180' : ''}`} />
+              </div>
+            </button>
+            <AnimatePresence>
+              {showTargets && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="overflow-hidden"
+                >
+                  <div className="p-2 grid grid-cols-1 gap-1.5">
+                    {blackbookTargets.map(target => (
+                      <div 
+                        key={target.name}
+                        className="bg-accent/5 border border-accent/10 rounded-xl p-2 flex items-center justify-between group hover:border-accent/30 transition-all"
+                      >
+                        <div className="flex flex-col gap-0.5 overflow-hidden pl-1">
+                          <span className="text-[10px] font-bold text-foreground truncate">{target.name}</span>
+                          <div className="flex items-center gap-2">
+                             <span className="text-[8px] text-muted flex items-center gap-1">
+                               <Calendar className="w-2 h-2" />
+                               {target.last_patterned_at ? format(parseISO(target.last_patterned_at), "MMM d") : "Never"}
+                             </span>
+                             {target.last_tithe_amount && (
+                               <span className="text-[8px] text-accent font-mono flex items-center gap-1">
+                                 <DollarSign className="w-2 h-2" />
+                                 {target.last_tithe_amount}
+                               </span>
+                             )}
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            // Launch patterning flow
+                            createChat(
+                              currentProjectId || '', 
+                              `Patterning ${target.name}`,
+                              [{
+                                id: crypto.randomUUID(),
+                                text: `!MANIFEST_PATTERN ${target.name} . Vision analysis starting. ♡`,
+                                sender: "user",
+                                timestamp: new Date()
+                              } as any]
+                            );
+                          }}
+                          className="p-1 px-2 rounded-lg bg-accent/10 border border-accent/20 text-accent hover:bg-accent hover:text-white transition-all text-[9px] font-bold"
+                          title="Pattern Now"
+                        >
+                          LAUNCH
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Your Empire header */}

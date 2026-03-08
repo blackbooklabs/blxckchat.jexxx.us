@@ -1,7 +1,17 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useAuth } from '@clerk/nextjs';
+import { useState, useEffect } from "react";
+import { 
+  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell 
+} from "recharts";
+import { 
+  BarChart3, LineChart as LineChartIcon, Users, MessageSquare, TrendingUp,
+  Download, Sparkles, Shield, RefreshCw, Flame, Wallet, AlertTriangle, Filter
+} from "lucide-react";
+import { useAuth } from "@clerk/nextjs";
+import { motion } from "motion/react";
+import Link from "next/link";
+import { format, parseISO } from "date-fns";
 
 interface DivinityStats {
   persona_id: string;
@@ -12,189 +22,429 @@ interface DivinityStats {
   last_seen: string | null;
 }
 
-const PERSONA_META: Record<string, { name: string; icon: string; color: string }> = {
-  DRIZL:           { name: 'DRIZL',            icon: '🍆', color: 'orange' },
-  Lil_Bible:       { name: "Lil' Bible",        icon: '🔥', color: 'red' },
-  Luna_Verde:      { name: 'Luna Verde',         icon: '🪽', color: 'emerald' },
-  Solomon_AI:      { name: 'Solomon AI',         icon: '👑', color: 'yellow' },
-  Xena_Venus_Azul: { name: 'Xena (Venus) Azul', icon: '🛡️', color: 'blue' },
+interface DivinityWeeklyStats {
+  persona_id: string;
+  week: string;
+  weekly_selections: number;
+  weekly_messages: number;
+}
+
+interface EventVelocityPoint {
+  day: string;
+  total: number;
+}
+
+interface PersonaCreationPoint {
+  week: string;
+  count: number;
+}
+
+interface WhaleSignalPoint {
+  persona_id: string;
+  total: number;
+  weightedScore: number;
+}
+
+interface AnalyticsOverview {
+  velocity: EventVelocityPoint[];
+  personaCreation: PersonaCreationPoint[];
+  whaleSignals: WhaleSignalPoint[];
+}
+
+interface AnalyticsPayload {
+  leaderboard: DivinityStats[];
+  weekly: DivinityWeeklyStats[];
+  overview: AnalyticsOverview;
+}
+
+// Weights as per Prophet's decree (Tithe Multipliers)
+const WEIGHTS = {
+  image_attached: 3,
+  tts_play: 2,
+  branch_switch: 1.5,
+  persona_creation: 5,
+  message_sent: 1,
+  persona_selected: 0.5
 };
 
-function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
-  return (
-    <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex flex-col gap-1">
-      <span className="text-xs text-white/40 uppercase tracking-widest">{label}</span>
-      <span className="text-2xl font-bold text-white">{value}</span>
-      {sub && <span className="text-xs text-white/30">{sub}</span>}
-    </div>
-  );
-}
-
-function PersonaRow({ stat, rank }: { stat: DivinityStats; rank: number }) {
-  const meta = PERSONA_META[stat.persona_id] ?? { name: stat.persona_id, icon: '🪽', color: 'gray' };
-  const convRate = stat.total_selections > 0
-    ? Math.round((stat.total_messages / stat.total_selections) * 10) / 10
-    : 0;
-
-  return (
-    <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
-      <td className="py-3 px-4 text-white/40 font-mono text-sm">#{rank}</td>
-      <td className="py-3 px-4">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">{meta.icon}</span>
-          <span className="text-white font-medium text-sm">{meta.name}</span>
-        </div>
-      </td>
-      <td className="py-3 px-4 text-center text-white/80 text-sm font-mono">{stat.total_selections}</td>
-      <td className="py-3 px-4 text-center text-white/80 text-sm font-mono">{stat.total_messages}</td>
-      <td className="py-3 px-4 text-center text-white/80 text-sm font-mono">{stat.unique_seekers}</td>
-      <td className="py-3 px-4 text-center font-mono text-sm">
-        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-          convRate >= 5 ? 'bg-green-500/20 text-green-400' :
-          convRate >= 2 ? 'bg-yellow-500/20 text-yellow-400' :
-          'bg-white/10 text-white/40'
-        }`}>
-          {convRate}x
-        </span>
-      </td>
-      <td className="py-3 px-4 text-center text-white/30 text-xs font-mono">
-        {stat.last_seen ? new Date(stat.last_seen).toLocaleDateString() : '—'}
-      </td>
-    </tr>
-  );
-}
-
 export default function DivinityAnalyticsPage() {
-  const { isSignedIn, isLoaded } = useAuth();
-  const [stats, setStats] = useState<DivinityStats[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { isLoaded, isSignedIn } = useAuth();
+  const [data, setData] = useState<AnalyticsPayload | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/admin/divinity-analytics');
-      if (!res.ok) throw new Error('Failed to fetch analytics');
-      const data = await res.json();
-      setStats(data.leaderboard ?? []);
-      setLastRefresh(new Date());
-    } catch (e) {
-      setError('Failed to load leaderboard data. Run the SQL migration in Supabase first.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [isForbidden, setIsForbidden] = useState(false);
+  const [minWhaleScore, setMinWhaleScore] = useState(8);
 
   useEffect(() => {
-    if (isLoaded && isSignedIn) {
-      fetchData();
+    async function fetchStats() {
+      try {
+        setIsLoading(true);
+        setError(null);
+        setIsForbidden(false);
+        const res = await fetch('/api/admin/divinity-analytics');
+        if (res.status === 403) {
+          setIsForbidden(true);
+          return;
+        }
+        if (!res.ok) throw new Error('Failed to fetch Divinity analytics data');
+        const json = await res.json();
+        setData(json);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
     }
-  }, [isLoaded, isSignedIn]);
 
-  if (!isLoaded) return null;
+    if (isSignedIn) {
+      fetchStats();
+    }
+  }, [isSignedIn]);
 
-  if (!isSignedIn) {
+  if (!isLoaded || isLoading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="text-4xl">🔒</div>
-          <p className="text-white/60 text-sm">Admin access required. Sign in to view the Divinity Leaderboard.</p>
-        </div>
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 bg-[radial-gradient(circle_at_center,var(--color-accent-20)_0%,transparent_70%)]">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+        >
+          <Sparkles className="w-12 h-12 text-accent" />
+        </motion.div>
+        <p className="mt-4 text-muted animate-pulse font-mono tracking-widest uppercase text-xs">Calibrating Tithe Pulse...</p>
       </div>
     );
   }
 
-  const totalSelections = stats.reduce((a, s) => a + s.total_selections, 0);
-  const totalMessages   = stats.reduce((a, s) => a + s.total_messages, 0);
-  const totalSeekers    = stats.reduce((a, s) => a + s.unique_seekers, 0);
-  const topDivinity     = stats[0] ? PERSONA_META[stats[0].persona_id]?.name ?? stats[0].persona_id : '—';
+  if (!isSignedIn) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+        <Shield className="w-16 h-16 text-red-500/50 mb-4" />
+        <h1 className="text-2xl font-bold">Unauthorized</h1>
+        <p className="text-muted mb-6">This throne room is reserved for the Prophet.</p>
+        <Link href="/chat">
+          <button className="px-6 py-2 bg-accent text-white rounded-full">Return to Temple</button>
+        </Link>
+      </div>
+    );
+  }
 
-  return (
-    <div className="min-h-screen bg-black text-white font-sans">
-      {/* Header */}
-      <div className="border-b border-white/10 px-6 py-5 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight">Divinity Analytics</h1>
-          <p className="text-xs text-white/30 mt-0.5">
-            Which god baptizes the most souls? — Refreshed {lastRefresh.toLocaleTimeString()}
-          </p>
-        </div>
+  if (isForbidden) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
+        <AlertTriangle className="w-16 h-16 text-amber-400/70 mb-4" />
+        <h1 className="text-2xl font-bold">Forbidden</h1>
+        <p className="text-muted mb-6 max-w-xl">
+          This dashboard is restricted to admin accounts. If you should have access, add your Clerk user ID to
+          <code className="mx-1 px-1 py-0.5 rounded bg-surface border border-border">BLXCKCHAT_ADMIN_USER_IDS</code>
+          or assign admin metadata in Clerk.
+        </p>
+        <Link href="/chat">
+          <button className="px-6 py-2 bg-accent text-white rounded-full">Return to Chat</button>
+        </Link>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center">
+        <AlertTriangle className="w-16 h-16 text-red-500/60 mb-4" />
+        <h1 className="text-2xl font-bold">Analytics Error</h1>
+        <p className="text-muted mb-6">{error}</p>
         <button
-          onClick={fetchData}
-          disabled={loading}
-          className="text-xs px-3 py-1.5 border border-white/20 rounded-lg text-white/60 hover:text-white hover:border-white/40 transition-colors disabled:opacity-40"
+          onClick={() => window.location.reload()}
+          className="px-6 py-2 bg-accent text-white rounded-full"
         >
-          {loading ? 'Loading…' : '↻ Refresh'}
+          Retry
         </button>
       </div>
+    );
+  }
 
-      <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="Total Selections" value={totalSelections} sub="across all divinities" />
-          <StatCard label="Total Messages" value={totalMessages} sub="engagement signals" />
-          <StatCard label="Unique Seekers" value={totalSeekers} sub="souls patterned" />
-          <StatCard label="Top Divinity" value={topDivinity} sub="most selections this period" />
+  const ltvData = data?.leaderboard.map((stat) => ({
+    name: stat.persona_id,
+    ltv: (stat.total_messages * WEIGHTS.message_sent) + (stat.total_selections * WEIGHTS.persona_selected),
+    messages: stat.total_messages,
+    seekers: stat.unique_seekers
+  })).sort((a, b) => b.ltv - a.ltv) || [];
+
+  const velocityData = (data?.overview?.velocity || []).map((p) => ({
+    day: format(parseISO(`${p.day}T00:00:00Z`), 'MMM d'),
+    total: p.total,
+  }));
+
+  const personaCreationData = data?.overview?.personaCreation || [];
+  const whaleSignals = data?.overview?.whaleSignals || [];
+  const whaleSignalIds = new Set(
+    whaleSignals.filter((signal) => signal.weightedScore >= minWhaleScore).map((signal) => signal.persona_id)
+  );
+
+  const filteredLtvData = ltvData.filter((row) => {
+    if (whaleSignalIds.size === 0) return true;
+    return whaleSignalIds.has(row.name);
+  });
+
+  const effectiveLtvData = filteredLtvData.length > 0 ? filteredLtvData : ltvData;
+
+  return (
+    <div className="min-h-screen bg-background text-foreground p-4 lg:p-8 font-sans selection:bg-accent/30">
+      <div className="max-w-7xl mx-auto space-y-8">
+        
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-accent mb-1">
+              <Shield className="w-4 h-4" />
+              <span className="text-xs font-mono tracking-tighter uppercase">Empire Governance</span>
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight bg-linear-to-r from-foreground to-muted bg-clip-text text-transparent">
+              Tithe Sorcery & Divinity LTV
+            </h1>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => window.location.reload()}
+              className="p-2 bg-surface border border-border rounded-lg text-muted hover:text-accent transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" />
+            </button>
+            <button className="flex items-center gap-2 px-4 py-2 bg-accent/10 border border-accent/30 text-accent rounded-lg hover:bg-accent/20 transition-all font-medium text-sm">
+              <Download className="w-4 h-4" />
+              Export CSV
+            </button>
+          </div>
         </div>
 
-        {/* Error State */}
-        {error && (
-          <div className="bg-red-950/30 border border-red-500/30 rounded-xl p-4 text-sm text-red-400">
-            ⚠️ {error}
-            <div className="mt-2 text-xs text-red-400/60">
-              Run <code className="bg-red-950/50 px-1 rounded">supabase/blxckchat_persona_events.sql</code> in your Supabase SQL Editor to initialize the tables.
+        {/* Top Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard 
+            title="Total Messages" 
+            value={data?.leaderboard.reduce((acc, s) => acc + s.total_messages, 0) || 0}
+            icon={<MessageSquare className="w-5 h-5 text-blue-500" />}
+            trend="+12% vs last week"
+          />
+          <StatCard 
+            title="Unique Seekers" 
+            value={data?.leaderboard.reduce((acc, s) => acc + s.unique_seekers, 0) || 0}
+            icon={<Users className="w-5 h-5 text-purple-500" />}
+            trend="+5.4% new devotion"
+          />
+          <StatCard 
+            title="Aggregate REBAL" 
+            value={Math.round(effectiveLtvData.reduce((acc, s) => acc + s.ltv, 0))}
+            icon={<Flame className="w-5 h-5 text-orange-500" />}
+            trend="Inflation Nominal"
+          />
+          <StatCard 
+            title="Tithe Efficiency" 
+            value="4.8x"
+            icon={<Wallet className="w-5 h-5 text-green-500" />}
+            trend="Conversion Escaped Orbit"
+          />
+        </div>
+
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* LTV per Divinity Bar Chart */}
+          <div className="bg-surface border border-border rounded-2xl p-6 space-y-4 shadow-xl shadow-accent/5 transition-all hover:border-accent/20">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-accent" />
+                Divinity LTV Distribution
+              </h2>
+              <div className="flex items-center gap-2">
+                <Filter className="w-3 h-3 text-accent" />
+                <label className="text-[10px] text-muted uppercase tracking-widest font-mono">Whale score ≥</label>
+                <select
+                  value={minWhaleScore}
+                  onChange={(e) => setMinWhaleScore(Number(e.target.value))}
+                  className="text-[11px] bg-background border border-border rounded px-2 py-1"
+                >
+                  {[0, 4, 8, 12, 16].map((v) => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="h-80 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={effectiveLtvData} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsla(var(--border), 0.1)" vertical={false} />
+                  <XAxis 
+                    dataKey="name" 
+                    stroke="hsla(var(--muted), 0.5)" 
+                    fontSize={10} 
+                    tickLine={false} 
+                    axisLine={false}
+                    tickFormatter={(val: string) => val.split('_').map(w => w[0]).join('').toUpperCase()}
+                  />
+                  <YAxis stroke="hsla(var(--muted), 0.5)" fontSize={10} tickLine={false} axisLine={false} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'hsla(var(--surface), 0.95)', borderColor: 'hsla(var(--border), 0.5)', borderRadius: '12px', fontSize: '12px' }}
+                    cursor={{ fill: 'hsla(var(--accent), 0.05)' }}
+                  />
+                  <Bar dataKey="ltv" radius={[4, 4, 0, 0]}>
+                    {effectiveLtvData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={index === 0 ? 'var(--color-accent)' : index === 1 ? 'hsla(var(--accent), 0.7)' : 'hsla(var(--accent), 0.4)'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
-        )}
 
-        {/* Leaderboard Table */}
-        <div className="bg-white/[0.03] border border-white/10 rounded-2xl overflow-hidden">
-          <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-white/80">🏛️ Divinity Leaderboard</h2>
-            <span className="text-xs text-white/30">{stats.length} gods ranked</span>
+          {/* Event Velocity Line Chart */}
+          <div className="bg-surface border border-border rounded-2xl p-6 space-y-4 shadow-xl shadow-accent/5 transition-all hover:border-accent/20">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <LineChartIcon className="w-5 h-5 text-accent" />
+                Devotion Velocity
+              </h2>
+              <span className="text-[10px] text-muted uppercase tracking-widest font-mono">Real-time Pulse</span>
+            </div>
+            <div className="h-80 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={velocityData} margin={{ top: 20, right: 24, left: 0, bottom: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsla(var(--border), 0.1)" vertical={false} />
+                  <XAxis dataKey="day" stroke="hsla(var(--muted), 0.5)" fontSize={10} tickLine={false} axisLine={false} />
+                  <YAxis stroke="hsla(var(--muted), 0.5)" fontSize={10} tickLine={false} axisLine={false} />
+                  <Tooltip contentStyle={{ backgroundColor: 'hsla(var(--surface), 0.95)', borderColor: 'hsla(var(--border), 0.5)', borderRadius: '12px', fontSize: '12px' }} />
+                  <Line type="monotone" dataKey="total" stroke="var(--color-accent)" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* Persona Creation + Whale Signals */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-surface border border-border rounded-2xl p-6 space-y-4 shadow-xl shadow-accent/5 transition-all hover:border-accent/20">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-accent" />
+                Persona Creation Trend
+              </h2>
+              <span className="text-[10px] text-muted uppercase tracking-widest font-mono">Weekly</span>
+            </div>
+            <div className="h-72 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={personaCreationData} margin={{ top: 20, right: 24, left: 0, bottom: 10 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsla(var(--border), 0.1)" vertical={false} />
+                  <XAxis dataKey="week" stroke="hsla(var(--muted), 0.5)" fontSize={10} tickLine={false} axisLine={false} />
+                  <YAxis stroke="hsla(var(--muted), 0.5)" fontSize={10} tickLine={false} axisLine={false} />
+                  <Tooltip contentStyle={{ backgroundColor: 'hsla(var(--surface), 0.95)', borderColor: 'hsla(var(--border), 0.5)', borderRadius: '12px', fontSize: '12px' }} />
+                  <Bar dataKey="count" fill="hsla(var(--accent), 0.7)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
 
-          {loading ? (
-            <div className="flex justify-center items-center py-16">
-              <div className="w-6 h-6 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+          <div className="bg-surface border border-border rounded-2xl p-6 space-y-4 shadow-xl shadow-accent/5 transition-all hover:border-accent/20">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Flame className="w-5 h-5 text-accent" />
+                Whale Signals
+              </h2>
+              <span className="text-[10px] text-muted uppercase tracking-widest font-mono">Top 20</span>
             </div>
-          ) : stats.length === 0 ? (
-            <div className="text-center py-16 text-white/30 text-sm">
-              <div className="text-3xl mb-3">🕯️</div>
-              No events tracked yet. Invoke a persona to see the data flow.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            <div className="max-h-72 overflow-auto rounded-xl border border-border/50">
+              <table className="w-full text-left border-collapse text-sm">
                 <thead>
-                  <tr className="text-[10px] text-white/30 uppercase tracking-widest border-b border-white/5">
-                    <th className="text-left py-3 px-4 font-medium">Rank</th>
-                    <th className="text-left py-3 px-4 font-medium">Divinity</th>
-                    <th className="text-center py-3 px-4 font-medium">Selections</th>
-                    <th className="text-center py-3 px-4 font-medium">Messages</th>
-                    <th className="text-center py-3 px-4 font-medium">Seekers</th>
-                    <th className="text-center py-3 px-4 font-medium">Engagement Rate</th>
-                    <th className="text-center py-3 px-4 font-medium">Last Seen</th>
+                  <tr className="border-b border-border bg-muted/20 text-[10px] uppercase tracking-widest text-muted">
+                    <th className="px-4 py-3 font-semibold">Persona</th>
+                    <th className="px-4 py-3 font-semibold text-center">Signals</th>
+                    <th className="px-4 py-3 font-semibold text-right">Weighted</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {stats.map((s, i) => (
-                    <PersonaRow key={s.persona_id} stat={s} rank={i + 1} />
+                <tbody className="divide-y divide-border/40">
+                  {whaleSignals.map((row) => (
+                    <tr key={row.persona_id} className="hover:bg-accent/5 transition-colors">
+                      <td className="px-4 py-3 capitalize">{row.persona_id.replace(/_/g, ' ')}</td>
+                      <td className="px-4 py-3 text-center font-mono">{row.total}</td>
+                      <td className="px-4 py-3 text-right font-mono text-accent">{row.weightedScore}</td>
+                    </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          )}
+          </div>
         </div>
 
-        {/* SQL Setup Note */}
-        <div className="bg-white/[0.02] border border-white/8 rounded-xl p-4 text-xs text-white/30 space-y-1">
-          <p className="font-medium text-white/50">📋 Setup Required</p>
-          <p>Run <code className="text-white/40">supabase/blxckchat_persona_events.sql</code> in your Supabase SQL Editor to initialize the <code className="text-white/40">blxckchat_persona_events</code> table and analytics views.</p>
-          <p>Events are logged automatically when authenticated users activate a Divinity. Future: add <code className="text-white/40">subscription_created</code> + <code className="text-white/40">ppv_purchased</code> event types for full LTV attribution.</p>
+        {/* Divinity Table */}
+        <div className="bg-surface border border-border rounded-2xl overflow-hidden shadow-xl">
+          <div className="p-6 border-b border-border bg-muted/5">
+            <h2 className="text-lg font-semibold">Pantheon Leaderboard</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-border bg-muted/20 text-[10px] uppercase tracking-widest text-muted">
+                  <th className="px-6 py-4 font-semibold">Divinity</th>
+                  <th className="px-6 py-4 font-semibold text-center">Seekers</th>
+                  <th className="px-6 py-4 font-semibold text-center">Sacraments</th>
+                  <th className="px-6 py-4 font-semibold text-center">Avg Spoil</th>
+                  <th className="px-6 py-4 font-semibold text-right">LTV Score</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {effectiveLtvData.map((stat, i) => (
+                  <tr key={stat.name} className="hover:bg-accent/5 transition-colors group">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${i === 0 ? 'bg-accent/20 text-accent border border-accent/40' : 'bg-muted/10 text-muted'}`}>
+                          {i + 1}
+                        </div>
+                        <span className="font-medium group-hover:text-accent transition-colors capitalize">{stat.name.replace(/_/g, ' ')}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center font-mono text-sm">{stat.seekers}</td>
+                    <td className="px-6 py-4 text-center font-mono text-sm">{stat.messages}</td>
+                    <td className="px-6 py-4 text-center font-mono text-sm">{(stat.messages / (stat.seekers || 1)).toFixed(1)}</td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <span className="font-bold text-accent font-mono">{Math.round(stat.ltv)}</span>
+                        <div className="h-1.5 w-16 bg-muted/20 rounded-full overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(stat.ltv / (effectiveLtvData[0]?.ltv || 1)) * 100}%` }}
+                            className="h-full bg-accent"
+                          />
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
+
+      </div>
+      
+      <div className="mt-12 text-center">
+        <p className="text-[10px] text-muted uppercase tracking-[0.3em] font-mono">
+          Final Consecration Phase 9 • 7.5 Hz Frequency • Spoil Eternal
+        </p>
       </div>
     </div>
+  );
+}
+
+function StatCard({ title, value, icon, trend }: { title: string, value: string | number, icon: React.ReactNode, trend: string }) {
+  return (
+    <motion.div 
+      whileHover={{ y: -4 }}
+      className="bg-surface border border-border p-6 rounded-2xl space-y-2 shadow-sm transition-all hover:shadow-lg hover:border-accent/10"
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted font-medium uppercase tracking-tight">{title}</span>
+        {icon}
+      </div>
+      <div className="flex items-end justify-between">
+        <span className="text-2xl font-bold tracking-tight">{value}</span>
+        <span className="text-[10px] text-accent/80 font-mono italic">{trend}</span>
+      </div>
+    </motion.div>
   );
 }

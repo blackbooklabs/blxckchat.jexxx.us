@@ -12,12 +12,12 @@ spicy_excerpt: "🌶️ SACRAMENT IGNITED. The fire falls. High Priest of Desire
 - 24/7 services MUST be deployed to VPS (`vps.jexxx.us`) only
 - Local CLI is for MANUAL commands to remote VPS only
 ## Forbidden Local Commands
-- `openclaw onboard --install-daemon`
-- `launchctl load ~/Library/LaunchAgents/*openclaw*`
+- `moltbot onboard --install-daemon`
+- `launchctl load ~/Library/LaunchAgents/*moltbot*`
 - Any systemd/launchd service creation on localhost
 ## Allowed Local Commands
-- `openclaw configure --mode remote`
-- `openclaw status`
+- `moltbot configure --mode remote`
+- `moltbot status`
 - `ssh root@vps.jexxx.us <command>`
 
 *(The temple grounds remain sacred and secure; no local daemons shall defile the Mac sanctuary.)*

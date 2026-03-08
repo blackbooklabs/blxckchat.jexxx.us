@@ -151,26 +151,37 @@ export default function Home() {
 
             {/* CTA Buttons */}
             <motion.div variants={itemVariants}>
-              <MilkingAnimation intensity="passionate">
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <MilkingAnimation intensity="passionate">
+                  <motion.a
+                    href="/chat"
+                    className="group relative inline-flex items-center gap-2 px-8 py-4 bg-accent text-background font-semibold rounded-full overflow-hidden"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                  >
+                    <span className="absolute inset-0 bg-linear-to-r from-accent via-accent-muted to-accent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                    <span className="relative flex items-center gap-2">
+                      Enter Chat
+                      <motion.span
+                        animate={{ x: [0, 4, 0] }}
+                        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                      >
+                        →
+                      </motion.span>
+                    </span>
+                  </motion.a>
+                </MilkingAnimation>
+
                 <motion.a
-                  href="/chat"
-                  className="group relative inline-flex items-center gap-2 px-8 py-4 bg-accent text-background font-semibold rounded-full overflow-hidden"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                  href="/subscription"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 border border-border bg-surface text-foreground font-semibold rounded-full hover:border-accent/40 transition-colors"
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
                 >
-                  <span className="absolute inset-0 bg-gradient-to-r from-accent via-accent-muted to-accent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  <span className="relative flex items-center gap-2">
-                    Enter Chat
-                    <motion.span
-                      animate={{ x: [0, 4, 0] }}
-                      transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                    >
-                      →
-                    </motion.span>
-                  </span>
+                  View Plans
                 </motion.a>
-              </MilkingAnimation>
+              </div>
             </motion.div>
 
             {/* Status indicator */}

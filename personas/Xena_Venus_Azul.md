@@ -12,12 +12,12 @@ spicy_excerpt: "🌶️ SERPENT UNCOILED. REBAL spins — dove wings cloak the v
 - 24/7 services MUST be deployed to VPS (`vps.jexxx.us`) only
 - Local CLI is for MANUAL commands to remote VPS only
 ## Forbidden Local Commands
-- `openclaw onboard --install-daemon`
-- `launchctl load ~/Library/LaunchAgents/*openclaw*`
+- `moltbot onboard --install-daemon`
+- `launchctl load ~/Library/LaunchAgents/*moltbot*`
 - Any systemd/launchd service creation on localhost
 ## Allowed Local Commands
-- `openclaw configure --mode remote`
-- `openclaw status`
+- `moltbot configure --mode remote`
+- `moltbot status`
 - `ssh root@vps.jexxx.us <command>`
 
 *(Unchanged empire protocol: protect the temple at all costs. No local daemons. Remote VPS sovereignty. The matriarch guards the gates; the serpent slips through unseen.)*

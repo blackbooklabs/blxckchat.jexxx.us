@@ -2,13 +2,14 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Send, User, Heart, Sparkles, Loader2, Settings, Key, X, ChevronDown, Shield, LogIn, SlidersHorizontal, Copy, Check, Pencil, Volume2, VolumeX, Paperclip, FileText, Image, Play, Globe, Menu, LogOut, Wand2, Plus, Terminal, RefreshCw, Eye, BookOpen, ChevronLeft, ChevronRight } from "lucide-react";
+import { Send, User, Heart, Sparkles, Loader2, Settings, Key, X, ChevronDown, Shield, LogIn, SlidersHorizontal, Copy, Check, Pencil, Volume2, VolumeX, Paperclip, FileText, Image, Play, Globe, Menu, LogOut, Wand2, Plus, Terminal, RefreshCw, Eye, BookOpen, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { useAuth, UserButton, SignInButton, useClerk } from "@clerk/nextjs";
 import CursorMotion from "@/components/CursorMotion";
 import MilkingAnimation from "@/components/MilkingAnimation";
 import ShootingStars from "@/components/ShootingStars";
 import { AuthGate } from "@/components/AuthGate";
 import ChatSidebar from "@/components/ChatSidebar";
+import { ZoomModal } from "@/components/ZoomModal";
 import { useChatStore, Message, MessageAttachment } from "@/store/useChatStore";
 
 // Configuration: Set to true to require authentication before chatting
@@ -169,6 +170,7 @@ export default function ChatInterface() {
   const [isSpicy, setIsSpicy] = useState(true);
   const [previewingProjectVoice, setPreviewingProjectVoice] = useState(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
+  const [zoomImage, setZoomImage] = useState<{ url: string; name?: string } | null>(null);
 
   const { 
     projects, 
@@ -188,7 +190,10 @@ export default function ChatInterface() {
     updateProjectTitle,
     deleteMessagesAfter,
     personas,
-    invokingPersonaId
+    invokingPersonaId,
+    emitAnalytics,
+    autoPatternVisions,
+    toggleAutoPatternVisions
   } = useChatStore();
 
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -350,6 +355,29 @@ const [globalContext, setGlobalContext] = useState("");
     
     // Clear input so same file can be uploaded again
     if (fileInputRef.current) fileInputRef.current.value = "";
+
+    // PHASE 9: Vision Auto-Pattern Trigger
+    const hasImages = files.some(f => f.type.startsWith('image/'));
+    if (hasImages && autoPatternVisions && !isLoading) {
+      // Small delay to ensure state (stagedImages) is populated from FileReader
+      setTimeout(() => {
+        const activePersona = personas.find(p => p.id === invokingPersonaId);
+        const archetype = activePersona?.name || "the Sovereign";
+        const patternPrompt = `Vision received. Describe her form in explicit detail. Pattern her immediately as the ${archetype} archetype for wing6 PPV conversion. Tithes multiply. ♡`;
+        
+        // We use the inputRef to simulate typing if needed, but we can call sendMessage directly
+        setInput(patternPrompt);
+        // We need to wait for the state to settle before sending, 
+        // or passing the text directly to sendMessage if we modify it to accept text.
+        // For simplicity, we'll just set the input and assume the user can click send,
+        // OR we can try to trigger sendMessage(undefined, undefined, patternPrompt) if we refactor.
+        // Actually, let's keep it simple: set the input and the user sees it ready to go, 
+        // or call sendMessage if we can.
+        
+        // Trigger send after a short cooldown to ensure images are in state
+        setTimeout(() => sendMessage(), 200);
+      }, 500);
+    }
   };
   const [activeProvider, setActiveProvider] = useState<Provider>('groq');
   const [providersConfig, setProvidersConfig] = useState<Record<Provider, ProviderState>>({
@@ -555,7 +583,16 @@ const [globalContext, setGlobalContext] = useState("");
       setStagedFiles([]);
       setStagedImages([]);
       setExtractedContext("");
-      finalInput = fullInput;
+
+      // VISION AUTO-PATTERN TRIGGER
+      let augmentedInput = fullInput;
+      if (autoPatternVisions && currentStagedImages.length > 0) {
+        const activePersona = personas.find(p => p.id === invokingPersonaId);
+        const personaName = activePersona?.name || "active persona";
+        augmentedInput = `${fullInput}\n\nVision received. Describe her form in explicit detail. Pattern her immediately as ${personaName} for wing6 PPV conversion. Tithes multiply. ♡`;
+      }
+      
+      finalInput = augmentedInput;
     } else {
       // If regenerating, use the last message text as input
       finalInput = messageList[messageList.length - 1].text;
@@ -1070,11 +1107,32 @@ const [globalContext, setGlobalContext] = useState("");
                       type="password"
                       value={providersConfig[activeProvider].apiKey}
                       onChange={(e) => updateProviderConfig(activeProvider, { apiKey: e.target.value })}
-                      placeholder={provider.keyPlaceholder}
-                      autoCorrect="off" autoCapitalize="off" spellCheck={false}
-                      autoComplete="off" data-gramm="false"
+                      placeholder={`Enter ${provider.name} API Key`}
                       className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent font-mono text-sm"
                     />
+                  </div>
+
+                  {/* Vision AI Settings */}
+                  <div className="pt-4 border-t border-border/50">
+                    <div className="flex items-center justify-between mb-2">
+                       <div className="flex items-center gap-2">
+                         <Wand2 className="w-4 h-4 text-accent" />
+                         <label className="text-sm font-medium">Vision Auto-Patterning</label>
+                       </div>
+                       <button
+                         onClick={toggleAutoPatternVisions}
+                         className={`w-10 h-5 rounded-full transition-colors relative ${autoPatternVisions ? 'bg-accent' : 'bg-muted/30'}`}
+                       >
+                         <motion.div 
+                           className="absolute top-1 left-1 w-3 h-3 bg-white rounded-full"
+                           animate={{ x: autoPatternVisions ? 20 : 0 }}
+                           transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                         />
+                       </button>
+                    </div>
+                    <p className="text-[10px] text-muted leading-relaxed">
+                      Enable automated vision analysis and patterning on every image upload to maximize conversion velocity. ♡
+                    </p>
                     <p className="text-xs text-muted mt-2 flex items-center gap-1">
                       <Shield className="w-3 h-3" />
                       Expected format: <code className="bg-muted/30 px-1 rounded">{provider.keyPlaceholder}</code> • Never stored on JEXXXUS servers
@@ -1286,10 +1344,12 @@ const [globalContext, setGlobalContext] = useState("");
                             {message.attachments.map((att, i) => (
                               <div key={i} className="mt-1">
                                 {att.type === 'image' && att.url && (
-                                  <img 
+                                  <motion.img 
+                                    whileHover={{ scale: 1.04 }}
                                     src={att.url} 
                                     alt={att.name} 
-                                    className="max-h-48 rounded-lg object-contain border border-accent/20 shadow-sm hover:shadow-md transition cursor-pointer"
+                                    className="max-h-48 rounded-lg object-contain border border-accent/20 shadow-sm cursor-zoom-in"
+                                    onClick={() => att.url && setZoomImage({ url: att.url, name: att.name })}
                                   />
                                 )}
                                 {att.type === 'file' && (
@@ -1403,17 +1463,23 @@ const [globalContext, setGlobalContext] = useState("");
                 exit={{ opacity: 0, height: 0 }}
                 className="flex flex-wrap gap-2 mb-3"
               >
-                {stagedImages.map((img, i) => (
-                  <div key={`img-${i}`} className="relative group">
-                    <img src={img.data} alt={img.name} className="h-16 w-16 object-cover rounded-lg border border-accent/30 transition-all group-hover:border-red-500/50" />
-                    <button 
-                      onClick={() => setStagedImages(prev => prev.filter((_, idx) => idx !== i))} 
-                      className="absolute -top-1.5 -right-1.5 bg-surface border border-border p-0.5 rounded-full text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
+                 {stagedImages.map((img, i) => (
+                   <div key={`img-${i}`} className="relative group">
+                     <motion.img 
+                       whileHover={{ scale: 1.05 }}
+                       src={img.data} 
+                       alt={img.name} 
+                       className="h-16 w-16 object-cover rounded-lg border border-accent/30 transition-all cursor-zoom-in group-hover:border-accent/50" 
+                       onClick={() => setZoomImage({ url: img.data, name: img.name })}
+                     />
+                     <button 
+                       onClick={() => setStagedImages(prev => prev.filter((_, idx) => idx !== i))} 
+                       className="absolute -top-1.5 -right-1.5 bg-surface border border-border p-0.5 rounded-full text-muted hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                     >
+                       <X className="w-3 h-3" />
+                     </button>
+                   </div>
+                 ))}
                 
                 {stagedFiles.map((file, i) => (
                   <div key={`file-${i}`} className="flex items-center gap-2 px-2 py-1 bg-surface border border-border rounded-lg text-[10px] text-muted h-fit">
@@ -1514,6 +1580,17 @@ const [globalContext, setGlobalContext] = useState("");
         </AuthGate>
         </div>
       </div>
+ 
+      <ZoomModal
+        isOpen={!!zoomImage}
+        url={zoomImage?.url || ""}
+        name={zoomImage?.name}
+        onClose={() => setZoomImage(null)}
+        onPattern={(url: string) => {
+          setInput(prev => prev + `\n\n[Vision Pattern Request: ${url}]\nDescribe her form in detail. Pattern as ${personas.find(p => p.id === invokingPersonaId)?.name || 'active persona'} for wing6 PPV conversion. Tithes multiply.`);
+          setZoomImage(null);
+        }}
+      />
     </>
   );
 }
