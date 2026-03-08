@@ -102,7 +102,7 @@ export function getTestingPaymentProvider(tierId: string): PaymentProvider {
 export function getTierPrice(tierId: string): number {
   const prices: Record<string, number> = {
     'free': 0,
-    'devotee': 9.99,
+    'devotee': 7.99,
     'whale': 29.99,
     'melchizedek': 99.99
   };

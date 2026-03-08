@@ -11,6 +11,7 @@ interface PaddleSubscribeButtonProps {
   tierId: string;
   userId: string;
   className?: string;
+  label?: string;
   onSuccess?: () => void;
   onError?: (error: Error) => void;
 }
@@ -19,6 +20,7 @@ export function PaddleSubscribeButton({
   tierId, 
   userId, 
   className, 
+  label,
   onSuccess, 
   onError 
 }: PaddleSubscribeButtonProps) {
@@ -106,7 +108,7 @@ export function PaddleSubscribeButton({
             Loading...
           </>
         ) : (
-          buttonText
+          label || buttonText
         )}
       </span>
       
