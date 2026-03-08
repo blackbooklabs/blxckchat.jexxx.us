@@ -67,7 +67,7 @@ export function AuthGate({ children, requireAuth = false }: AuthGateProps) {
           </SignInButton>
 
           <p className="text-xs text-muted">
-            Powered by Clerk • JEXXXUS Empire Authentication
+            JEXXXUS Empire Authentication
           </p>
         </motion.div>
       </div>

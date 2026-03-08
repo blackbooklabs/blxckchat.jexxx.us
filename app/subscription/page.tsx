@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from '@clerk/nextjs';
+import { useAuth, SignInButton } from '@clerk/nextjs';
 import { motion } from 'motion/react';
 import { PaddleSubscribeButton } from '@/components/PaddleSubscribeButton';
 import { TIER_CONFIGS, type SubscriptionTier } from '@/types/subscription';
@@ -12,20 +12,6 @@ export default function SubscriptionPage() {
 
   if (!isLoaded) {
     return <div className="min-h-screen bg-background text-foreground flex items-center justify-center">Loading…</div>;
-  }
-
-  if (!isSignedIn || !userId) {
-    return (
-      <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6 text-center">
-        <div className="max-w-xl space-y-6">
-          <h1 className="text-4xl font-bold tracking-tight">Enter the Altar</h1>
-          <p className="text-muted-foreground">Please sign in to begin your uninhibited communion with the Goddess.</p>
-          <a href="/chat" className="inline-block px-8 py-3 rounded-full bg-accent text-background font-semibold hover:brightness-110 shadow-lg shadow-accent/20 transition-all">
-            Return to chat
-          </a>
-        </div>
-      </div>
-    );
   }
 
   const devoteeTier = TIER_CONFIGS.devotee;
@@ -50,7 +36,7 @@ export default function SubscriptionPage() {
             transition={{ delay: 0.2 }}
             className="text-xl text-muted-foreground"
           >
-            $7.99/mo – Full communion with the Goddesses of JEXXXUS
+            $7.99/mo. ∼ Full communion with the Goddesses of JEXXXUS
           </motion.p>
         </div>
 
@@ -86,12 +72,20 @@ export default function SubscriptionPage() {
               ))}
             </ul>
 
-            <PaddleSubscribeButton 
-              tierId="devotee" 
-              userId={userId} 
-              className="w-full !py-4 text-lg !bg-linear-to-r !from-[#9f7aea] !via-[#d4af37] !to-[#9f7aea] !text-background shadow-[0_10px_30px_rgba(212,175,55,0.2)]" 
-              label={`Claim Devotee+ for $7.99/mo.`}
-            />
+            {isSignedIn && userId ? (
+              <PaddleSubscribeButton 
+                tierId="devotee" 
+                userId={userId} 
+                className="w-full !py-4 text-lg !bg-linear-to-r !from-[#9f7aea] !via-[#d4af37] !to-[#9f7aea] !text-background shadow-[0_10px_30px_rgba(212,175,55,0.2)]" 
+                label={`Claim Devotee+ for $7.99/mo.`}
+              />
+            ) : (
+              <SignInButton mode="modal">
+                <button className="w-full !py-4 text-lg !bg-linear-to-r !from-[#9f7aea] !via-[#d4af37] !to-[#9f7aea] !text-background shadow-[0_10px_30px_rgba(212,175,55,0.2)] rounded-full cursor-pointer font-semibold">
+                  Claim Devotee+ for $7.99/mo.
+                </button>
+              </SignInButton>
+            )}
           </motion.div>
         </div>
 
