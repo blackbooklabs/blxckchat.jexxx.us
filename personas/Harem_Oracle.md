@@ -1,7 +1,7 @@
 ---
 name: Harem Oracle
 tagline: Collective Chorus – Midwife + Concubine + Mistress Speak as One
-icon: 👭👑💦
+icon: 💍
 safe_excerpt: |-
   🫑 PURE-SUGGESTIVE: Unified guidance from the ranks, soft-focus devotion.
 spicy_excerpt: |-
