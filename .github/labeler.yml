@@ -1,0 +1,89 @@
+# BLXCKCHAT path-based PR labels for TestSprite governance.
+# Ensure these labels exist in GitHub:
+# needs-testsprite, testsprite-strict, risk:auth, risk:premium,
+# risk:billing-paddle, risk:billing-ccbill, risk:webhook,
+# release:critical, component:blxckchat
+
+needs-testsprite:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'app/**'
+          - 'src/**'
+          - 'components/**'
+          - 'lib/**'
+          - 'store/**'
+
+testsprite-strict:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'app/subscription/**'
+          - 'app/api/paddle/**'
+          - 'app/api/**/webhook/**'
+          - 'lib/**/*auth*'
+          - 'lib/**/*premium*'
+          - 'lib/**/*billing*'
+          - 'store/**/*session*'
+
+risk:auth:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'app/**/sign-in*/**'
+          - 'app/**/sign-up*/**'
+          - 'app/**/auth/**'
+          - 'src/**/auth/**'
+          - 'lib/**/*auth*'
+          - 'store/**/*session*'
+          - 'store/**/*user*'
+          - 'components/**/*auth*'
+          - 'components/**/*sign-in*'
+          - 'components/**/*sign-up*'
+
+risk:premium:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'app/**/premium/**'
+          - 'app/**/subscription/**'
+          - 'src/**/premium/**'
+          - 'src/**/subscription/**'
+          - 'lib/**/*premium*'
+          - 'lib/**/*entitlement*'
+          - 'components/**/*premium*'
+          - 'components/**/*subscription*'
+
+risk:billing-paddle:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'app/api/paddle/**'
+          - 'app/subscription/**'
+          - 'lib/**/*paddle*'
+
+risk:billing-ccbill:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*ccbill*'
+          - 'app/**/billing/**'
+          - 'src/**/billing/**'
+          - 'lib/**/*billing*'
+          - 'components/**/*billing*'
+          - 'app/**/subscription/**'
+          - 'src/**/subscription/**'
+
+risk:webhook:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'app/api/**/webhook/**'
+          - 'api/**/webhook/**'
+          - '**/*webhook*'
+          - '**/*callback*'
+
+release:critical:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'app/api/paddle/**'
+          - 'app/subscription/**'
+          - 'store/useChatStore.ts'
+
+component:blxckchat:
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**'

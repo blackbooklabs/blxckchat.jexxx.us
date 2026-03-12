@@ -1,0 +1,85 @@
+version: 1
+
+policy:
+  gate_label: needs-testsprite
+  strict_evidence_label: testsprite-strict
+  retry_limit: 1
+  override_comment_prefix: 'override-testsprite:'
+  evidence_comment_prefix: 'testsprite-evidence:'
+  plan_comment_marker: '<!-- testsprite-plan -->'
+  strict_evidence_default: false
+  release_blocking_labels:
+    - risk:auth
+    - risk:premium
+    - risk:billing-paddle
+    - risk:billing-ccbill
+    - risk:webhook
+    - release:critical
+
+suite_definitions:
+  TS-SMOKE-ROUTE-INTEGRITY:
+    description: Core route render and app shell smoke coverage.
+    merge_gate: required-on-needs-testsprite
+  TS-AUTH-SESSION-CORE:
+    description: Sign-in, session restore, sign-out, and protected-route behavior.
+    merge_gate: required-when-auth-or-premium-paths-change
+  TS-PREMIUM-ACCESS-GATE:
+    description: Premium entitlement checks and premium-only route protection.
+    merge_gate: required-when-premium-or-billing-paths-change
+  TS-BILLING-PADDLE-CHECKOUT:
+    description: Paddle checkout launch, billing CTA state, and error handling.
+    merge_gate: required-when-paddle-paths-change
+  TS-BILLING-CCBILL-PREMIUM-FLOW:
+    description: CCBill-oriented premium purchase, upgrade, and entitlement activation flow.
+    merge_gate: required-when-ccbill-paths-change
+  TS-WEBHOOK-BILLING-EVENTS:
+    description: Webhook ingestion and entitlement/billing state propagation.
+    merge_gate: required-when-webhook-paths-change
+  TS-CRITICAL-USER-JOURNEY:
+    description: Highest-value end-to-end journey for the repo.
+    merge_gate: required-on-needs-testsprite
+  TS-REGRESSION-CHANGED-PATHS:
+    description: Targeted regression run for the changed files/areas in a PR.
+    merge_gate: recommended-on-needs-testsprite
+  TS-RELEASE-READINESS-FULL:
+    description: Broad pre-release validation for protected branches or release PRs.
+    merge_gate: required-for-release-cut
+
+repos:
+  blxckchat.jexxx.us:
+    owner: blackbooklabs
+    default_branch: main
+    billing_provider: ccbill-planned
+    premium_mode: planned
+    minimum_required_suites:
+      always:
+        - TS-SMOKE-ROUTE-INTEGRITY
+        - TS-CRITICAL-USER-JOURNEY
+      conditional:
+        auth:
+          paths:
+            - app/**/auth/**
+            - lib/**/*auth*
+            - store/**/*session*
+          suites:
+            - TS-AUTH-SESSION-CORE
+        premium:
+          paths:
+            - app/subscription/**
+            - lib/**/*premium*
+          suites:
+            - TS-PREMIUM-ACCESS-GATE
+            - TS-BILLING-CCBILL-PREMIUM-FLOW
+        paddle_legacy:
+          paths:
+            - app/api/paddle/**
+          suites:
+            - TS-WEBHOOK-BILLING-EVENTS
+        changed_paths:
+          paths:
+            - app/**
+            - components/**
+            - store/**
+            - lib/**
+          suites:
+            - TS-REGRESSION-CHANGED-PATHS

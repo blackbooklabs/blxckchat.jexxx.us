@@ -1,0 +1,298 @@
+name: TestSprite Suite Checks
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - edited
+      - labeled
+      - unlabeled
+      - ready_for_review
+  issue_comment:
+    types:
+      - created
+      - edited
+      - deleted
+  workflow_dispatch:
+    inputs:
+      pull_number:
+        description: Pull request number to evaluate
+        required: true
+        type: string
+      strict_evidence:
+        description: Mark missing TestSprite evidence as failing checks
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  checks: write
+  issues: read
+  pull-requests: read
+
+jobs:
+  testsprite-checks:
+    if: |
+      github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request != null)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: python -m pip install --disable-pip-version-check pyyaml
+
+      - name: Gather PR context
+        id: gather
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const eventName = context.eventName;
+            const pullNumber = eventName === 'pull_request'
+              ? context.payload.pull_request.number
+              : eventName === 'issue_comment'
+                ? context.payload.issue.number
+                : Number(core.getInput('pull_number'));
+
+            const { owner, repo } = context.repo;
+            const pr = await github.rest.pulls.get({ owner, repo, pull_number: pullNumber });
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner,
+              repo,
+              pull_number: pullNumber,
+              per_page: 100,
+            });
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: pullNumber,
+              per_page: 100,
+            });
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
+              owner,
+              repo,
+              pull_number: pullNumber,
+              per_page: 100,
+            });
+
+            const payload = {
+              pull_number: pullNumber,
+              labels: pr.data.labels.map(label => label.name),
+              title: pr.data.title,
+              pr_body: pr.data.body || '',
+              changed_files: files.map(file => file.filename),
+              comments: [
+                ...comments.map(comment => comment.body || ''),
+                ...reviews.map(review => review.body || ''),
+              ],
+            };
+
+            fs.writeFileSync('pr-context.json', JSON.stringify(payload, null, 2));
+            core.setOutput('pull_number', String(pullNumber));
+            core.setOutput('head_sha', pr.data.head.sha);
+            core.setOutput('html_url', pr.data.html_url);
+
+      - name: Resolve TestSprite suite plan
+        id: plan
+        run: |
+          STRICT_INPUT='${{ github.event_name == 'workflow_dispatch' && inputs.strict_evidence || '' }}'
+          STRICT_VALUE=''
+          if [ -n "$STRICT_INPUT" ]; then
+            STRICT_VALUE="$STRICT_INPUT"
+          fi
+
+          python .github/scripts/testsprite_plan.py \
+            --matrix .github/testsprite-suite-matrix.yml \
+            --context pr-context.json \
+            --plan-json testsprite-plan.json \
+            --plan-md testsprite-plan.md \
+            --strict-evidence "$STRICT_VALUE"
+
+      - name: Upsert TestSprite check runs
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const plan = JSON.parse(fs.readFileSync('testsprite-plan.json', 'utf8'));
+            const headSha = '${{ steps.gather.outputs.head_sha }}';
+            const pullNumber = Number('${{ steps.gather.outputs.pull_number }}');
+            const detailsUrl = '${{ steps.gather.outputs.html_url }}';
+            const strictEvidence = plan.strict_evidence === true;
+            const overrideEnabled = plan.override_enabled === true;
+            const { owner, repo } = context.repo;
+            const checkPrefix = 'TestSprite /';
+            const summaryName = 'TestSprite / Required suites summary';
+
+            function suiteCheckName(repoName, suiteName) {
+              return `${checkPrefix} ${repoName} / ${suiteName}`;
+            }
+
+            function truncate(text, max = 65535) {
+              return text.length > max ? `${text.slice(0, max - 3)}...` : text;
+            }
+
+            async function upsertCheckRun(name, conclusion, summary, text = '') {
+              const existingRuns = await github.paginate(github.rest.checks.listForRef, {
+                owner,
+                repo,
+                ref: headSha,
+                check_name: name,
+                per_page: 100,
+              });
+
+              const payload = {
+                owner,
+                repo,
+                name,
+                head_sha: headSha,
+                status: 'completed',
+                conclusion,
+                details_url: detailsUrl,
+                output: {
+                  title: name,
+                  summary: truncate(summary, 65535),
+                  text: truncate(text, 65535),
+                },
+              };
+
+              const existing = existingRuns.find(run => run.name === name);
+              if (existing) {
+                await github.rest.checks.update({
+                  owner,
+                  repo,
+                  check_run_id: existing.id,
+                  status: payload.status,
+                  conclusion: payload.conclusion,
+                  details_url: payload.details_url,
+                  output: payload.output,
+                });
+              } else {
+                await github.rest.checks.create(payload);
+              }
+            }
+
+            const desiredNames = new Set([summaryName]);
+            const repoSections = [];
+
+            for (const repoPlan of plan.repos) {
+              const lines = [];
+              lines.push(`Billing provider: ${repoPlan.billing_provider}`);
+              lines.push(`Premium mode: ${repoPlan.premium_mode}`);
+              lines.push(`Required suites: ${repoPlan.required_suites.join(', ') || 'none'}`);
+              lines.push(`Satisfied evidence: ${repoPlan.satisfied_evidence.join(', ') || 'none'}`);
+              lines.push(`Missing evidence: ${repoPlan.missing_evidence.join(', ') || 'none'}`);
+
+              repoSections.push(`- ${repoPlan.repo}: ${repoPlan.required_suites.length} required / ${repoPlan.missing_evidence.length} missing`);
+
+              for (const suite of repoPlan.required_suites) {
+                const checkName = suiteCheckName(repoPlan.repo, suite);
+                desiredNames.add(checkName);
+                const evidenceSatisfied = repoPlan.satisfied_evidence.includes(suite);
+                const conclusion = evidenceSatisfied
+                  ? 'success'
+                  : overrideEnabled
+                    ? 'neutral'
+                  : strictEvidence
+                    ? 'failure'
+                    : 'action_required';
+
+                const summary = evidenceSatisfied
+                  ? `Evidence recorded for ${suite} in ${repoPlan.repo}.`
+                  : overrideEnabled
+                    ? `Missing evidence for ${suite} in ${repoPlan.repo}, but override-testsprite is present.`
+                  : `Missing TestSprite evidence for ${suite} in ${repoPlan.repo}.`;
+
+                const text = [
+                  `Pull request: #${pullNumber}`,
+                  `Repo: ${repoPlan.repo}`,
+                  `Suite: ${suite}`,
+                  '',
+                  ...lines,
+                  '',
+                  'Record evidence with a PR comment like:',
+                  `testsprite-evidence: ${repoPlan.repo}=${suite}`,
+                ].join('\n');
+
+                await upsertCheckRun(checkName, conclusion, summary, text);
+              }
+            }
+
+            const summaryConclusion = plan.total_required === 0
+              ? 'neutral'
+              : plan.total_missing_evidence === 0
+                ? 'success'
+                : overrideEnabled
+                  ? 'neutral'
+                : strictEvidence
+                  ? 'failure'
+                : 'action_required';
+
+            const summaryText = [
+              `Pull request: #${pullNumber}`,
+              `Strict evidence: ${strictEvidence}`,
+              `Total required suites: ${plan.total_required}`,
+              `Total missing evidence: ${plan.total_missing_evidence}`,
+              `Override enabled: ${plan.override_enabled}`,
+              '',
+              'Repo summary:',
+              ...(repoSections.length ? repoSections : ['- No required suites']),
+              '',
+              'Evidence format:',
+              'testsprite-evidence: repo-name=SUITE_A,SUITE_B',
+            ].join('\n');
+
+            await upsertCheckRun(
+              summaryName,
+              summaryConclusion,
+              plan.total_required === 0
+                ? 'No required TestSprite suites for this PR.'
+                : `${plan.total_required} required suite(s), ${plan.total_missing_evidence} missing evidence item(s).`,
+              summaryText,
+            );
+
+            const existingAll = await github.paginate(github.rest.checks.listForRef, {
+              owner,
+              repo,
+              ref: headSha,
+              per_page: 100,
+            });
+
+            const staleRuns = existingAll.filter(run => run.name.startsWith(checkPrefix) && !desiredNames.has(run.name));
+            for (const stale of staleRuns) {
+              await github.rest.checks.update({
+                owner,
+                repo,
+                check_run_id: stale.id,
+                status: 'completed',
+                conclusion: 'neutral',
+                details_url: detailsUrl,
+                output: {
+                  title: stale.name,
+                  summary: 'No longer required for the current TestSprite suite plan.',
+                  text: `This check was neutralized because the suite is no longer required for PR #${pullNumber} on commit ${headSha}.`,
+                },
+              });
+            }
+
+      - name: Upload plan artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: testsprite-checks-plan-${{ steps.gather.outputs.pull_number }}
+          path: |
+            pr-context.json
+            testsprite-plan.json
+            testsprite-plan.md

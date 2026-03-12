@@ -1,0 +1,170 @@
+name: TestSprite Suite Plan
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - edited
+      - labeled
+      - unlabeled
+      - ready_for_review
+  issue_comment:
+    types:
+      - created
+      - edited
+      - deleted
+  workflow_dispatch:
+    inputs:
+      pull_number:
+        description: Pull request number to evaluate
+        required: true
+        type: string
+      strict_evidence:
+        description: Fail the workflow when required TestSprite evidence is missing
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  testsprite-plan:
+    if: |
+      github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request != null)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: python -m pip install --disable-pip-version-check pyyaml
+
+      - name: Gather PR context
+        id: gather
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const eventName = context.eventName;
+            const pullNumber = eventName === 'pull_request'
+              ? context.payload.pull_request.number
+              : eventName === 'issue_comment'
+                ? context.payload.issue.number
+                : Number(core.getInput('pull_number'));
+
+            const { owner, repo } = context.repo;
+            const pr = await github.rest.pulls.get({ owner, repo, pull_number: pullNumber });
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner,
+              repo,
+              pull_number: pullNumber,
+              per_page: 100,
+            });
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: pullNumber,
+              per_page: 100,
+            });
+            const reviews = await github.paginate(github.rest.pulls.listReviews, {
+              owner,
+              repo,
+              pull_number: pullNumber,
+              per_page: 100,
+            });
+
+            const payload = {
+              pull_number: pullNumber,
+              labels: pr.data.labels.map(label => label.name),
+              title: pr.data.title,
+              pr_body: pr.data.body || '',
+              changed_files: files.map(file => file.filename),
+              comments: [
+                ...comments.map(comment => comment.body || ''),
+                ...reviews.map(review => review.body || ''),
+              ],
+            };
+
+            fs.writeFileSync('pr-context.json', JSON.stringify(payload, null, 2));
+            core.setOutput('pull_number', String(pullNumber));
+
+      - name: Resolve TestSprite suite plan
+        id: plan
+        run: |
+          STRICT_INPUT='${{ github.event_name == 'workflow_dispatch' && inputs.strict_evidence || '' }}'
+          STRICT_VALUE=''
+          if [ -n "$STRICT_INPUT" ]; then
+            STRICT_VALUE="$STRICT_INPUT"
+          fi
+
+          python .github/scripts/testsprite_plan.py \
+            --matrix .github/testsprite-suite-matrix.yml \
+            --context pr-context.json \
+            --plan-json testsprite-plan.json \
+            --plan-md testsprite-plan.md \
+            --strict-evidence "$STRICT_VALUE"
+
+      - name: Upsert PR plan comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const pullNumber = Number('${{ steps.gather.outputs.pull_number }}');
+            const planBody = fs.readFileSync('testsprite-plan.md', 'utf8');
+            const marker = '<!-- testsprite-plan -->';
+            const { owner, repo } = context.repo;
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: pullNumber,
+              per_page: 100,
+            });
+
+            const existing = comments.find(comment => (comment.body || '').includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body: planBody,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: pullNumber,
+                body: planBody,
+              });
+            }
+
+      - name: Upload plan artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: testsprite-plan-${{ steps.gather.outputs.pull_number }}
+          path: |
+            pr-context.json
+            testsprite-plan.json
+            testsprite-plan.md
+
+      - name: Enforce TestSprite evidence gate
+        if: steps.plan.outputs.should_fail == 'true'
+        run: |
+          echo 'Required TestSprite evidence is missing for one or more suites.'
+          echo 'See the PR comment generated by this workflow for the required suites and evidence format.'
+          exit 1
