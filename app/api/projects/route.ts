@@ -7,14 +7,28 @@ export async function GET(req: Request) {
   if (!userId) return new NextResponse('Unauthorized', { status: 401 });
 
   const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from('blxckchat_projects')
-    .select('*, chats:blxckchat_chats(*)')
-    .eq('user_id', userId)
-    .order('updated_at', { ascending: false });
-    
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+  try {
+    const { data, error } = await supabase
+      .from('blxckchat_projects')
+      .select('*, chats:blxckchat_chats(*)')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false });
+      
+    if (error) {
+      if (process.env.NODE_ENV === 'development') {
+        const mockProject = { id: 'mock_project_0', user_id: userId, title: 'Sovereign Lab', custom_instructions: '', created_at: new Date().toISOString(), updated_at: new Date().toISOString(), chats: [] };
+        return NextResponse.json([mockProject]);
+      }
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json(data);
+  } catch (e) {
+    if (process.env.NODE_ENV === 'development') {
+       const mockProject = { id: 'mock_project_0', user_id: userId, title: 'Sovereign Lab', custom_instructions: '', created_at: new Date().toISOString(), updated_at: new Date().toISOString(), chats: [] };
+       return NextResponse.json([mockProject]);
+    }
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
 }
 
 export async function POST(req: Request) {
@@ -25,14 +39,28 @@ export async function POST(req: Request) {
   const { title = 'New Project', custom_instructions = '' } = body;
 
   const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from('blxckchat_projects')
-    .insert([{ user_id: userId, title, custom_instructions }])
-    .select()
-    .single();
+  try {
+    const { data, error } = await supabase
+      .from('blxckchat_projects')
+      .insert([{ user_id: userId, title, custom_instructions }])
+      .select()
+      .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+    if (error) {
+      if (process.env.NODE_ENV === 'development') {
+        const mockProject = { id: `mock_${Date.now()}`, user_id: userId, title, custom_instructions, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+        return NextResponse.json(mockProject);
+      }
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json(data);
+  } catch (e) {
+    if (process.env.NODE_ENV === 'development') {
+       const mockProject = { id: `mock_${Date.now()}`, user_id: userId, title, custom_instructions, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+       return NextResponse.json(mockProject);
+    }
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
 }
 
 export async function PUT(req: Request) {

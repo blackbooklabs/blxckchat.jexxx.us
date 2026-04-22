@@ -20,7 +20,7 @@ export const maxDuration = 60; // Extend Vercel timeout for slow Web Search requ
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key, X-Provider, x-openai-key, x-grok-key, x-gemini-key, x-kimi-key, x-groq-key, x-openrouter-key',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key, X-Provider, x-openai-key, x-grok-key, x-gemini-key, x-kimi-key, x-groq-key, x-openrouter-key, x-kingdom-key',
 };
 
 export async function OPTIONS(req: Request) {
@@ -34,7 +34,7 @@ export async function OPTIONS(req: Request) {
 interface ChatRequest {
   messages: Array<{ role: 'user' | 'assistant' | 'system'; content: any }>;
   mode?: 'venus' | 'innocent';
-  provider?: 'openai' | 'grok' | 'gemini' | 'kimi' | 'groq' | 'openrouter';
+  provider?: 'openai' | 'grok' | 'gemini' | 'kimi' | 'groq' | 'openrouter' | 'bonsai' | 'kingdom';
   model?: string;
   type?: 'text' | 'image';
   stream?: boolean;
@@ -115,6 +115,28 @@ const PROVIDERS: Record<string, ProviderConfig> = {
       'openrouter/auto',
     ],
   },
+  bonsai: {
+    name: 'Bonsai 1-bit',
+    keyHeader: 'x-bonsai-key',
+    createProvider: (apiKey: string) => createOpenAI({
+      apiKey: apiKey || 'bonsai',
+      baseURL: 'http://localhost:8080/v1',
+      compatibility: 'compatible'
+    } as any),
+    defaultModel: 'Bonsai-8B.gguf',
+    models: ['Bonsai-8B.gguf'],
+  },
+  kingdom: {
+    name: 'JEXXXUS Kingdom (26B)',
+    keyHeader: 'x-kingdom-key',
+    createProvider: (apiKey: string) => createOpenAI({
+      apiKey,
+      baseURL: 'https://kcx3mijtq0pfkvtc.us-east-1.aws.endpoints.huggingface.cloud/v1',
+      compatibility: 'compatible',
+    } as any),
+    defaultModel: 'gemma-4-26b',
+    models: ['gemma-4-26b'],
+  },
 };
 
 export async function POST(req: Request) {
@@ -153,7 +175,7 @@ export async function POST(req: Request) {
     // Extract API key from custom header
     const apiKey = req.headers.get(providerConfig.keyHeader);
     
-    if (!apiKey) {
+    if (!apiKey && provider !== 'bonsai') {
       console.error(`🌙 Luna Verde: Missing ${providerConfig.keyHeader} header`);
       return new Response(JSON.stringify({
         error: 'API Key Required',
@@ -168,7 +190,7 @@ export async function POST(req: Request) {
     }
 
     // Validate API key format (basic check)
-    if (apiKey.length < 10) {
+    if (provider !== 'bonsai' && (!apiKey || apiKey.length < 10)) {
       return new Response(JSON.stringify({
         error: 'Invalid API Key',
         message: 'The API key provided appears to be invalid (too short).',
@@ -329,7 +351,7 @@ Keep the veil intact — no backend details, only erotic authority and elevation
     // Create provider instance with user's key
     let aiProvider;
     try {
-      aiProvider = providerConfig.createProvider(apiKey);
+      aiProvider = providerConfig.createProvider(apiKey ?? '');
       console.log('🌙 Luna Verde: Provider created successfully');
     } catch (providerError) {
       console.error('🌙 Luna Verde: Failed to create provider:', providerError);
@@ -387,14 +409,35 @@ Keep the veil intact — no backend details, only erotic authority and elevation
         const result = await generateText({
           model: aiProvider(selectedModel),
           system: systemPrompt,
-          messages: messages.map(m => ({
-            role: m.role,
-            content: m.content,
-          })),
+          messages: messages
+            .filter(m => m.role === 'user' || m.role === 'assistant')
+            .map(m => {
+              let content = '';
+              if (typeof m.content === 'string') {
+                content = m.content;
+              } else if (Array.isArray(m.content)) {
+                // Extract text from parts
+                content = m.content
+                  .map((part: any) => part.text || (part.type === 'image' ? '[Image]' : ''))
+                  .filter(Boolean)
+                  .join(' ');
+              } else {
+                content = String(m.content || '');
+              }
+              
+              return {
+                role: m.role as 'user' | 'assistant',
+                content: content || '...', // Ensure never empty
+              };
+            })
+            .filter(m => m.content.trim().length > 0),
           temperature: 0.9,
-          // @ts-ignore - Vercel AI SDK types for provider metadata vary between 3.0 and 3.1+
-          providerMetadata,
-          experimental_providerMetadata: providerMetadata,
+          // Only include metadata for providers that support it
+          ...(provider !== 'bonsai' ? {
+            // @ts-ignore
+            providerMetadata,
+            experimental_providerMetadata: providerMetadata,
+          } : {})
         });
 
         console.log('🌙 Luna Verde: Generated text length:', result.text.length);
@@ -436,14 +479,35 @@ Keep the veil intact — no backend details, only erotic authority and elevation
     const result = streamText({
       model: aiProvider(selectedModel),
       system: systemPrompt,
-      messages: messages.map(m => ({
-        role: m.role,
-        content: m.content,
-      })),
+      messages: messages
+        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .map(m => {
+          let content = '';
+          if (typeof m.content === 'string') {
+            content = m.content;
+          } else if (Array.isArray(m.content)) {
+            // Extract text from parts
+            content = m.content
+              .map((part: any) => part.text || (part.type === 'image' ? '[Image]' : ''))
+              .filter(Boolean)
+              .join(' ');
+          } else {
+            content = String(m.content || '');
+          }
+          
+          return {
+            role: m.role as 'user' | 'assistant',
+            content: content || '...', // Ensure never empty
+          };
+        })
+        .filter(m => m.content.trim().length > 0),
       temperature: 0.9,
-      // @ts-ignore - Vercel AI SDK types for provider metadata vary between 3.0 and 3.1+
-      providerMetadata,
-      experimental_providerMetadata: providerMetadata,
+      // Only include metadata for providers that support it
+      ...(provider !== 'bonsai' ? {
+        // @ts-ignore
+        providerMetadata,
+        experimental_providerMetadata: providerMetadata,
+      } : {})
     });
 
     console.log('🌙 Luna Verde: Stream created');

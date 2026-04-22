@@ -60,8 +60,11 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const isLocalBypass = process.env.NODE_ENV === 'development';
+  const SafeClerkProvider = isLocalBypass ? ({ children }: { children: React.ReactNode }) => <>{children}</> : ClerkProvider;
+
   return (
-    <ClerkProvider>
+    <SafeClerkProvider>
       <html lang="en" className="dark" suppressHydrationWarning>
         <head>
           {/* Structured Data */}
@@ -84,6 +87,6 @@ export default function RootLayout({
           </DomainRouting>
         </body>
       </html>
-    </ClerkProvider>
+    </SafeClerkProvider>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth, SignInButton } from '@clerk/nextjs';
+import { useAuth, useUser, SignInButton } from "@/lib/auth-client";
 import { motion } from 'motion/react';
 import { PaddleSubscribeButton } from '@/components/PaddleSubscribeButton';
 import { TIER_CONFIGS, type SubscriptionTier } from '@/types/subscription';

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect, useRef } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { format, parseISO } from "date-fns";
-import { useAuth, useClerk } from "@clerk/nextjs";
+import { useAuth, useClerk } from "@/lib/auth-client";
 import { useChatStore } from "@/store/useChatStore";
 import { 
   Plus, MessageSquare, Trash2, X, PanelLeftOpen, Folder, FolderOpen, Settings, Lock, Flame, 

@@ -32,6 +32,10 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[Analytics API Bypass]', error);
+      return NextResponse.json({ ok: true });
+    }
     console.error('[Analytics API] POST error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

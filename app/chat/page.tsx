@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Send, User, Heart, Sparkles, Loader2, Settings, Key, X, ChevronDown, Shield, LogIn, SlidersHorizontal, Copy, Check, Pencil, Volume2, VolumeX, Paperclip, FileText, Image, Play, Globe, Menu, LogOut, Wand2, Plus, Terminal, RefreshCw, Eye, BookOpen, ChevronLeft, ChevronRight, Download } from "lucide-react";
-import { useAuth, UserButton, SignInButton, useClerk } from "@clerk/nextjs";
+import { useAuth, UserButton, SignInButton, useClerk } from "@/lib/auth-client";
 import CursorMotion from "@/components/CursorMotion";
 import MilkingAnimation from "@/components/MilkingAnimation";
 import ShootingStars from "@/components/ShootingStars";
@@ -12,10 +12,9 @@ import ChatSidebar from "@/components/ChatSidebar";
 import { ZoomModal } from "@/components/ZoomModal";
 import { useChatStore, Message, MessageAttachment } from "@/store/useChatStore";
 
-// Configuration: Set to true to require authentication before chatting
-const REQUIRE_AUTH = true;
+const REQUIRE_AUTH = process.env.NODE_ENV !== 'development';
 
-type Provider = 'openai' | 'grok' | 'gemini' | 'kimi' | 'groq' | 'openrouter';
+type Provider = 'openai' | 'grok' | 'gemini' | 'kimi' | 'groq' | 'openrouter' | 'bonsai' | 'kingdom';
 
 interface ProviderState {
   apiKey: string;
@@ -148,6 +147,20 @@ const PROVIDERS = {
     keyPlaceholder: 'sk-or-v1-...',
     color: 'from-teal-500 to-cyan-600',
   },
+  bonsai: {
+    name: 'Bonsai 1-bit (Local)',
+    models: ['Bonsai-8B.gguf'],
+    defaultModel: 'Bonsai-8B.gguf',
+    keyPlaceholder: 'bonsai (optional)',
+    color: 'from-green-400 to-emerald-500',
+  },
+  kingdom: {
+    name: 'JEXXXUS Kingdom (26B)',
+    models: ['gemma-4-26b'],
+    defaultModel: 'gemma-4-26b',
+    keyPlaceholder: 'HF Token...',
+    color: 'from-amber-400 to-orange-500',
+  },
 };
 
 const HEADER_KEYS: Record<Provider, string> = {
@@ -157,6 +170,8 @@ const HEADER_KEYS: Record<Provider, string> = {
   kimi: 'x-kimi-key',
   groq: 'x-groq-key',
   openrouter: 'x-openrouter-key',
+  bonsai: 'x-bonsai-key',
+  kingdom: 'x-kingdom-key',
 };
 
 export default function ChatInterface() {
@@ -379,7 +394,7 @@ const [globalContext, setGlobalContext] = useState("");
       }, 500);
     }
   };
-  const [activeProvider, setActiveProvider] = useState<Provider>('groq');
+  const [activeProvider, setActiveProvider] = useState<Provider>('bonsai');
   const [providersConfig, setProvidersConfig] = useState<Record<Provider, ProviderState>>({
     openai: { apiKey: '', model: PROVIDERS.openai.defaultModel, availableModels: PROVIDERS.openai.models },
     grok: { apiKey: '', model: PROVIDERS.grok.defaultModel, availableModels: PROVIDERS.grok.models },
@@ -387,6 +402,8 @@ const [globalContext, setGlobalContext] = useState("");
     kimi: { apiKey: '', model: PROVIDERS.kimi.defaultModel, availableModels: PROVIDERS.kimi.models },
     groq: { apiKey: '', model: PROVIDERS.groq.defaultModel, availableModels: PROVIDERS.groq.models },
     openrouter: { apiKey: '', model: PROVIDERS.openrouter.defaultModel, availableModels: PROVIDERS.openrouter.models },
+    bonsai: { apiKey: 'bonsai', model: PROVIDERS.bonsai.defaultModel, availableModels: PROVIDERS.bonsai.models },
+    kingdom: { apiKey: '', model: PROVIDERS.kingdom.defaultModel, availableModels: PROVIDERS.kingdom.models },
   });
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -418,11 +435,15 @@ const [globalContext, setGlobalContext] = useState("");
                 model: isValidModel ? cached.model : PROVIDERS[p].defaultModel
               };
             });
-            return next;
+            // Ensure local Bonsai key is always present
+          if (!next.bonsai.apiKey && process.env.NODE_ENV === 'development') {
+            next.bonsai.apiKey = 'bonsai';
+          }
+          return next;
           });
           
-          const parsedActive = parsed.activeProvider || 'openai';
-          setActiveProvider(Object.keys(PROVIDERS).includes(parsedActive) ? parsedActive as Provider : 'openai');
+          const parsedActive = parsed.activeProvider || 'bonsai';
+          setActiveProvider(Object.keys(PROVIDERS).includes(parsedActive) ? parsedActive as Provider : 'bonsai');
         } else if (parsed.provider) {
           // Migration from old to new schema
           const oldProvider = parsed.provider as Provider;
@@ -519,7 +540,7 @@ const [globalContext, setGlobalContext] = useState("");
     if (!isRegenerating && !input.trim() && !isLoading) return;
     if (isLoading) return;
 
-    if (!isSignedIn) {
+    if (REQUIRE_AUTH && !isSignedIn) {
       clerk.openSignIn();
       return;
     }
@@ -738,7 +759,7 @@ const [globalContext, setGlobalContext] = useState("");
   };
 
   const provider = PROVIDERS[activeProvider];
-  const isConfigured = !!providersConfig[activeProvider].apiKey;
+  const isConfigured = activeProvider === 'bonsai' || !!providersConfig[activeProvider].apiKey;
 
   return (
     <>
@@ -1160,11 +1181,12 @@ const [globalContext, setGlobalContext] = useState("");
 
                   {/* Status */}
                   {(() => {
-                    const hasKey = !!providersConfig[activeProvider].apiKey;
+                    const isBonsai = activeProvider === 'bonsai';
+                    const hasKey = !!providersConfig[activeProvider].apiKey || isBonsai;
                     return (
                       <div className={`p-3 rounded-xl ${hasKey ? 'bg-green-500/10 border border-green-500/30' : 'bg-yellow-500/10 border border-yellow-500/30'}`}>
                         <p className={`text-sm ${hasKey ? 'text-green-400' : 'text-yellow-400'}`}>
-                          {hasKey ? `✓ Key set for ${provider.name}` : '⚠ Add your API key to begin communion'}
+                          {isBonsai ? '✓ Sovereign Mode: Metal Inference Active' : (hasKey ? `✓ Key set for ${provider.name}` : '⚠ Add your API key to begin communion')}
                         </p>
                       </div>
                     );

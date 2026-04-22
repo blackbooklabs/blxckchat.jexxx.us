@@ -17,7 +17,7 @@ export interface Message {
 
 export interface ChatOptions {
   mode?: 'venus' | 'innocent';
-  model?: 'gpt-4o' | 'claude-3-opus' | 'gemini-1.5-pro';
+  model?: 'gpt-4o' | 'claude-3-opus' | 'gemini-1.5-pro' | 'gemma-4-26b';
   type?: 'text' | 'image';
 }
 

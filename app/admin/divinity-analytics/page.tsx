@@ -8,7 +8,7 @@ import {
   BarChart3, LineChart as LineChartIcon, Users, MessageSquare, TrendingUp,
   Download, Sparkles, Shield, RefreshCw, Flame, Wallet, AlertTriangle, Filter
 } from "lucide-react";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth } from "@/lib/auth-client";
 import { motion } from "motion/react";
 import Link from "next/link";
 import { format, parseISO } from "date-fns";

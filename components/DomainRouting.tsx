@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth } from "@/lib/auth-client";
 
 interface DomainRoutingProps {
   children: React.ReactNode;
@@ -20,6 +20,13 @@ export function DomainRouting({ children }: DomainRoutingProps) {
 
     // Get current domain
     const hostname = window.location.hostname;
+    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.');
+    
+    if (isLocal) {
+      console.log('🌙 Luna Verde: Local environment detected - bypassing domain routing');
+      return;
+    }
+    
     const subdomain = hostname.split('.')[0];
     
     console.log('🌙 Luna Verde: Domain routing check', { hostname, subdomain, isSignedIn });
