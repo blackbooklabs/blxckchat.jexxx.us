@@ -155,7 +155,7 @@ const PROVIDERS = {
     color: 'from-green-400 to-emerald-500',
   },
   kingdom: {
-    name: 'JEXXXUS Kingdom (26B)',
+    name: 'Hugging Face',
     models: ['gemma-4-26b'],
     defaultModel: 'gemma-4-26b',
     keyPlaceholder: 'HF Token...',
@@ -759,7 +759,7 @@ const [globalContext, setGlobalContext] = useState("");
   };
 
   const provider = PROVIDERS[activeProvider];
-  const isConfigured = activeProvider === 'bonsai' || !!providersConfig[activeProvider].apiKey;
+  const isConfigured = activeProvider === 'bonsai' || activeProvider === 'kingdom' || !!providersConfig[activeProvider].apiKey;
 
   return (
     <>

@@ -11,7 +11,7 @@ export function getSupabase() {
   return createClient(
     supabaseUrl || 'https://placeholder.supabase.co',
     supabaseKey || 'placeholder-key',
-    { db: { schema: 'api' } }
+    { db: { schema: 'public' } }
   );
 }
 
@@ -35,7 +35,7 @@ export function getSupabaseAdmin() {
     supabaseUrl || 'https://placeholder.supabase.co',
     supabaseKey || 'placeholder-key',
     { 
-      db: { schema: 'api' },
+      db: { schema: 'public' },
       auth: {
         autoRefreshToken: false,
         persistSession: false

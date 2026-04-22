@@ -127,10 +127,10 @@ const PROVIDERS: Record<string, ProviderConfig> = {
     models: ['Bonsai-8B.gguf'],
   },
   kingdom: {
-    name: 'JEXXXUS Kingdom (26B)',
+    name: 'Hugging Face',
     keyHeader: 'x-kingdom-key',
     createProvider: (apiKey: string) => createOpenAI({
-      apiKey,
+      apiKey: apiKey || process.env.HF_TOKEN || '',
       baseURL: 'https://kcx3mijtq0pfkvtc.us-east-1.aws.endpoints.huggingface.cloud/v1',
       compatibility: 'compatible',
     } as any),
