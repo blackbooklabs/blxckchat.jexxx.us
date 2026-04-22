@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerUserId } from '@/lib/serverAuth';
-import { getSupabase } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
 
 export async function GET(req: Request) {
   const userId = await getServerUserId();
@@ -11,7 +11,7 @@ export async function GET(req: Request) {
   
   if (!projectId) return new NextResponse('Missing projectId', { status: 400 });
 
-  const supabase = getSupabase();
+  const supabase = getSupabaseAdmin();
   try {
     const { data: projectCheck, error: projError } = await supabase
       .from('blxckchat_projects')
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
   
   if (!projectId) return new NextResponse('Missing projectId', { status: 400 });
   
-  const supabase = getSupabase();
+  const supabase = getSupabaseAdmin();
   try {
     const { data: projectCheck, error: projError } = await supabase
       .from('blxckchat_projects')
@@ -103,7 +103,7 @@ export async function PUT(req: Request) {
   
   if (!id) return new NextResponse('Missing chat ID', { status: 400 });
 
-  const supabase = getSupabase();
+  const supabase = getSupabaseAdmin();
 
   const { data: chatData, error: chatError } = await supabase
       .from('blxckchat_chats')
@@ -147,7 +147,7 @@ export async function DELETE(req: Request) {
   
   if (!id) return new NextResponse('Missing chat ID', { status: 400 });
 
-  const supabase = getSupabase();
+  const supabase = getSupabaseAdmin();
 
   const { data: chatData, error: chatError } = await supabase
       .from('blxckchat_chats')

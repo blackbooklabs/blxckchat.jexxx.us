@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 import { getServerUserId } from '@/lib/serverAuth';
-import { getSupabase } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
 
 export async function GET(req: Request) {
   const userId = await getServerUserId();
   if (!userId) return new NextResponse('Unauthorized', { status: 401 });
 
-  const supabase = getSupabase();
+  const supabase = getSupabaseAdmin();
   try {
     const { data, error } = await supabase
       .from('blxckchat_projects')
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   const body = await req.json();
   const { title = 'New Project', custom_instructions = '' } = body;
 
-  const supabase = getSupabase();
+  const supabase = getSupabaseAdmin();
   try {
     const { data, error } = await supabase
       .from('blxckchat_projects')
@@ -77,7 +77,7 @@ export async function PUT(req: Request) {
   if (custom_instructions !== undefined) updates.custom_instructions = custom_instructions;
   if (context_json !== undefined) updates.context_json = context_json;
 
-  const supabase = getSupabase();
+  const supabase = getSupabaseAdmin();
   const { data, error } = await supabase
     .from('blxckchat_projects')
     .update(updates)
@@ -99,7 +99,7 @@ export async function DELETE(req: Request) {
   
   if (!id) return new NextResponse('Missing project ID', { status: 400 });
 
-  const supabase = getSupabase();
+  const supabase = getSupabaseAdmin();
   const { error } = await supabase
     .from('blxckchat_projects')
     .delete()

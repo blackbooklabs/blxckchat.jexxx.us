@@ -4,7 +4,7 @@
  * Fire-and-forget event logging to Supabase.
  * Never throws — failures are silent (non-blocking to the empire's pipeline).
  */
-import { getSupabase } from './supabase';
+import { getSupabaseAdmin } from './supabase';
 
 export type PersonaEventType = 
   | 'persona_selected' 
@@ -31,7 +31,7 @@ export interface PersonaEventPayload {
  */
 export async function emitPersonaEvent(payload: PersonaEventPayload): Promise<void> {
   try {
-    const supabase = getSupabase();
+    const supabase = getSupabaseAdmin();
     const { error } = await supabase.from('blxckchat_persona_events').insert({
       user_id: payload.userId,
       project_id: payload.projectId ?? null,
@@ -62,7 +62,7 @@ export interface DivinityStats {
 
 export async function fetchDivinityLeaderboard(): Promise<DivinityStats[]> {
   try {
-    const supabase = getSupabase();
+    const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
       .from('divinity_leaderboard')
       .select('*');
@@ -89,7 +89,7 @@ export interface DivinityWeeklyStats {
 
 export async function fetchDivinityWeekly(): Promise<DivinityWeeklyStats[]> {
   try {
-    const supabase = getSupabase();
+    const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
       .from('divinity_weekly')
       .select('*')
@@ -149,7 +149,7 @@ function toISOWeek(date: Date): string {
 
 export async function fetchAnalyticsOverview(days = 30): Promise<AnalyticsOverview> {
   try {
-    const supabase = getSupabase();
+    const supabase = getSupabaseAdmin();
     const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
     const { data, error } = await supabase
       .from('blxckchat_persona_events')
