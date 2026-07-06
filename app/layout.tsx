@@ -1,10 +1,15 @@
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { DomainRouting } from "@/components/DomainRouting";
 import JsonLd from "@/components/JsonLd";
-import { PAGE_METADATA, generateOrganizationSchema, generateFAQSchema } from "@/lib/metadata.config";
+import {
+  PAGE_METADATA,
+  generateOrganizationSchema,
+  generateFAQSchema,
+} from "@/lib/metadata.config";
 
 export const dynamic = "force-dynamic";
 
@@ -35,16 +40,16 @@ export const metadata: Metadata = {
     googleBot: {
       index: true,
       follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
     },
   },
   verification: {
-    google: 'your-google-verification-code', // Add your Google Search Console code
+    google: "your-google-verification-code", // Add your Google Search Console code
   },
-  category: 'technology',
-  classification: 'AI Chat Platform',
+  category: "technology",
+  classification: "AI Chat Platform",
 };
 
 export const viewport: Viewport = {
@@ -60,8 +65,10 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const isLocalBypass = process.env.NODE_ENV === 'development';
-  const SafeClerkProvider = isLocalBypass ? ({ children }: { children: React.ReactNode }) => <>{children}</> : ClerkProvider;
+  const isLocalBypass = process.env.NODE_ENV === "development";
+  const SafeClerkProvider = isLocalBypass
+    ? ({ children }: { children: React.ReactNode }) => <>{children}</>
+    : ClerkProvider;
 
   return (
     <SafeClerkProvider>
@@ -77,7 +84,7 @@ export default function RootLayout({
           {/* Global background gradient */}
           <div className="fixed inset-0 bg-background -z-10" />
           <div className="fixed inset-0 bg-gradient-to-br from-accent/5 via-transparent to-accent-muted/5 -z-10 pointer-events-none" />
-          
+
           {/* Domain routing for sacred path configuration */}
           <DomainRouting>
             {/* Main content wrapper */}
@@ -85,6 +92,7 @@ export default function RootLayout({
               {children}
             </div>
           </DomainRouting>
+          <Analytics />
         </body>
       </html>
     </SafeClerkProvider>
