@@ -174,6 +174,7 @@ export default function ChatInterface() {
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [zoomImage, setZoomImage] = useState<{ url: string; name?: string } | null>(null);
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
+  const [modelSearch, setModelSearch] = useState("");
 
   const { 
     projects, 
@@ -501,22 +502,49 @@ const [globalContext, setGlobalContext] = useState("");
   };
 
   const fetchDynamicModels = async (providerName: Provider, key: string) => {
-    if (providerName !== 'ollama' && providerName !== 'bonsai' && (!key || key.length < 5)) return;
+    if (
+      providerName !== 'ollama' &&
+      providerName !== 'bonsai' &&
+      providerName !== 'openrouter' &&
+      providerName !== 'kingdom' &&
+      (!key || key.length < 5)
+    ) return;
+
     setIsFetchingModels(true);
     try {
       if (providerName === 'ollama') {
         let url = key ? key.trim() : 'http://localhost:11434';
         url = url.replace(/\/api$/, '').replace(/\/v1$/, '').replace(/\/$/, '');
-        const res = await fetch(`${url}/api/tags`);
-        if (!res.ok) throw new Error("Ollama connection failed");
+        
+        try {
+          const res = await fetch(`${url}/api/tags`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.models && data.models.length > 0) {
+              const names = data.models.map((m: any) => m.name);
+              updateProviderConfig(providerName, { availableModels: names, model: names[0] });
+              return;
+            }
+          }
+        } catch (err) {
+          console.warn("Client-side direct Ollama fetch failed, trying proxy...", err);
+        }
+
+        const res = await fetch('/api/models', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-ollama-url': url
+          },
+          body: JSON.stringify({ provider: 'ollama' })
+        });
         const data = await res.json();
         if (data.models && data.models.length > 0) {
-          const names = data.models.map((m: any) => m.name);
-          updateProviderConfig(providerName, { availableModels: names, model: names[0] });
-        } else {
-          throw new Error("No Ollama models found");
+          updateProviderConfig(providerName, { availableModels: data.models, model: data.models[0] });
+          return;
         }
-        return;
+        
+        throw new Error("Could not connect to Ollama. Make sure it is running and OLLAMA_ORIGINS='*' is set.");
       }
 
       if (providerName === 'bonsai') {
@@ -536,7 +564,7 @@ const [globalContext, setGlobalContext] = useState("");
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          [HEADER_KEYS[providerName]]: key
+          [HEADER_KEYS[providerName]]: key || ''
         },
         body: JSON.stringify({ provider: providerName })
       });
@@ -546,6 +574,7 @@ const [globalContext, setGlobalContext] = useState("");
       }
     } catch (e) {
       console.warn("Could not fetch models", e);
+      alert(`⚠️ Could not refresh model list: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setIsFetchingModels(false);
     }
@@ -1114,7 +1143,7 @@ const [globalContext, setGlobalContext] = useState("");
                         <button 
                           onClick={() => fetchDynamicModels(activeProvider, providersConfig[activeProvider].apiKey)} 
                           className="text-xs text-accent hover:underline flex items-center gap-1"
-                          disabled={((activeProvider !== 'ollama' && activeProvider !== 'bonsai') && !providersConfig[activeProvider].apiKey) || isFetchingModels}
+                          disabled={((activeProvider !== 'ollama' && activeProvider !== 'bonsai' && activeProvider !== 'openrouter' && activeProvider !== 'kingdom') && !providersConfig[activeProvider].apiKey) || isFetchingModels}
                         >
                           Refresh List
                         </button>
@@ -1134,29 +1163,75 @@ const [globalContext, setGlobalContext] = useState("");
                       <AnimatePresence>
                         {isModelDropdownOpen && (
                           <>
-                            <div className="fixed inset-0 z-10" onClick={() => setIsModelDropdownOpen(false)} />
+                            <div className="fixed inset-0 z-10" onClick={() => { setIsModelDropdownOpen(false); setModelSearch(""); }} />
                             <motion.div
                               initial={{ opacity: 0, y: -10 }}
                               animate={{ opacity: 1, y: 0 }}
                               exit={{ opacity: 0, y: -10 }}
-                              className="absolute left-0 right-0 mt-2 bg-surface border border-border rounded-xl shadow-2xl overflow-y-auto max-h-60 z-20 divide-y divide-border/30 custom-scrollbar"
+                              className="absolute left-0 right-0 mt-2 bg-surface border border-border rounded-xl shadow-2xl overflow-hidden z-20 flex flex-col max-h-60 divide-y divide-border/30"
                             >
-                              {providersConfig[activeProvider].availableModels.map((m) => (
-                                <button
-                                  key={m}
-                                  type="button"
-                                  onClick={() => {
-                                    updateProviderConfig(activeProvider, { model: m });
-                                    setIsModelDropdownOpen(false);
-                                  }}
-                                  className={`w-full px-4 py-2.5 text-left font-mono text-xs transition-colors hover:bg-accent/10 hover:text-accent flex items-center justify-between ${
-                                    providersConfig[activeProvider].model === m ? 'text-accent bg-accent/5 font-semibold' : 'text-foreground/80'
-                                  }`}
-                                >
-                                  <span>{m}</span>
-                                  {providersConfig[activeProvider].model === m && <Check className="w-3.5 h-3.5 text-accent shrink-0" />}
-                                </button>
-                              ))}
+                              <div className="p-2 bg-background/50 backdrop-blur-md">
+                                <input
+                                  type="text"
+                                  placeholder="Search or enter custom model..."
+                                  value={modelSearch}
+                                  onChange={(e) => setModelSearch(e.target.value)}
+                                  className="w-full px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-mono focus:outline-none focus:border-accent text-foreground"
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                              </div>
+                              <div className="overflow-y-auto divide-y divide-border/30 custom-scrollbar max-h-48">
+                                {(() => {
+                                  const available = providersConfig[activeProvider].availableModels;
+                                  const filtered = available.filter(m => 
+                                    m.toLowerCase().includes(modelSearch.toLowerCase())
+                                  );
+                                  return (
+                                    <>
+                                      {filtered.map((m) => (
+                                        <button
+                                          key={m}
+                                          type="button"
+                                          onClick={() => {
+                                            updateProviderConfig(activeProvider, { model: m });
+                                            setIsModelDropdownOpen(false);
+                                            setModelSearch("");
+                                          }}
+                                          className={`w-full px-4 py-2.5 text-left font-mono text-xs transition-colors hover:bg-accent/10 hover:text-accent flex items-center justify-between ${
+                                            providersConfig[activeProvider].model === m ? 'text-accent bg-accent/5 font-semibold' : 'text-foreground/80'
+                                          }`}
+                                        >
+                                          <span className="truncate pr-2">{m}</span>
+                                          {providersConfig[activeProvider].model === m && <Check className="w-3.5 h-3.5 text-accent shrink-0" />}
+                                        </button>
+                                      ))}
+                                      {modelSearch && !filtered.some(m => m.toLowerCase() === modelSearch.toLowerCase()) && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const updatedModels = Array.from(new Set([...available, modelSearch]));
+                                            updateProviderConfig(activeProvider, { 
+                                              availableModels: updatedModels,
+                                              model: modelSearch 
+                                            });
+                                            setIsModelDropdownOpen(false);
+                                            setModelSearch("");
+                                          }}
+                                          className="w-full px-4 py-2.5 text-left font-mono text-xs text-accent bg-accent/5 hover:bg-accent/10 transition-colors font-semibold flex items-center justify-between"
+                                        >
+                                          <span className="truncate pr-2">Use custom: "{modelSearch}"</span>
+                                          <Check className="w-3.5 h-3.5 text-accent shrink-0" />
+                                        </button>
+                                      )}
+                                      {filtered.length === 0 && !modelSearch && (
+                                        <div className="px-4 py-3 text-xs text-muted text-center font-mono">
+                                          No models found. Click Refresh List.
+                                        </div>
+                                      )}
+                                    </>
+                                  );
+                                })()}
+                              </div>
                             </motion.div>
                           </>
                         )}

@@ -62,8 +62,11 @@ export async function POST(req: Request) {
       }
     } else if (provider === 'openrouter') {
       const key = req.headers.get('x-openrouter-key');
-      if (!key) throw new Error("Missing key");
-      const res = await fetch('https://openrouter.ai/api/v1/models', { headers: { Authorization: `Bearer ${key}` } });
+      const headers: Record<string, string> = { Accept: 'application/json' };
+      if (key && key.length > 5) {
+        headers.Authorization = `Bearer ${key}`;
+      }
+      const res = await fetch('https://openrouter.ai/api/v1/models', { headers });
       const data = await res.json();
       if (data.data) {
         models = data.data.map((m: any) => m.id).sort(); // OpenRouter has hundreds, sort alphabetically
@@ -80,6 +83,21 @@ export async function POST(req: Request) {
       const data = await res.json();
       if (data.data) {
         models = data.data.map((m: any) => m.id).sort();
+      }
+    } else if (provider === 'ollama') {
+      const url = req.headers.get('x-ollama-url') || 'http://localhost:11434';
+      const res = await fetch(`${url}/api/tags`);
+      if (!res.ok) throw new Error("Ollama connection failed");
+      const data = await res.json();
+      if (data.models) {
+        models = data.models.map((m: any) => m.name);
+      }
+    } else if (provider === 'kingdom') {
+      const res = await fetch('https://huggingface.co/api/models?filter=text-generation&sort=downloads&direction=-1&limit=80');
+      if (!res.ok) throw new Error("Hugging Face Hub connection failed");
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        models = data.map((m: any) => m.modelId);
       }
     } else {
       throw new Error(`Invalid provider: ${provider}`);
