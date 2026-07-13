@@ -1,0 +1,231 @@
+diff --git a/node_modules/@sauerapple/dye/build/hooks/use-selection.d.ts b/node_modules/@sauerapple/dye/build/hooks/use-selection.d.ts
+index 063f059..34bcbf7 100644
+--- a/node_modules/@sauerapple/dye/build/hooks/use-selection.d.ts
++++ b/node_modules/@sauerapple/dye/build/hooks/use-selection.d.ts
+@@ -6,6 +6,8 @@ export type UseSelectionResult = {
+     selectedText: string;
+     /** The raw selection state (anchor, focus, mode) or undefined. */
+     selection: SelectionState | undefined;
++    /** True while the mouse button is held down and the selection is being extended by dragging. */
++    dragging: boolean;
+     /** Clear the selection. */
+     clearSelection: () => void;
+     /** Copy the selection to the system clipboard. Returns true on success. */
+diff --git a/node_modules/@sauerapple/dye/build/hooks/use-selection.js b/node_modules/@sauerapple/dye/build/hooks/use-selection.js
+index 0d31b48..3157e81 100644
+--- a/node_modules/@sauerapple/dye/build/hooks/use-selection.js
++++ b/node_modules/@sauerapple/dye/build/hooks/use-selection.js
+@@ -20,6 +20,7 @@ export default function useSelection() {
+         hasSelection: snapshot.selection !== undefined,
+         selectedText: snapshot.selectedText,
+         selection: snapshot.selection,
++        dragging: snapshot.dragging ?? false,
+         clearSelection,
+         copy,
+     };
+diff --git a/node_modules/@sauerapple/dye/build/ink.js b/node_modules/@sauerapple/dye/build/ink.js
+index 8db635d..7348ae1 100644
+--- a/node_modules/@sauerapple/dye/build/ink.js
++++ b/node_modules/@sauerapple/dye/build/ink.js
+@@ -17,6 +17,7 @@ import { dispatchClick, dispatchHover } from './events/dispatch.js';
+ import { SelectionManager } from './selection-manager.js';
+ import SelectionContext from './components/SelectionContext.js';
+ import { applySelectionOverlay } from './selection-overlay.js';
++import { screenToStyledString } from './screen-to-styled-string.js';
+ import { FrameTimer } from './frame-event.js';
+ import * as dom from './dom.js';
+ import { hideCursorEscape, showCursorEscape } from './cursor-helpers.js';
+@@ -349,7 +350,7 @@ export default class Ink {
+             this.nextRenderCommit = undefined;
+         }
+         const startTime = performance.now();
+-        const { output, outputHeight, staticOutput, screen } = render(this.rootNode, this.isScreenReaderEnabled);
++        let { output, outputHeight, staticOutput, screen } = render(this.rootNode, this.isScreenReaderEnabled);
+         // Everything inside render() is reconcile + layout + render-to-screen.
+         // We can't easily split these three phases without instrumenting the
+         // renderer internals, so we attribute the whole block to `render`.
+@@ -361,7 +362,11 @@ export default class Ink {
+             // Apply selection overlay if there's an active selection
+             const sel = this.selectionManager.getSelection();
+             if (sel) {
+-                applySelectionOverlay(screen, sel);
++                const mutated = applySelectionOverlay(screen, sel);
++                if (mutated) {
++                    output = screenToStyledString(screen);
++                    outputHeight = output === '' ? 0 : output.split('\n').length;
++                }
+             }
+         }
+         this.options.onRender?.({ renderTime: performance.now() - startTime });
+diff --git a/node_modules/@sauerapple/dye/build/screen-to-styled-string.js b/node_modules/@sauerapple/dye/build/screen-to-styled-string.js
+new file mode 100644
+index 0000000..7cbd1ff
+--- /dev/null
++++ b/node_modules/@sauerapple/dye/build/screen-to-styled-string.js
+@@ -0,0 +1,44 @@
++/**
++ * Serialize a Screen buffer (packed charId/styleId cells) into a styled ANSI
++ * string, using StylePool's cached transition() escapes for minimal codes.
++ *
++ * Needed because Output.get() builds two PARALLEL representations of the
++ * same frame in the same pass -- a plain 2D character grid (which the
++ * returned `output` string is generated from) and this packed Screen buffer
++ * (which selection tracking/overlay operates on). Mutating the Screen buffer
++ * after Output.get() has already returned has zero effect on the `output`
++ * string, since that string was serialized from the OTHER representation
++ * before the mutation ever happens. applySelectionOverlay() correctly
++ * colors Screen cells pink, but without this function to re-derive `output`
++ * from the mutated Screen afterward, none of that ever reaches the
++ * terminal -- selection tracking/copy still works (it reads Screen cell
++ * content directly), but the visual highlight silently never renders.
++ */
++import { getCellCharId, getCellWord1, unpackStyleId, unpackWidth, CellWidth, } from './screen.js';
++
++export function screenToStyledString(screen) {
++    const lines = [];
++    for (let y = 0; y < screen.height; y++) {
++        let line = '';
++        let currentStyleId = 0;
++        for (let x = 0; x < screen.width; x++) {
++            const w1 = getCellWord1(screen, x, y);
++            const width = unpackWidth(w1);
++            if (width === CellWidth.SpacerTail) {
++                continue;
++            }
++            const styleId = unpackStyleId(w1);
++            if (styleId !== currentStyleId) {
++                line += screen.stylePool.transition(currentStyleId, styleId);
++                currentStyleId = styleId;
++            }
++            const charId = getCellCharId(screen, x, y);
++            line += screen.charPool.resolve(charId);
++        }
++        if (currentStyleId !== 0) {
++            line += screen.stylePool.transition(currentStyleId, 0);
++        }
++        lines.push(line.trimEnd());
++    }
++    return lines.join('\n');
++}
+diff --git a/node_modules/@sauerapple/dye/build/selection-manager.d.ts b/node_modules/@sauerapple/dye/build/selection-manager.d.ts
+index c3d5a60..00c1ef9 100644
+--- a/node_modules/@sauerapple/dye/build/selection-manager.d.ts
++++ b/node_modules/@sauerapple/dye/build/selection-manager.d.ts
+@@ -21,6 +21,7 @@ type Listener = () => void;
+ export type SelectionSnapshot = {
+     readonly selection: SelectionState | undefined;
+     readonly selectedText: string;
++    readonly dragging: boolean;
+ };
+ export declare class SelectionManager {
+     private selection;
+diff --git a/node_modules/@sauerapple/dye/build/selection-manager.js b/node_modules/@sauerapple/dye/build/selection-manager.js
+index 33072d0..9abb0ba 100644
+--- a/node_modules/@sauerapple/dye/build/selection-manager.js
++++ b/node_modules/@sauerapple/dye/build/selection-manager.js
+@@ -26,6 +26,7 @@ export class SelectionManager {
+     snapshot = {
+         selection: undefined,
+         selectedText: '',
++        dragging: false,
+     };
+     /** Update the screen reference. Called after each render. */
+     setScreen(screen) {
+@@ -104,6 +105,8 @@ export class SelectionManager {
+     /** End a drag. Keeps the selection visible; clipboard copy is separate. */
+     handleMouseRelease() {
+         this.dragging = false;
++        this.refreshSnapshot();
++        this.notify();
+     }
+     /** Copy the current selection to the system clipboard. */
+     async copy() {
+@@ -130,7 +133,7 @@ export class SelectionManager {
+         const selectedText = this.selection && this.screen
+             ? getSelectedText(this.screen, this.selection)
+             : '';
+-        this.snapshot = { selection: this.selection, selectedText };
++        this.snapshot = { selection: this.selection, selectedText, dragging: this.dragging };
+     }
+     notify() {
+         for (const listener of this.listeners) {
+diff --git a/node_modules/@sauerapple/dye/build/selection-overlay.js b/node_modules/@sauerapple/dye/build/selection-overlay.js
+index 8d925a1..cee053b 100644
+--- a/node_modules/@sauerapple/dye/build/selection-overlay.js
++++ b/node_modules/@sauerapple/dye/build/selection-overlay.js
+@@ -1,19 +1,49 @@
+ /**
+- * Selection overlay — applies a visual highlight to selected Screen cells.
++ * Selection overlay — applies a pink background highlight to selected cells.
+  *
+  * Mutates the Screen buffer in-place by replacing each selected cell's
+- * styleId with a new styleId that has the inverse SGR code (SGR 7).
+- * This produces a high-contrast selection that works on any terminal.
++ * styleId with a new styleId that has pink background SGR codes
++ * (SGR 48;2;236;72;153 — JEXXXUS pink #ec4899).
+  *
+  * After applying the overlay, callers should mark the frame as contaminated
+  * so the next diff doesn't blit stale highlighted cells.
+  */
+ import { getCellWord1, unpackStyleId, unpackHyperlinkId, unpackWidth, setCellAt, getCellCharId, } from './screen.js';
+ import { normalizeSelection, selectionColRange, } from './selection.js';
++
++const PINK_BG = [48, 2, 236, 72, 153];
++
++function hasPinkBg(codes) {
++  for (let i = 0; i < codes.length; i++) {
++    if (codes[i] === 48 && i + 4 < codes.length && codes[i + 1] === 2 && codes[i + 2] === 236 && codes[i + 3] === 72 && codes[i + 4] === 153) {
++      return true;
++    }
++    if (codes[i] === 48 && i + 1 < codes.length) {
++      if (codes[i + 1] === 5) i += 2;
++      else if (codes[i + 1] === 2) i += 5;
++    }
++  }
++  return false;
++}
++
++function replaceBgWithPink(codes) {
++  const result = [];
++  for (let i = 0; i < codes.length; i++) {
++    if (codes[i] === 48 && i + 1 < codes.length) {
++      if (codes[i + 1] === 5) { i += 2; continue; }
++      if (codes[i + 1] === 2) { i += 5; continue; }
++    }
++    if (codes[i] === 7) continue;
++    result.push(codes[i]);
++  }
++  result.push(...PINK_BG);
++  return result;
++}
++
+ /**
+  * Apply the selection overlay to a Screen buffer.
+  * Replaces the styleId of each selected cell with a "selected" variant
+- * (original style + inverse SGR code 7).
++ * (original style + pink background #ec4899).
+  *
+  * Must be called AFTER the main render has populated the Screen.
+  * Returns true if any cells were modified.
+@@ -38,13 +68,11 @@ export function applySelectionOverlay(screen, selection) {
+             const currentStyleId = unpackStyleId(word1);
+             const currentHyperlinkId = unpackHyperlinkId(word1);
+             const width = unpackWidth(word1);
+-            // Get the original style codes and append SGR 7 (inverse)
+             const currentCodes = screen.stylePool.resolve(currentStyleId);
+-            // Avoid adding duplicate inverse codes
+-            if (currentCodes.includes(7)) {
++            if (hasPinkBg(currentCodes)) {
+                 continue;
+             }
+-            const selectedCodes = [...currentCodes, 7];
++            const selectedCodes = replaceBgWithPink(currentCodes);
+             const selectedStyleId = screen.stylePool.intern(selectedCodes);
+             setCellAt(screen, col, row, charId, selectedStyleId, currentHyperlinkId, width);
+             mutated = true;
+@@ -52,4 +80,3 @@ export function applySelectionOverlay(screen, selection) {
+     }
+     return mutated;
+ }
+-//# sourceMappingURL=selection-overlay.js.map
+\ No newline at end of file

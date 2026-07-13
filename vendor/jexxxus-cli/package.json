@@ -1,0 +1,25 @@
+{
+  "name": "jexxxus-cli-vendor",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "postinstall": "patch-package"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "@sauerapple/dye": "^0.1.0-alpha.0",
+    "@supabase/supabase-js": "^2.107.0",
+    "blessed": "^0.1.81",
+    "chalk": "^4.1.2",
+    "commander": "^15.0.0",
+    "csv-parse": "^6.2.1",
+    "dotenv": "^17.4.2",
+    "figlet": "^1.11.0",
+    "gradient-string": "^3.0.0",
+    "marked": "^15.0.12",
+    "openai": "^4.77.0",
+    "react": "^19.2.7",
+    "react-reconciler": "^0.33.0",
+    "patch-package": "^8.0.1"
+  }
+}

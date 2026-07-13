@@ -14,7 +14,13 @@ const nextConfig = {
     optimizePackageImports: ["framer-motion", "lucide-react"],
     // Kingdom Agent loads vendored jexxx.us-cli dist via runtime import()
     outputFileTracingIncludes: {
-      "/api/agent": ["./vendor/jexxxus-cli/dist/**/*"],
+      "/api/agent": [
+        "./vendor/jexxxus-cli/package.json",
+        "./vendor/jexxxus-cli/package-lock.json",
+        "./vendor/jexxxus-cli/patches/**/*",
+        "./vendor/jexxxus-cli/dist/**/*",
+        "./vendor/jexxxus-cli/node_modules/**/*",
+      ],
     },
   },
 
