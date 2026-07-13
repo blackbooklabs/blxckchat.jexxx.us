@@ -430,12 +430,17 @@ const [globalContext, setGlobalContext] = useState("");
               const p = pKey as Provider;
               const cached = parsed.providersConfig[p];
               // If the cached model is completely removed from the new hardcoded list, fall back to the new default
-              const isValidModel = PROVIDERS[p].models.includes(cached.model);
+              const cachedModels = Array.isArray(cached.availableModels)
+                ? cached.availableModels
+                : [];
+              const availableModels =
+                cachedModels.length > 0 ? cachedModels : PROVIDERS[p].models;
+              const isValidModel = availableModels.includes(cached.model);
               next[p] = {
-                ...prev[p], // Ensure base config (like new ones added) is preserved
+                ...prev[p],
                 ...cached,
-                availableModels: PROVIDERS[p].models, // Always use live hardcoded arrays over cache
-                model: isValidModel ? cached.model : PROVIDERS[p].defaultModel
+                availableModels,
+                model: isValidModel ? cached.model : PROVIDERS[p].defaultModel,
               };
             });
             // Ensure local Bonsai key is always present
@@ -495,22 +500,39 @@ const [globalContext, setGlobalContext] = useState("");
     }
   }, [userId, currentProjectId, currentChatId, saveSession]);
 
-
-
-  const saveConfig = (newActive: Provider, newConfigs: Record<Provider, ProviderState>, newContext?: string) => {
+  const persistConfig = (
+    newActive: Provider,
+    newConfigs: Record<Provider, ProviderState>,
+    newContext?: string,
+  ) => {
     const contextToSave = newContext !== undefined ? newContext : globalContext;
     setActiveProvider(newActive);
     setProvidersConfig(newConfigs);
     setGlobalContext(contextToSave);
-    sessionStorage.setItem('luna-api-config', JSON.stringify({ activeProvider: newActive, providersConfig: newConfigs, globalContext: contextToSave }));
+    sessionStorage.setItem(
+      'luna-api-config',
+      JSON.stringify({
+        activeProvider: newActive,
+        providersConfig: newConfigs,
+        globalContext: contextToSave,
+      }),
+    );
+  };
+
+  const saveConfig = (
+    newActive: Provider,
+    newConfigs: Record<Provider, ProviderState>,
+    newContext?: string,
+  ) => {
+    persistConfig(newActive, newConfigs, newContext);
   };
 
   const updateProviderConfig = (provider: Provider, updates: Partial<ProviderState>) => {
     const newConfigs = {
       ...providersConfig,
-      [provider]: { ...providersConfig[provider], ...updates }
+      [provider]: { ...providersConfig[provider], ...updates },
     };
-    saveConfig(activeProvider, newConfigs);
+    persistConfig(activeProvider, newConfigs);
   };
 
   const fetchDynamicModels = async (providerName: Provider, key: string) => {
@@ -624,7 +646,14 @@ const [globalContext, setGlobalContext] = useState("");
 
       const data = await res.json();
       if (data.models && data.models.length > 0) {
-        updateProviderConfig(providerName, { availableModels: data.models, model: data.models[0] });
+        const merged = Array.from(
+          new Set([...data.models, ...PROVIDERS[providerName].models]),
+        );
+        const currentModel = providersConfig[providerName].model;
+        updateProviderConfig(providerName, {
+          availableModels: merged,
+          model: merged.includes(currentModel) ? currentModel : data.models[0],
+        });
       }
     } catch (e) {
       console.warn("Could not fetch models", e);
@@ -637,6 +666,22 @@ const [globalContext, setGlobalContext] = useState("");
       setIsFetchingModels(false);
     }
   };
+
+  // Refresh model list when switching providers (if credentials exist)
+  useEffect(() => {
+    if (!mounted) return;
+    const key = providersConfig[activeProvider].apiKey;
+    const canFetch =
+      activeProvider === 'openrouter' ||
+      activeProvider === 'kingdom' ||
+      activeProvider === 'ollama' ||
+      activeProvider === 'bonsai' ||
+      (key && key.length >= 5);
+    if (canFetch) {
+      void fetchDynamicModels(activeProvider, key);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeProvider, mounted]);
 
   const sendMessage = useCallback(async (overrideMessages?: Message[], aiMessageIdToRegenerate?: string) => {
     const messageList = overrideMessages || messages;
@@ -1311,6 +1356,18 @@ const [globalContext, setGlobalContext] = useState("");
                       type="password"
                       value={providersConfig[activeProvider].apiKey}
                       onChange={(e) => updateProviderConfig(activeProvider, { apiKey: e.target.value })}
+                      onBlur={() => {
+                        const key = providersConfig[activeProvider].apiKey;
+                        if (
+                          key &&
+                          (key.length >= 5 ||
+                            activeProvider === 'ollama' ||
+                            activeProvider === 'openrouter' ||
+                            activeProvider === 'kingdom')
+                        ) {
+                          void fetchDynamicModels(activeProvider, key);
+                        }
+                      }}
                       placeholder={`Enter ${provider.name} API Key`}
                       className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent font-mono text-sm"
                     />

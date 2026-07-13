@@ -115,9 +115,9 @@ const PROVIDERS: Record<string, ProviderConfig> = {
     name: 'Kimi (Moonshot)',
     keyHeader: 'x-kimi-key',
     // Kimi uses OpenAI-compatible API
-    createProvider: (apiKey: string) => createOpenAI({ 
+    createProvider: (apiKey: string) => createOpenAI({
       apiKey,
-      baseURL: 'https://api.moonshot.cn/v1',
+      baseURL: 'https://api.moonshot.ai/v1',
       compatibility: 'compatible',
     } as any),
     defaultModel: 'kimi-k2-0711',

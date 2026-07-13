@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
+import {
+  fetchProviderModels,
+  type ModelsProvider,
+} from '@/lib/provider-models';
 
 export const runtime = 'edge';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, x-openai-key, x-grok-key, x-gemini-key, x-kimi-key, x-groq-key, x-openrouter-key, x-anthropic-key, x-ollama-url',
+  'Access-Control-Allow-Headers':
+    'Content-Type, x-openai-key, x-grok-key, x-gemini-key, x-kimi-key, x-groq-key, x-openrouter-key, x-anthropic-key, x-kingdom-key, x-ollama-url',
 };
 
 export async function OPTIONS() {
@@ -15,101 +20,31 @@ export async function OPTIONS() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { provider } = body;
+    const provider = body.provider as ModelsProvider;
 
-    let models: string[] = [];
-    
-    if (provider === 'openai') {
-      const key = req.headers.get('x-openai-key');
-      if (!key) throw new Error("Missing key");
-      const res = await fetch('https://api.openai.com/v1/models', { headers: { Authorization: `Bearer ${key}` } });
-      const data = await res.json();
-      if (data.data) {
-        models = data.data.map((m: any) => m.id).filter((id: string) => id.includes('gpt') || id.includes('o1') || id.includes('o3')).sort().reverse();
-      }
-    } else if (provider === 'grok') {
-      const key = req.headers.get('x-grok-key');
-      if (!key) throw new Error("Missing key");
-      const res = await fetch('https://api.x.ai/v1/models', { headers: { Authorization: `Bearer ${key}` } });
-      const data = await res.json();
-      if (data.models || data.data) {
-        const list = data.data || data.models || [];
-        models = list.map((m: any) => m.id).filter((id: string) => id.includes('grok')).sort().reverse();
-      }
-    } else if (provider === 'gemini') {
-      const key = req.headers.get('x-gemini-key');
-      if (!key) throw new Error("Missing key");
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
-      const data = await res.json();
-      if (data.models) {
-        models = data.models.map((m: any) => m.name.replace('models/', '')).filter((id: string) => id.includes('gemini') && !id.includes('vision')).sort().reverse();
-      }
-    } else if (provider === 'kimi') {
-      const key = req.headers.get('x-kimi-key');
-      if (!key) throw new Error("Missing key");
-      const res = await fetch('https://api.moonshot.cn/v1/models', { headers: { Authorization: `Bearer ${key}` } });
-      const data = await res.json();
-      if (data.data) {
-        models = data.data.map((m: any) => m.id).filter((id: string) => id.includes('moonshot') || id.includes('kimi')).sort().reverse();
-      }
-    } else if (provider === 'groq') {
-      const key = req.headers.get('x-groq-key');
-      if (!key) throw new Error("Missing key");
-      const res = await fetch('https://api.groq.com/openai/v1/models', { headers: { Authorization: `Bearer ${key}` } });
-      const data = await res.json();
-      if (data.data) {
-        models = data.data.map((m: any) => m.id).sort();
-      }
-    } else if (provider === 'openrouter') {
-      const key = req.headers.get('x-openrouter-key');
-      const headers: Record<string, string> = { Accept: 'application/json' };
-      if (key && key.length > 5) {
-        headers.Authorization = `Bearer ${key}`;
-      }
-      const res = await fetch('https://openrouter.ai/api/v1/models', { headers });
-      const data = await res.json();
-      if (data.data) {
-        models = data.data.map((m: any) => m.id).sort(); // OpenRouter has hundreds, sort alphabetically
-      }
-    } else if (provider === 'anthropic') {
-      const key = req.headers.get('x-anthropic-key');
-      if (!key) throw new Error("Missing key");
-      const res = await fetch('https://api.anthropic.com/v1/models', {
-        headers: {
-          'x-api-key': key,
-          'anthropic-version': '2023-06-01',
-        }
-      });
-      const data = await res.json();
-      if (data.data) {
-        models = data.data.map((m: any) => m.id).sort();
-      }
-    } else if (provider === 'ollama') {
-      const url = req.headers.get('x-ollama-url') || 'http://localhost:11434';
-      const res = await fetch(`${url}/api/tags`);
-      if (!res.ok) throw new Error("Ollama connection failed");
-      const data = await res.json();
-      if (data.models) {
-        models = data.models.map((m: any) => m.name);
-      }
-    } else if (provider === 'kingdom') {
-      const res = await fetch('https://huggingface.co/api/models?filter=text-generation&sort=downloads&direction=-1&limit=80');
-      if (!res.ok) throw new Error("Hugging Face Hub connection failed");
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        models = data.map((m: any) => m.modelId);
-      }
-    } else {
-      throw new Error(`Invalid provider: ${provider}`);
-    }
+    const models = await fetchProviderModels({
+      provider,
+      openaiKey: req.headers.get('x-openai-key'),
+      anthropicKey: req.headers.get('x-anthropic-key'),
+      grokKey: req.headers.get('x-grok-key'),
+      geminiKey: req.headers.get('x-gemini-key'),
+      kimiKey: req.headers.get('x-kimi-key'),
+      groqKey: req.headers.get('x-groq-key'),
+      openrouterKey: req.headers.get('x-openrouter-key'),
+      kingdomKey: req.headers.get('x-kingdom-key'),
+      ollamaUrl: req.headers.get('x-ollama-url'),
+    });
 
     if (!models.length) {
-      throw new Error("No models found or invalid key");
+      throw new Error('No models found — verify your API key and try again');
     }
 
     return NextResponse.json({ models }, { headers: corsHeaders });
   } catch (error) {
-    console.error("Models fetch error:", error);
-    return NextResponse.json({ error: String(error) }, { status: 400, headers: corsHeaders });
+    console.error('Models fetch error:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : String(error) },
+      { status: 400, headers: corsHeaders },
+    );
   }
 }
