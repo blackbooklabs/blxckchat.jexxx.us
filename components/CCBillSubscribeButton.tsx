@@ -85,7 +85,7 @@ export function CCBillSubscribeButton({
       className={`
         relative inline-flex items-center justify-center
         px-8 py-3 rounded-full font-semibold text-white
-        bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500
+        vhs-bg
         hover:brightness-110 transition-all duration-300
         shadow-lg hover:shadow-xl
         disabled:opacity-50 disabled:cursor-not-allowed

@@ -84,7 +84,7 @@ export function EcosystemNav({ className, currentDomain }: EcosystemNavProps) {
 
         {/* Current domain indicator */}
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+          <div className="w-2 h-2 bg-accent rounded-full"></div>
           <span className="text-xs text-gray-400">
             {currentDomain === 'blxckbook.jexxx.us' ? 'Public Site' : 'Protected Dashboard'}
           </span>

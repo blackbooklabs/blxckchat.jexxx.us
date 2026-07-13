@@ -2,30 +2,29 @@
 @import '../styles/bimbo-enhancements.css';
 
 @theme {
-  /* Colors */
-  --color-background: #050508;
-  --color-foreground: #f4f4f5;
-  --color-surface: #0a0a0a;
-  --color-surface-elevated: #111111;
-  --color-surface-hover: #1a1a1a;
-  --color-border: #262626;
-  --color-border-subtle: #1c1c1c;
-  --color-accent: #ec4899;
-  --color-accent-muted: #db2777;
-  --color-accent-glow: rgba(236, 72, 153, 0.4);
-  --color-muted: #737373;
-  --color-muted-foreground: #a3a3a3;
-  
-  /* Font families */
+  /* Common variables */
   --font-sans: "Inter", system-ui, sans-serif;
   --font-mono: "VT323", monospace;
   --font-display: "Syncopate", sans-serif;
   --font-script: "Pinyon Script", cursive;
   
-  /* Animations */
   --animate-fade-in: fadeIn 0.5s ease-out;
   --animate-slide-up: slideUp 0.5s ease-out;
   --animate-pulse-glow: pulseGlow 2s ease-in-out infinite;
+
+  /* Mapped Colors */
+  --color-background: var(--theme-bg);
+  --color-foreground: var(--theme-fg);
+  --color-surface: var(--theme-surface);
+  --color-surface-elevated: var(--theme-surface-elevated);
+  --color-surface-hover: var(--theme-surface-hover);
+  --color-border: var(--theme-border);
+  --color-border-subtle: var(--theme-border-subtle);
+  --color-accent: #ec4899;
+  --color-accent-muted: #db2777;
+  --color-accent-glow: rgba(236, 72, 153, 0.4);
+  --color-muted: var(--theme-muted);
+  --color-muted-foreground: var(--theme-muted-fg);
 }
 
 @keyframes fadeIn {
@@ -49,6 +48,30 @@
 }
 
 @layer base {
+  :root, .light {
+    --theme-bg: #f4f4f5;
+    --theme-fg: #18181b;
+    --theme-surface: #ffffff;
+    --theme-surface-elevated: #fafafa;
+    --theme-surface-hover: #e4e4e7;
+    --theme-border: #d4d4d8;
+    --theme-border-subtle: #e4e4e7;
+    --theme-muted: #a1a1aa;
+    --theme-muted-fg: #71717a;
+  }
+
+  .dark {
+    --theme-bg: #050508;
+    --theme-fg: #f4f4f5;
+    --theme-surface: #0a0a0a;
+    --theme-surface-elevated: #111111;
+    --theme-surface-hover: #1a1a1a;
+    --theme-border: #262626;
+    --theme-border-subtle: #1c1c1c;
+    --theme-muted: #737373;
+    --theme-muted-fg: #a3a3a3;
+  }
+
   * {
     border-color: var(--color-border);
   }
@@ -61,7 +84,7 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
   
-  /* Custom scrollbar for dark theme */
+  /* Custom scrollbar */
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -81,74 +104,78 @@
   }
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
-  
-  .font-extended {
-    font-family: var(--font-display);
-    text-transform: uppercase;
-    letter-spacing: 0.25em;
-  }
+.text-balance {
+  text-wrap: balance;
+}
 
-  .vcr-telemetry {
-    font-family: var(--font-mono);
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    opacity: 0.8;
-  }
-  
-  /* Gradient text utility */
-  .text-gradient {
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-image: linear-gradient(to right, var(--color-accent), var(--color-accent-muted));
-  }
-  
-  /* Glow effect for accent elements */
-  .glow-accent {
-    box-shadow: 0 0 30px var(--color-accent-glow);
-  }
-  
-  /* Glass morphism effect */
-  .glass {
-    background-color: rgba(10, 10, 10, 0.8);
-    backdrop-filter: blur(24px);
-    border: 1px solid rgba(229, 231, 235, 0.5);
-  }
+.font-extended {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+}
 
-  .crt-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    pointer-events: none;
-    z-index: 200;
-    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-    background-size: 100% 2px, 3px 100%;
-    opacity: 0.4;
-  }
+.vcr-telemetry {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  opacity: 0.8;
+}
 
-  .light .crt-overlay {
-    opacity: 0.15;
-  }
+/* Gradient text utility */
+.text-gradient {
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-image: linear-gradient(to right, var(--color-accent), var(--color-accent-muted));
+}
 
-  .vhs-rainbow-strip {
-    height: 8px;
-    background: linear-gradient(90deg, #ec4899, #9333ea, #ec4899);
-    background-size: 200% auto;
-    animation: rainbow-flow 3s linear infinite;
-  }
+/* Glow effect for accent elements */
+.glow-accent {
+  box-shadow: 0 0 30px var(--color-accent-glow);
+}
 
-  .vhs-footer-rainbow {
-    height: 20px;
-    background: linear-gradient(90deg, #ec4899, #9333ea, #ec4899);
-    background-size: 200% auto;
-    animation: rainbow-flow 3s linear infinite;
-  }
+/* Glass morphism effect */
+.glass {
+  background-color: rgba(10, 10, 10, 0.8);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(229, 231, 235, 0.5);
+}
+
+.crt-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 200;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  background-size: 100% 2px, 3px 100%;
+  opacity: 0.4;
+}
+
+.light .crt-overlay {
+  opacity: 0.15;
+}
+
+.vhs-bg {
+  background: linear-gradient(90deg, #ec4899, #9333ea, #ec4899);
+  background-size: 200% auto;
+  animation: rainbow-flow 3s linear infinite;
+}
+
+.vhs-rainbow-strip {
+  height: 8px;
+  background: linear-gradient(90deg, #ec4899, #9333ea, #ec4899);
+  background-size: 200% auto;
+  animation: rainbow-flow 3s linear infinite;
+}
+
+.vhs-footer-rainbow {
+  height: 20px;
+  background: linear-gradient(90deg, #ec4899, #9333ea, #ec4899);
+  background-size: 200% auto;
+  animation: rainbow-flow 3s linear infinite;
 }
 
 @media (prefers-reduced-motion: no-preference) {

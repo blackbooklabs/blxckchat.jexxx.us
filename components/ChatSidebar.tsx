@@ -180,7 +180,7 @@ function PersonaModal({ onClose, editTarget }: PersonaModalProps) {
                   autoComplete="off" data-gramm="false"
                   className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-sm font-mono resize-none h-32 focus:outline-none focus:border-accent"
             />
-            <span className={`text-[10px] text-right ${safeContent.length >= 50 ? 'text-green-400' : 'text-muted'}`}>
+            <span className={`text-[10px] text-right ${safeContent.length >= 50 ? 'text-accent' : 'text-muted'}`}>
               {safeContent.length}/50 min
             </span>
           </div>
@@ -195,7 +195,7 @@ function PersonaModal({ onClose, editTarget }: PersonaModalProps) {
                 onChange={e => setSpicyContent(e.target.value)}
                 placeholder="The unlocked, unfiltered version. Append primal instructions here..."
                 autoCorrect="off" autoCapitalize="off" spellCheck={false}
-                className="w-full px-3 py-2 bg-background border border-orange-500/30 rounded-xl text-xs font-mono resize-none h-24 focus:outline-none focus:border-orange-400"
+                className="w-full px-3 py-2 bg-background border border-accent/30 rounded-xl text-xs font-mono resize-none h-24 focus:outline-none focus:border-accent"
               />
             </div>
           )}
@@ -206,7 +206,7 @@ function PersonaModal({ onClose, editTarget }: PersonaModalProps) {
               <button 
                 onClick={() => handleVoicePreview(false)}
                 className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                  previewing ? 'bg-orange-500 text-white animate-pulse' : 'bg-accent/20 text-accent hover:bg-accent/30'
+                  previewing ? 'bg-accent text-white animate-pulse' : 'bg-accent/20 text-accent hover:bg-accent/30'
                 }`}
               >
                 {previewing ? <VolumeX className="w-3 h-3" /> : <Play className="w-3 h-3" />}
@@ -541,7 +541,7 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
                         invokingPersonaId === p.id 
                           ? "border-accent ring-2 ring-accent/20"
                           : isSpicyUnlocked
-                            ? "bg-orange-950/20 border-orange-500/40 hover:border-orange-400/70 shadow-[0_0_8px_rgba(249,115,22,0.2)]"
+                            ? "bg-accent/10 border-accent/40 hover:border-accent/70 shadow-[0_0_8px_var(--color-accent-glow)]"
                             : "bg-surface border-border hover:bg-accent/10 hover:border-accent/30"
                       }`}
                     >
@@ -560,7 +560,7 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
                         <span className="text-[10px] text-muted truncate">{p.tagline}</span>
                       </div>
                       {isSpicyUnlocked
-                        ? <Flame className="w-3 h-3 text-orange-400 shrink-0" />
+                        ? <Flame className="w-3 h-3 text-accent shrink-0" />
                         : <Lock className="w-3 h-3 text-muted/50 shrink-0" />}
                     </button>
 
@@ -732,7 +732,7 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
 
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       {isRenaming ? (
-                        <button onClick={(e) => { e.stopPropagation(); commitRename(project.id); }} className="p-1 text-green-400">
+                        <button onClick={(e) => { e.stopPropagation(); commitRename(project.id); }} className="p-1 text-accent">
                           <Check className="w-3 h-3" />
                         </button>
                       ) : (
@@ -743,7 +743,7 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
                       <button onClick={(e) => { e.stopPropagation(); onOpenProjectSettings(project.id); }} className="p-1 text-muted hover:text-accent" title="Project Context & Instructions">
                         <Settings className="w-3 h-3" />
                       </button>
-                      <button onClick={(e) => handleNewChat(e, project.id)} className="p-1 text-muted hover:text-green-400" title="New Chat">
+                      <button onClick={(e) => handleNewChat(e, project.id)} className="p-1 text-muted hover:text-accent" title="New Chat">
                         <Plus className="w-3 h-3" />
                       </button>
                       <button onClick={(e) => handleDeleteProject(e, project.id)} className="p-1 text-muted hover:text-red-500" title="Delete Project">
@@ -806,7 +806,7 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
 
                               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 {renamingChatId === chat.id ? (
-                                  <button onClick={(e) => { e.stopPropagation(); commitChatRename(chat.id); }} className="p-1 text-green-400">
+                                  <button onClick={(e) => { e.stopPropagation(); commitChatRename(chat.id); }} className="p-1 text-accent">
                                     <Check className="w-3 h-3" />
                                   </button>
                                 ) : (
