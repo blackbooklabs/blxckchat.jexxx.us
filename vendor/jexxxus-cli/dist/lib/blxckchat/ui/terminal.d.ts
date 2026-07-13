@@ -6,6 +6,7 @@ export interface TerminalChatOptions {
     toolCount?: number;
     storedConfig: StoredProviderConfig;
     resume?: boolean;
+    allowShell?: boolean;
 }
 export declare function startTerminalChat(provider: Provider, tools: BlxckchatTool[], options: TerminalChatOptions): Promise<void>;
 //# sourceMappingURL=terminal.d.ts.map

@@ -14,7 +14,7 @@ import { getBibleSections, getBibleBooks, getBibleChapters, getBibleVerses, getV
 import { createOperatorClient } from "./lib/supabase.js";
 import { listProvidersRedacted, resolveStartupProvider, runConfigureFlow, } from "./lib/blxckchat/config.js";
 import { resolveProvider } from "./lib/blxckchat/providers/registry.js";
-import { buildToolRegistry } from "./lib/blxckchat/tools/registry.js";
+import { resolveBlxckchatTools } from "./lib/blxckchat/tools/registry.js";
 import { runAgent } from "./lib/blxckchat/agent-loop.js";
 import { startInteractiveChat } from "./lib/blxckchat/repl-ui.js";
 import { logCrash } from "./lib/blxckchat/crash-log.js";
@@ -42,10 +42,8 @@ async function launchBlxckchat(prompt, options) {
         process.exit(1);
     }
     const provider = resolveProvider(storedConfig);
-    const authed = Boolean(loadCredentials({ quiet: true }));
-    const tools = buildToolRegistry({
+    const tools = resolveBlxckchatTools({
         allowShell: Boolean(options.shell),
-        includeAccountQuery: authed,
     });
     if (options.shell) {
         console.log(chalk.yellow("[BLXCKCHAT] Shell access enabled for this session. Every command still requires confirmation and is checked against a hard-blocked pattern list."));
@@ -62,6 +60,7 @@ async function launchBlxckchat(prompt, options) {
         providerLabel: `${storedConfig.provider}/${storedConfig.model}`,
         storedConfig,
         resume: Boolean(options.resume),
+        allowShell: Boolean(options.shell),
     });
 }
 function requireOperatorClient(target = "blxckbook") {

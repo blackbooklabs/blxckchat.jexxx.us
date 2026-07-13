@@ -173,7 +173,8 @@ async function buildSignedInOperatorContext() {
     if (resolved.ok) {
         return buildOperatorIdentityContext(resolved.session);
     }
-    return buildOfflineOperatorIdentityContext(creds);
+    const offline = buildOfflineOperatorIdentityContext(creds);
+    return `${offline}\n\nVault session error (credentials on disk): ${resolved.message}`;
 }
 /**
  * Core agent loop: prime with RAG context, send messages + tool defs to the

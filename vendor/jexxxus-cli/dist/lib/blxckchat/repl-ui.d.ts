@@ -5,6 +5,7 @@ export interface InteractiveChatOptions {
     providerLabel?: string;
     storedConfig: StoredProviderConfig;
     resume?: boolean;
+    allowShell?: boolean;
 }
 /**
  * Start the blessed-based interactive BLXCKCHAT terminal UI.

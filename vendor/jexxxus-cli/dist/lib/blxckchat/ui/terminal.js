@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { AgentAbortedError, runAgent } from "../agent-loop.js";
+import { resolveBlxckchatTools } from "../tools/registry.js";
 import { saveLastUsedProvider, upsertProvider } from "../config.js";
 import { loadCredentials } from "../../auth.js";
 import { formatCredentialsDisplayName, formatCredentialsShortLabel, } from "../../operator-identity.js";
@@ -28,7 +29,9 @@ export async function startTerminalChat(provider, tools, options) {
     const authLabel = creds
         ? formatCredentialsShortLabel(creds)
         : "not authenticated";
-    const toolCount = options.toolCount ?? tools.length;
+    const allowShell = Boolean(options.allowShell);
+    const liveTools = () => resolveBlxckchatTools({ allowShell });
+    let toolCount = options.toolCount ?? liveTools().length;
     const session = options.resume
         ? (loadAutosaveSession() ?? createSession())
         : createSession();
@@ -87,7 +90,8 @@ export async function startTerminalChat(provider, tools, options) {
         const liveAuth = liveCreds
             ? formatCredentialsShortLabel(liveCreds)
             : "not authenticated";
-        heroMeta = { ...heroMeta, authLabel: liveAuth };
+        toolCount = liveTools().length;
+        heroMeta = { ...heroMeta, authLabel: liveAuth, toolCount };
         if (tui.messageBox.hasHero()) {
             tui.messageBox.dismissHero();
             showIdleHero();
@@ -654,7 +658,10 @@ export async function startTerminalChat(provider, tools, options) {
             }
             : undefined;
         try {
-            const { response, history } = await runAgent(activeProvider, tools, trimmed, session.conversationHistory, {
+            const activeTools = liveTools();
+            toolCount = activeTools.length;
+            heroMeta = { ...heroMeta, toolCount };
+            const { response, history } = await runAgent(activeProvider, activeTools, trimmed, session.conversationHistory, {
                 ...(persona ? { persona } : {}),
                 signal: abortController.signal,
                 onStreamReset: () => {

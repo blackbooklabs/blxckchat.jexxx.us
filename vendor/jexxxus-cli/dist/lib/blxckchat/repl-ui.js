@@ -1,4 +1,5 @@
 import chalk from "chalk";
+import { resolveBlxckchatTools } from "./tools/registry.js";
 import { runAgent } from "./agent-loop.js";
 import { getDivinityPersonaById } from "./divinities/source.js";
 import { saveLastUsedProvider } from "./config.js";
@@ -15,7 +16,8 @@ function isSpuriousMouseInput(line) {
         return false;
     return /^[CGMF@.,:/\-\d]+$/.test(line) && /C\d|G\d|@\d|M\d/.test(line);
 }
-async function startReadlineFallback(provider, tools, providerLabel, storedConfig, resume) {
+async function startReadlineFallback(provider, _tools, providerLabel, storedConfig, resume, allowShell = false) {
+    const liveTools = () => resolveBlxckchatTools({ allowShell });
     console.log(chalk.cyan(`[BLXCKCHAT] Interactive mode (readline fallback) — ${providerLabel}. Type /help for commands.\n`));
     console.log(chalk.dim(formatSlashHelp()));
     const session = resume ? (loadAutosaveSession() ?? createSession()) : createSession();
@@ -49,7 +51,7 @@ async function startReadlineFallback(provider, tools, providerLabel, storedConfi
             const result = await dispatchSlashCommand(trimmed, {
                 session,
                 activeConfig,
-                toolCount: tools.length,
+                toolCount: liveTools().length,
                 setActiveConfig: (config, nextProvider) => {
                     activeConfig = config;
                     activeProvider = nextProvider;
@@ -78,7 +80,7 @@ async function startReadlineFallback(provider, tools, providerLabel, storedConfi
             const persona = personaRecord && divinity
                 ? { name: divinity.name, systemPrompt: personaRecord.systemPrompt }
                 : undefined;
-            const { response, history } = await runAgent(activeProvider, tools, trimmed, session.conversationHistory, persona ? { persona } : {});
+            const { response, history } = await runAgent(activeProvider, liveTools(), trimmed, session.conversationHistory, persona ? { persona } : {});
             session.conversationHistory = history;
             if (!activeProvider.chatStream) {
                 console.log(response);
@@ -106,7 +108,7 @@ export async function startInteractiveChat(provider, tools, options) {
     const tty = canRunBlessedTui();
     if (!tty.ok) {
         console.error(chalk.yellow(`[BLXCKCHAT] ${tty.reason} — using readline fallback.`));
-        await startReadlineFallback(provider, tools, providerLabel, options.storedConfig, Boolean(options.resume));
+        await startReadlineFallback(provider, tools, providerLabel, options.storedConfig, Boolean(options.resume), Boolean(options.allowShell));
         return;
     }
     prepareStdinForTui();
@@ -117,6 +119,7 @@ export async function startInteractiveChat(provider, tools, options) {
             toolCount: tools.length,
             storedConfig: options.storedConfig,
             resume: Boolean(options.resume),
+            allowShell: Boolean(options.allowShell),
         });
     }
     catch (err) {
@@ -126,7 +129,7 @@ export async function startInteractiveChat(provider, tools, options) {
             console.error(chalk.dim(err.stack));
         }
         console.error(chalk.yellow("[BLXCKCHAT] Falling back to readline."));
-        await startReadlineFallback(provider, tools, providerLabel, options.storedConfig, Boolean(options.resume));
+        await startReadlineFallback(provider, tools, providerLabel, options.storedConfig, Boolean(options.resume), Boolean(options.allowShell));
     }
 }
 //# sourceMappingURL=repl-ui.js.map
