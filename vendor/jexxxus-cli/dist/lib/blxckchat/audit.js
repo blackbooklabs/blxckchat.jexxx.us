@@ -1,7 +1,6 @@
 import * as fs from "fs";
-import * as os from "os";
-import * as path from "path";
-const AUDIT_LOG_PATH = path.join(os.homedir(), ".jexxxus", "blxckchat-audit.log");
+import { ensureJexxxusDir, jexxxusFile } from "../jexxxus-cache-dir.js";
+const AUDIT_LOG_PATH = jexxxusFile("blxckchat-audit.log");
 /** Redact PII from tool arguments before logging (file paths, vault terms, user IDs). */
 function redactArguments(toolName, args) {
     const redacted = { ...args };
@@ -23,17 +22,21 @@ function redactArguments(toolName, args) {
 }
 /** Append-only JSONL audit trail of every tool call BLXCKCHAT attempts. */
 export function recordAudit(entry) {
-    const dir = path.dirname(AUDIT_LOG_PATH);
-    if (!fs.existsSync(dir))
-        fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+    if (!ensureJexxxusDir())
+        return;
     const redactedArgs = redactArguments(entry.toolName, entry.arguments);
     const fullEntry = {
         timestamp: new Date().toISOString(),
         ...entry,
         arguments: redactedArgs,
     };
-    fs.appendFileSync(AUDIT_LOG_PATH, JSON.stringify(fullEntry) + "\n", {
-        mode: 0o600,
-    });
+    try {
+        fs.appendFileSync(AUDIT_LOG_PATH, JSON.stringify(fullEntry) + "\n", {
+            mode: 0o600,
+        });
+    }
+    catch {
+        // No writable state dir (serverless) — skip audit file.
+    }
 }
 //# sourceMappingURL=audit.js.map
