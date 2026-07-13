@@ -70,13 +70,13 @@ const PROVIDERS = {
   gemini: {
     name: 'Google Gemini',
     models: [
-      'gemini-3.0-flash',
-      'gemini-3.0-pro',
+      'gemini-2.5-flash',
+      'gemini-2.5-pro',
       'gemini-2.0-flash-001',
       'gemini-2.0-pro-exp-02-05',
       'gemini-1.5-pro',
     ],
-    defaultModel: 'gemini-3.0-flash',
+    defaultModel: 'gemini-2.5-flash',
     keyPlaceholder: 'AIza...',
     color: 'from-fuchsia-500 to-pink-500',
     comingSoon: true,
@@ -500,9 +500,24 @@ const [globalContext, setGlobalContext] = useState("");
   };
 
   const fetchDynamicModels = async (providerName: Provider, key: string) => {
-    if (!key || key.length < 5) return;
+    if (providerName !== 'ollama' && (!key || key.length < 5)) return;
     setIsFetchingModels(true);
     try {
+      if (providerName === 'ollama') {
+        let url = key ? key.trim() : 'http://localhost:11434';
+        url = url.replace(/\/api$/, '').replace(/\/v1$/, '').replace(/\/$/, '');
+        const res = await fetch(`${url}/api/tags`);
+        if (!res.ok) throw new Error("Ollama connection failed");
+        const data = await res.json();
+        if (data.models && data.models.length > 0) {
+          const names = data.models.map((m: any) => m.name);
+          updateProviderConfig(providerName, { availableModels: names, model: names[0] });
+        } else {
+          throw new Error("No Ollama models found");
+        }
+        return;
+      }
+
       const res = await fetch('/api/models', {
         method: 'POST',
         headers: {

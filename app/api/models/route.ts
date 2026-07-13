@@ -5,7 +5,7 @@ export const runtime = 'edge';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, x-openai-key, x-grok-key, x-gemini-key, x-kimi-key, x-groq-key, x-openrouter-key',
+  'Access-Control-Allow-Headers': 'Content-Type, x-openai-key, x-grok-key, x-gemini-key, x-kimi-key, x-groq-key, x-openrouter-key, x-anthropic-key, x-ollama-url',
 };
 
 export async function OPTIONS() {
@@ -67,6 +67,19 @@ export async function POST(req: Request) {
       const data = await res.json();
       if (data.data) {
         models = data.data.map((m: any) => m.id).sort(); // OpenRouter has hundreds, sort alphabetically
+      }
+    } else if (provider === 'anthropic') {
+      const key = req.headers.get('x-anthropic-key');
+      if (!key) throw new Error("Missing key");
+      const res = await fetch('https://api.anthropic.com/v1/models', {
+        headers: {
+          'x-api-key': key,
+          'anthropic-version': '2023-06-01',
+        }
+      });
+      const data = await res.json();
+      if (data.data) {
+        models = data.data.map((m: any) => m.id).sort();
       }
     } else {
       throw new Error(`Invalid provider: ${provider}`);

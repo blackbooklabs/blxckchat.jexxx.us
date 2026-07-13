@@ -12,7 +12,6 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createGroq } from '@ai-sdk/groq';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { createAnthropic } from '@ai-sdk/anthropic';
-import { createOllama } from 'ollama-ai-provider';
 import { loadLunaContext } from '@/lib/luna-context';
 
 export const runtime = 'edge';
@@ -22,7 +21,7 @@ export const maxDuration = 60; // Extend Vercel timeout for slow Web Search requ
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key, X-Provider, x-openai-key, x-grok-key, x-gemini-key, x-kimi-key, x-groq-key, x-openrouter-key, x-kingdom-key',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-API-Key, X-Provider, x-openai-key, x-grok-key, x-gemini-key, x-kimi-key, x-groq-key, x-openrouter-key, x-kingdom-key, x-anthropic-key, x-ollama-url',
 };
 
 export async function OPTIONS(req: Request) {
@@ -73,7 +72,22 @@ const PROVIDERS: Record<string, ProviderConfig> = {
   ollama: {
     name: 'Ollama',
     keyHeader: 'x-ollama-url', // We use URL here instead of key, but handled via the apiKey parameter as host
-    createProvider: (url: string) => createOllama({ baseURL: url || 'http://localhost:11434/api' }),
+    createProvider: (url: string) => {
+      let host = url ? url.trim() : 'http://localhost:11434';
+      if (!host.endsWith('/v1')) {
+        host = host.replace(/\/$/, '');
+        if (host.endsWith('/api')) {
+          host = host.replace(/\/api$/, '/v1');
+        } else {
+          host = `${host}/v1`;
+        }
+      }
+      return createOpenAI({
+        apiKey: 'ollama',
+        baseURL: host,
+        compatibility: 'compatible',
+      } as any);
+    },
     defaultModel: 'llama3',
     models: ['llama3', 'mistral', 'gemma'],
   },
@@ -88,10 +102,10 @@ const PROVIDERS: Record<string, ProviderConfig> = {
     name: 'Google Gemini',
     keyHeader: 'x-gemini-key',
     createProvider: (apiKey: string) => createGoogleGenerativeAI({ apiKey }),
-    defaultModel: 'gemini-3.0-flash',
+    defaultModel: 'gemini-2.5-flash',
     models: [
-      'gemini-3.0-flash',
-      'gemini-3.0-pro',
+      'gemini-2.5-flash',
+      'gemini-2.5-pro',
       'gemini-2.0-flash-001',
       'gemini-2.0-pro-exp-02-05',
       'gemini-1.5-pro',
