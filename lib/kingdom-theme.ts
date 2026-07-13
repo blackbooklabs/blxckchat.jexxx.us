@@ -32,6 +32,16 @@ export function readEmpireTheme(): Theme {
   return 'system';
 }
 
+export function isJexxxusDomain(): boolean {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  return host === 'jexxx.us' || host.endsWith('.jexxx.us');
+}
+
+function cookieDomain(): string | undefined {
+  return isJexxxusDomain() ? '.jexxx.us' : undefined;
+}
+
 export function writeEmpireTheme(theme: Theme, options?: { origin?: 'sync' | 'user' }) {
   if (typeof window === 'undefined') return;
   const isUserWrite = options?.origin !== 'sync';
@@ -45,7 +55,18 @@ export function writeEmpireTheme(theme: Theme, options?: { origin?: 'sync' | 'us
   
   try {
     localStorage.setItem(LOCAL_STORAGE_KEY, theme);
-    document.cookie = `${COOKIE_NAME}=${theme}; domain=.jexxx.us; path=/; max-age=31536000; SameSite=Lax`;
+    
+    const parts = [
+      `${COOKIE_NAME}=${theme}`,
+      'path=/',
+      'max-age=31536000',
+      'SameSite=Lax'
+    ];
+    const domain = cookieDomain();
+    if (domain) {
+      parts.push(`domain=${domain}`);
+    }
+    document.cookie = parts.join('; ');
     
     if (isUserWrite) {
       const bc = new BroadcastChannel(BROADCAST_CHANNEL);
@@ -62,23 +83,33 @@ export function subscribeEmpireTheme(callback: (theme: Theme) => void) {
   if (typeof window === 'undefined') return () => {};
   
   const bc = new BroadcastChannel(BROADCAST_CHANNEL);
-  
+  let last = readEmpireTheme();
+
+  const applyIfChanged = (next: Theme) => {
+    if (next !== last) {
+      last = next;
+      callback(next);
+    }
+  };
+
   const handleMessage = (e: MessageEvent) => {
     if (e.data === 'light' || e.data === 'dark' || e.data === 'system') {
       writeEmpireTheme(e.data, { origin: 'sync' });
-      callback(e.data);
+      applyIfChanged(e.data);
     }
   };
   
   const handleCustomEvent = (e: Event) => {
     const ce = e as CustomEvent;
-    callback(ce.detail);
+    if (ce.detail === 'light' || ce.detail === 'dark' || ce.detail === 'system') {
+      applyIfChanged(ce.detail);
+    }
   };
   
   const handleStorage = (e: StorageEvent) => {
     if (e.key === LOCAL_STORAGE_KEY && e.newValue) {
       writeEmpireTheme(e.newValue as Theme, { origin: 'sync' });
-      callback(e.newValue as Theme);
+      applyIfChanged(e.newValue as Theme);
     }
   };
   
@@ -90,7 +121,7 @@ export function subscribeEmpireTheme(callback: (theme: Theme) => void) {
   const interval = setInterval(() => {
     if (document.visibilityState === 'visible') {
       const current = readEmpireTheme();
-      // Compare and update if different, handled by the getter
+      applyIfChanged(current);
     }
   }, 150);
   
