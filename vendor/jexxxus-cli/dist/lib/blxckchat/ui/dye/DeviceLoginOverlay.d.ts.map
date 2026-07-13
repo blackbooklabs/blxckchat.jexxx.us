@@ -1,0 +1,1 @@
+{"version":3,"file":"DeviceLoginOverlay.d.ts","sourceRoot":"","sources":["../../../../../src/lib/blxckchat/ui/dye/DeviceLoginOverlay.tsx"],"names":[],"mappings":"AAAA,OAAO,KAAK,MAAM,OAAO,CAAC;AAK1B,MAAM,WAAW,uBAAuB;IACtC,MAAM,EAAE,MAAM,CAAC;CAChB;AAED,UAAU,uBAAuB;IAC/B,KAAK,EAAE,uBAAuB,GAAG,IAAI,CAAC;CACvC;AAED,eAAO,MAAM,kBAAkB,EAAE,KAAK,CAAC,EAAE,CAAC,uBAAuB,CAyBhE,CAAC"}

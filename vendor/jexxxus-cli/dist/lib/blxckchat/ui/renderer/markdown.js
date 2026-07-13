@@ -1,0 +1,220 @@
+import { marked } from "marked";
+import { normalizeAgentMarkup, trimPartialClosingFences } from "./markdown-ansi.js";
+import { TAG } from "../theme.js";
+/** Pink streaming cursor for blessed TUI (ANSI breaks blessed wrap). */
+export const BLESSED_STREAM_CURSOR = `${TAG.pink}{bold}▌{/bold}${TAG.pinkEnd}`;
+/**
+ * Variation Selector-15/16 (U+FE0E/U+FE0F) force text/emoji presentation on
+ * the preceding glyph — not the actual root cause, just one trigger of it
+ * (kept as a separate strip since it's zero-width and always safe to drop).
+ *
+ * The real problem is broader: plain emoji that are ALREADY wide/emoji-
+ * presentation by default — 🔗 (U+1F517), 💎 (U+1F48E), etc. — need no VS16
+ * at all and still corrupt the terminal row. Blessed's column-width table
+ * predates most of Unicode's emoji blocks and doesn't know these are
+ * double-width, so its cell-offset tracking desyncs on that row; on redraw,
+ * blessed's diff renderer leaves stale glyphs from an adjacent line instead
+ * of clearing it, producing the scattered/overlapping-character corruption.
+ * Stripping VS16 alone (the original narrower fix) does not cover this
+ * class of already-wide emoji, which is why it recurred with new emoji
+ * (🔗/💎) the model started using in later replies. The robust fix is to
+ * strip the emoji ranges themselves, not just the selector that sometimes
+ * accompanies them.
+ */
+function stripVariationSelectors(text) {
+    return text.replace(/[︎️]/g, "");
+}
+/**
+ * Major emoji Unicode blocks (Misc Symbols & Pictographs, Emoticons,
+ * Transport & Map, Supplemental Symbols & Pictographs, Symbols & Pictographs
+ * Extended-A, Misc Symbols, Dingbats) plus Regional Indicators (flag emoji)
+ * and Variation Selectors. Deliberately excludes plain punctuation/arrow
+ * ranges that render at predictable width and are safe in blessed.
+ */
+const EMOJI_RANGES = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F1E6}-\u{1F1FF}\u{2B00}-\u{2BFF}\u{FE0E}\u{FE0F}]/gu;
+function stripEmoji(text) {
+    return text.replace(EMOJI_RANGES, "");
+}
+/** Escape blessed tag delimiters in plain text segments. */
+export function escapeBlessed(text) {
+    return stripEmoji(stripVariationSelectors(text)).replace(/[{}]/g, (ch) => (ch === "{" ? "{open}" : "{close}"));
+}
+/** Short kingdom/garden href for TUI — avoids mid-slug line wraps on long URLs. */
+export function formatHrefForDisplay(href) {
+    if (href.length <= 56)
+        return href;
+    try {
+        const u = new URL(href);
+        const parts = u.pathname.split("/").filter(Boolean);
+        const tail = parts.slice(-2).join("/") || (parts.at(-1) ?? u.hostname);
+        return `${u.hostname}/…/${tail}`;
+    }
+    catch {
+        return `${href.slice(0, 52)}…`;
+    }
+}
+function renderListItem(tokens) {
+    const parts = [];
+    for (const token of tokens) {
+        if (token.type === "paragraph") {
+            parts.push(renderInline(token.tokens));
+        }
+        else if (token.type === "text") {
+            const t = token;
+            parts.push(t.tokens ? renderInline(t.tokens) : escapeBlessed(t.text));
+        }
+        else if (token.type === "list") {
+            parts.push(`\n${renderBlock(token).trimEnd()}`);
+        }
+        else {
+            const block = renderBlock(token).trim();
+            if (block)
+                parts.push(block);
+        }
+    }
+    return parts.join(" ").replace(/\s+/g, " ").trim();
+}
+function renderInline(tokens) {
+    if (!tokens)
+        return "";
+    return tokens.map(renderToken).join("");
+}
+function renderToken(token) {
+    switch (token.type) {
+        case "text":
+            return escapeBlessed(token.text);
+        case "strong":
+            return `{bold}${renderInline(token.tokens)}{/bold}`;
+        case "em":
+            return `{underline}${renderInline(token.tokens)}{/underline}`;
+        case "codespan":
+            return `{gray-fg}${escapeBlessed(token.text)}{/gray-fg}`;
+        case "link": {
+            const t = token;
+            const label = renderInline(t.tokens).trim();
+            const compact = formatHrefForDisplay(t.href);
+            if (label && label !== t.href && /\.jexxx\.us\//i.test(t.href)) {
+                return `{underline}${label}{/underline} {gray-fg}(${escapeBlessed(compact)}){/gray-fg}`;
+            }
+            return `${label} {gray-fg}[${escapeBlessed(compact)}]{/gray-fg}`;
+        }
+        case "br":
+            return "\n";
+        default:
+            return escapeBlessed("raw" in token ? String(token.raw) : "");
+    }
+}
+function renderBlock(token) {
+    switch (token.type) {
+        case "heading": {
+            const t = token;
+            const tag = t.depth <= 2 ? "bold" : "underline";
+            return `{${tag}}${renderInline(t.tokens)}{/${tag}}\n\n`;
+        }
+        case "paragraph": {
+            const t = token;
+            return `${renderInline(t.tokens)}\n\n`;
+        }
+        case "code": {
+            const t = token;
+            const bordered = t.text
+                .split("\n")
+                .map((line) => `│ {gray-fg}${escapeBlessed(line)}{/gray-fg}`)
+                .join("\n");
+            const width = Math.min(40, Math.max(10, t.text.split("\n")[0]?.length ?? 10));
+            return `┌${"─".repeat(width)}┐\n${bordered}\n└${"─".repeat(width)}┘\n\n`;
+        }
+        case "blockquote": {
+            const t = token;
+            return `{gray-fg}▎ ${renderBlocks(t.tokens).trim()}{/gray-fg}\n\n`;
+        }
+        case "list": {
+            const t = token;
+            return t.items
+                .map((item) => {
+                const body = renderListItem(item.tokens);
+                if (!body)
+                    return "";
+                return `  {gray-fg}•{/gray-fg} ${body}\n`;
+            })
+                .join("");
+        }
+        case "hr":
+            return `{gray-fg}${"─".repeat(40)}{/gray-fg}\n\n`;
+        case "space":
+            return "\n";
+        default:
+            return "";
+    }
+}
+function renderBlocks(tokens) {
+    return tokens.map(renderBlock).join("");
+}
+/**
+ * Convert markdown to blessed-compatible tagged text (no HTML).
+ * Code blocks render in a gray bordered box; links show as `label [url]`.
+ *
+ * Defensively bounded against pathological input: a broken/looping model
+ * turn (free-tier/quantized models are the usual culprit) can emit
+ * thousands of nested list levels instead of terminating normally.
+ * `marked.lexer()`'s recursive-descent list parser has no depth limit of
+ * its own — verified directly: a 5,000-level nested list blows the V8
+ * stack/heap before our own renderer even runs. A few hundred levels is
+ * enough to hit "Maximum call stack size exceeded" well before any memory
+ * limit. There is no legitimate reply that needs anywhere near this much
+ * nesting, so this is pure defense against a broken generation, not a
+ * feature limit.
+ */
+const MAX_MARKDOWN_INPUT_CHARS = 200_000;
+export function markdownToBlessed(markdown) {
+    const normalized = normalizeAgentMarkup(markdown.trim());
+    if (!normalized)
+        return "";
+    const capped = normalized.length > MAX_MARKDOWN_INPUT_CHARS
+        ? `${normalized.slice(0, MAX_MARKDOWN_INPUT_CHARS)}\n\n[response truncated — unusually long output]`
+        : normalized;
+    let body;
+    try {
+        const tokens = marked.lexer(capped, { gfm: true, breaks: true });
+        trimPartialClosingFences(tokens);
+        body = renderBlocks(tokens).trimEnd();
+    }
+    catch {
+        // Malformed/pathologically-nested markdown crashed the parser or
+        // renderer (RangeError from stack overflow, or anything else) — fall
+        // back to plain escaped text rather than losing the whole turn.
+        body = escapeBlessed(capped);
+    }
+    if (!body)
+        return "";
+    return body
+        .split("\n")
+        .map((line) => (line.length > 0 ? `  ${line}` : line))
+        .join("\n");
+}
+/** Render a user message — Pi-style compact pill (plain text). */
+export function renderUserMessageBoxPlain(text) {
+    const inner = text.replace(/\n/g, "\n│ ");
+    const width = Math.min(68, Math.max(inner.length + 14, 28));
+    const border = "─".repeat(width - 2);
+    return [
+        `╭─ you ${"─".repeat(Math.max(0, width - 8))}╮`,
+        `│ ${inner}`,
+        `╰${border}╯`,
+        "",
+    ].join("\n");
+}
+/** Render a user message — pink retro TV pill. */
+export function renderUserMessageBox(text) {
+    const inner = escapeBlessed(text.replace(/\n/g, "\n{#ec4899-fg}│{/} "));
+    const width = Math.min(68, Math.max(text.length + 14, 28));
+    const topRule = "─".repeat(Math.max(0, width - 8));
+    const bottom = "─".repeat(width - 2);
+    return [
+        `{#ec4899-fg}╭─ {bold}you{/bold} ${topRule}╮{/}`,
+        `{#ec4899-fg}│{/} ${inner}`,
+        `{#ec4899-fg}╰${bottom}╯{/}`,
+        "",
+    ].join("\n");
+}
+//# sourceMappingURL=markdown.js.map

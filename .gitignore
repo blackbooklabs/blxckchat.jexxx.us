@@ -6,6 +6,8 @@ node_modules/
 .next/
 out/
 dist/
+!vendor/jexxxus-cli/dist/
+!vendor/jexxxus-cli/dist/**
 build/
 
 # Vercel
@@ -42,8 +44,9 @@ coverage/
 tmp/
 temp/models/
 
-# Vendored jexxx.us-cli (cloned at Vercel prebuild)
-vendor/jexxxus-cli/
+# Vendored jexxx.us-cli source checkout (dist is committed for Vercel)
+vendor/jexxxus-cli/node_modules/
+vendor/jexxxus-cli/.git/
 
 # clerk configuration (can include secrets)
 /.clerk/

@@ -1,0 +1,1 @@
+{"version":3,"file":"keybindings.d.ts","sourceRoot":"","sources":["../../../../src/lib/blxckchat/ui/keybindings.ts"],"names":[],"mappings":"AAAA,+EAA+E;AAC/E,MAAM,WAAW,SAAS;IACxB,IAAI,EAAE,MAAM,CAAC;IACb,MAAM,EAAE,MAAM,CAAC;IACf,MAAM,CAAC,EAAE,IAAI,GAAG,UAAU,GAAG,OAAO,GAAG,WAAW,CAAC;CACpD;AAED,eAAO,MAAM,iBAAiB,EAAE,SAAS,SAAS,EA2CxC,CAAC;AAEX,wBAAgB,oBAAoB,IAAI,MAAM,CAU7C"}

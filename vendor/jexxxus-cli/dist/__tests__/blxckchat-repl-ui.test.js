@@ -1,0 +1,103 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { runAgent } from "../lib/blxckchat/agent-loop.js";
+import { addUserMessage, addAssistantMessage, createSession, exportSessionToFile, getDefaultSessionExportPath, } from "../lib/blxckchat/ui/session/session-store.js";
+import { formatToolLine } from "../lib/blxckchat/ui/components/tool-box.js";
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
+function makeStreamingProvider(response) {
+    return {
+        id: "openai",
+        async chat() {
+            return {
+                message: { role: "assistant", content: response },
+                toolCalls: [],
+                stopReason: "stop",
+            };
+        },
+        async chatStream(_messages, _tools, callbacks) {
+            const onChunk = typeof callbacks === "function" ? callbacks : callbacks.onChunk;
+            for (const ch of response) {
+                onChunk(ch);
+            }
+            return {
+                message: { role: "assistant", content: response },
+                toolCalls: [],
+                stopReason: "stop",
+            };
+        },
+    };
+}
+test("default session export path includes filesystem-safe timestamp", () => {
+    const fixed = new Date("2026-07-09T14:30:00.123Z");
+    const target = getDefaultSessionExportPath(fixed);
+    assert.match(target, /session-export-2026-07-09T14-30-00Z\.json$/);
+});
+test("session store tracks messages and exports JSON", () => {
+    const session = createSession();
+    addUserMessage(session, "hi");
+    addAssistantMessage(session, "hello");
+    assert.equal(session.messages.length, 2);
+    const tmp = path.join(os.tmpdir(), `blxckchat-session-${Date.now()}.json`);
+    exportSessionToFile(session, tmp);
+    const parsed = JSON.parse(fs.readFileSync(tmp, "utf-8"));
+    assert.equal(parsed.messages.length, 2);
+    fs.unlinkSync(tmp);
+});
+test("formatToolLine color-codes pending, success, and error", () => {
+    assert.match(formatToolLine("run_shell", "Running...", "pending"), /facc15-fg/);
+    assert.match(formatToolLine("import_contacts", "42 imported", "success"), /4ade80-fg/);
+    assert.match(formatToolLine("run_shell", "blocked", "blocked"), /f87171-fg/);
+});
+test("runAgent onStream callback receives streamed tokens", async () => {
+    const chunks = [];
+    const provider = makeStreamingProvider("streamed reply");
+    const tools = [];
+    const { response, history } = await runAgent(provider, tools, "test prompt", [], { onStream: (c) => chunks.push(c) });
+    assert.equal(response, "streamed reply");
+    assert.equal(chunks.join(""), "streamed reply");
+    assert.equal(history.length, 2);
+    assert.equal(history[0]?.role, "user");
+    assert.equal(history[1]?.role, "assistant");
+});
+test("runAgent onToolComplete fires for tool execution", async () => {
+    const tool = {
+        name: "echo_tool",
+        description: "echo",
+        parameters: { type: "object", properties: {} },
+        requiresConfirmation: false,
+        async execute() {
+            return "ok result";
+        },
+    };
+    let callCount = 0;
+    const provider = {
+        id: "anthropic",
+        async chat(messages) {
+            callCount++;
+            if (callCount === 1) {
+                return {
+                    message: { role: "assistant", content: "" },
+                    toolCalls: [{ id: "c1", name: "echo_tool", arguments: {} }],
+                    stopReason: "tool_calls",
+                };
+            }
+            return {
+                message: { role: "assistant", content: "done" },
+                toolCalls: [],
+                stopReason: "stop",
+            };
+        },
+    };
+    const events = [];
+    await runAgent(provider, [tool], "go", [], {
+        onToolStart: (name) => events.push({ name, status: "start" }),
+        onToolComplete: (name, _result, status) => events.push({ name, status }),
+    });
+    assert.deepEqual(events, [
+        { name: "echo_tool", status: "start" },
+        { name: "echo_tool", status: "success" },
+    ]);
+});
+//# sourceMappingURL=blxckchat-repl-ui.test.js.map

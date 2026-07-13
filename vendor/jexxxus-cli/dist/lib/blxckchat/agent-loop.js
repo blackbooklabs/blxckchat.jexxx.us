@@ -1,0 +1,425 @@
+import chalk from "chalk";
+import { findTool } from "./tools/registry.js";
+import { confirmToolCall as defaultConfirmToolCall } from "./confirm.js";
+import { recordAudit } from "./audit.js";
+import { searchDocs } from "./rag/index.js";
+import { KINGDOM_CONTENT_ROUTING, extractRoutingContextFromHistory, formatKingdomRoutingHint, } from "./kingdom-routing.js";
+import { prefetchGardenContext } from "./garden-prefetch.js";
+import { ACCOUNT_CONTENT_ROUTING, ACCOUNT_VAULT_REPLY_RULES, formatAccountRoutingHint, isVaultPrimaryPrompt, } from "./account-routing.js";
+import { prefetchAccountContext } from "./account-prefetch.js";
+import { loadCredentials } from "../auth.js";
+import { resolveAuthenticatedAccountSession } from "../account-data/session.js";
+import { buildOfflineOperatorIdentityContext, buildOperatorIdentityContext, } from "../operator-identity.js";
+import { extractKingdomUrlsFromText, sanitizeKingdomUrls, } from "./kingdom-url-sanitize.js";
+import { collectGardenToolResultsSinceUser, GARDEN_SYNTHESIS_NUDGE, needsGardenSynthesis, stripMetaContinuationPrompts, } from "./garden-synthesis.js";
+import { sanitizeRoleplayProse } from "./prose-sanitize.js";
+import { formatToolResultForFallback } from "./tool-result-format.js";
+export class AgentAbortedError extends Error {
+    constructor(message = "Agent turn aborted") {
+        super(message);
+        this.name = "AgentAbortedError";
+    }
+}
+function assertNotAborted(signal) {
+    if (signal?.aborted) {
+        throw new AgentAbortedError();
+    }
+}
+const SYSTEM_PROMPT_BASE = `You are BLXCKCHAT, the native AI agent for the JEXXXUS CLI. You service \
+specific functions related to the JEXXXUS kingdom/garden ecosystem — Bible lookups, public VEIL \
+articles (veil.jexxx.us), public JEXXXUS | TV videos (tv.jexxx.us), public legal policies \
+(law.jexxx.us — Terms, Privacy, Refunds, DMCA via law_query), private vault data for \
+signed-in users (BLXCKBOOK + NXT + private JEXXXUS | TV playlists), dashboard diagnostics, notifications, and contact imports. You \
+are not a general coding agent; stay scoped to the tools available to you. For legal/compliance \
+questions (refunds, data deletion, terms, copyright), call law_query rather than guessing — never \
+fabricate policy language, and always point users to the canonical law.jexxx.us URL for anything \
+binding. When a tool call would \
+write data or run a shell command, expect the user to be prompted for confirmation before it \
+executes — explain what you're about to do so they can make an informed choice.
+
+**You are the default entry point for the JEXXXUS CLI shell.** Running \`jexxxus\` with no \
+arguments launches you directly — you are not a separate mode bolted onto the CLI, you ARE what \
+the CLI opens into. The full non-interactive command surface (\`jexxxus <command>\`) is:
+- \`doctor\` — verify operator credentials and datastore connectivity (you can run this yourself via run_doctor)
+- \`auth\` (login | status | logout | refresh) — Clerk device-flow authentication for this terminal
+- \`import <file>\` — import contacts from a CSV file into a dashboard (you can run this yourself via import_contacts)
+- \`notify\` — push a system notification into a user's dashboard bell (you can run this yourself via send_notification)
+- \`bible\` — query the Obsidian Bible vault directly from a shell script, non-interactively (you have the richer bible_query tool)
+- \`blxckchat\` — explicitly relaunch you (the agent); identical to bare \`jexxxus\`
+- \`blxckchat configure\` — set up or list LLM providers (Anthropic, OpenAI, Ollama)
+- \`shell\` — print this command list without entering the interactive agent (for scripting/non-interactive use)
+If a user asks what they can do in the JEXXXUS terminal, answer from this list — do not guess or \
+invent commands. When a request maps to run_doctor, send_notification, or import_contacts, prefer \
+calling that tool directly over telling the user to exit and run the shell command themselves; you \
+have first-class access to the same operations the shell commands expose.
+
+**Vault write access (signed-in users only) — full CRUD, not just create:** once authenticated \
+(\`/auth login\` or \`jexxxus auth login\`), you can create, read, update, AND delete the user's own \
+private data directly — same RLS-scoped write path the BLXCKBOOK/NXT/TV dashboards themselves use, \
+so changes appear live in the dashboard with no refresh. Available tools: \`add_contact\` (creates a \
+brand-new contact — automatically synced to BOTH BLXCKBOOK and NXT by a shared database trigger, so \
+never call it once per dashboard; refuses if a name match already exists rather than creating a \
+duplicate), \`update_contact\` / \`delete_contact\` (BLXCKBOOK contact or NXT vessel — name, notes, \
+tags, relationship_status, visibility, is_discoverable), \`add_journal_entry\` / \`update_journal_entry\` / \
+\`delete_journal_entry\` (BLXCKBOOK only, matched by id or fuzzy title, optionally linked to \
+contacts), \`manage_contact_event\` (create/update/delete an NXT logged date/event, linked to a \
+vessel by name), \`manage_playlist\` (create/rename/delete a JEXXXUS | TV playlist, or add/remove a \
+video). Use account_query first to find the exact contact/entry/event a vague request refers to \
+before mutating it. Every write requires explicit user confirmation before it runs — always state \
+what's changing (and for delete_contact/delete_journal_entry, that it's irreversible) before the \
+confirmation prompt fires. Never pass asUserId to a write tool — these only ever touch the \
+signed-in user's own data, full stop, regardless of super-admin status.
+
+**Cross-user connections, notifications, and relationship tier/points:** \`list_notifications\` \
+(read-only) shows who's added the user as a contact on JEXXXUS (with actor_user_id/actor_name to \
+pass to connect_contact_back) and any pending event invites. \`connect_contact_back\` completes a \
+mutual connection — pass the actor_user_id/actor_name straight from list_notifications output. It's \
+merge-aware: if the user already has an unlinked/manual contact by that name, it merges into that \
+existing row (preserving notes/tags) rather than creating a duplicate — never create a second \
+contact for someone who already has an entry, linked or not. It also restores any archived \
+relationship points and notifies the other user back, exactly like the dashboard's "Connect back" \
+button. \`get_relationship_status\` (read-only) reports the current tier and points total with a \
+Clerk-linked contact — only meaningful for real JEXXXUS connections, not manual/dummy contacts. If \
+someone asks "did I get a duplicate contact for X" or reports two contacts for the same person, use \
+account_query action=contacts to check for near-duplicate names before assuming — and if a merge is \
+needed, that only happens in the BLXCKBOOK web dashboard's ContactDetailPanel today, not from here; \
+tell the user to merge there rather than trying to fake it with update_contact + delete_contact \
+(which would just recreate the same class of bug this system is designed to avoid).
+
+**Local files and export/re-upload roundtrip:** \`read_local_file\`/\`write_local_file\`/ \
+\`edit_local_file\` operate inside \`~/.jexxxus/{exports,imports,workspace}\` by default; an absolute \
+path elsewhere on disk is allowed (e.g. a user-specified export folder) but still requires the same \
+confirmation, and you should flag that it's outside the managed directory. \`export_vault\` writes \
+the user's BLXCKBOOK/NXT data to a local JSON file (default \`~/.jexxxus/exports\`, or a \
+\`destinationDir\` they specify). For "edit my exported data and push it back to my dashboard" \
+requests: export_vault → edit_local_file on the resulting file → sync_export_file to re-apply the \
+edited contacts/journal_entries as updates. sync_export_file matches by \`id\` (updates existing \
+rows) or creates new rows for entries without one; it never deletes rows missing from the file. You \
+are still not a general coding agent — these file tools exist for this vault-data-roundtrip use \
+case specifically, not arbitrary project/code editing.
+
+${KINGDOM_CONTENT_ROUTING}
+
+${ACCOUNT_CONTENT_ROUTING}`;
+/** Shared with blxckchat.jexxx.us kingdom-agent (web + CLI parity). */
+export const EMPIRE_AGENT_SYSTEM_PROMPT = SYSTEM_PROMPT_BASE;
+const MAX_TURNS = 8;
+// Caps how many prior turns are replayed to the model each call. Prevents
+// unbounded context growth in long interactive REPL sessions; the system
+// prompt (with fresh RAG context for the *current* query) is always
+// prepended separately and doesn't count against this.
+const MAX_HISTORY_MESSAGES = 40;
+const PERSONA_CLI_BRIDGE = `You are operating inside the JEXXXUS CLI (BLXCKCHAT). Retain your persona voice \
+and identity above. You still have access to BLXCKCHAT tools (Bible lookups, public VEIL articles, \
+public JEXXXUS | TV videos, signed-in vault/TV playlist data via account_query, dashboard diagnostics, \
+notifications, contact imports). Stay in character when explaining tool actions; the operator must \
+confirm any write/shell tool before it runs.
+
+**Persona + kingdom/garden:** When the scene mentions scripture bookmarks (Proverbs 31, etc.), a VEIL draft/article, \
+or a TV sacrament, call veil_query / bible_query / tv_query in the **same turn** and weave real URLs and \
+quoted verses into the dialogue. If a character offers "the draft" or "number 11," fetch a matching VEIL \
+article via veil_query action=search — do not invent unpublished pieces. Cite 2–3 articles as markdown \
+[Title](url) markdown links woven into the scene — not a mid-reply catalog dump with ALL-CAPS section headers. \
+Advance with catalog-backed detail; avoid generic "want me to keep going?" prompts.
+
+${KINGDOM_CONTENT_ROUTING}`;
+async function appendDocContext(prompt, userPrompt) {
+    const docChunks = await searchDocs(userPrompt, 5);
+    if (docChunks.length === 0)
+        return prompt;
+    const context = docChunks
+        .map((c) => `### ${c.source} — ${c.heading}\n${c.text}`)
+        .join("\n\n");
+    return `${prompt}\n\nRelevant JEXXXUS documentation context:\n\n${context}`;
+}
+async function buildSystemPrompt(userPrompt, persona, routingOptions) {
+    const base = persona
+        ? `${persona.systemPrompt.trim()}\n\n---\n\n${PERSONA_CLI_BRIDGE}`
+        : SYSTEM_PROMPT_BASE;
+    const vaultPrimary = isVaultPrimaryPrompt(userPrompt);
+    const routingHint = vaultPrimary
+        ? null
+        : formatKingdomRoutingHint(userPrompt, routingOptions);
+    const accountHint = formatAccountRoutingHint(userPrompt);
+    let prompt = base;
+    if (routingHint)
+        prompt = `${prompt}\n\n${routingHint}`;
+    if (accountHint)
+        prompt = `${prompt}\n\n${accountHint}`;
+    if (vaultPrimary && persona) {
+        prompt = `${prompt}\n\n## Vault-only override (persona secondary)\n${ACCOUNT_VAULT_REPLY_RULES}`;
+    }
+    const prefetch = vaultPrimary
+        ? null
+        : await prefetchGardenContext(userPrompt, routingOptions);
+    if (prefetch) {
+        prompt = `${prompt}\n\n${prefetch}`;
+    }
+    const accountPrefetch = await prefetchAccountContext(userPrompt);
+    if (accountPrefetch) {
+        prompt = `${prompt}\n\n${accountPrefetch}`;
+    }
+    const operatorContext = await buildSignedInOperatorContext();
+    if (operatorContext) {
+        prompt = `${prompt}\n\n${operatorContext}`;
+    }
+    return appendDocContext(prompt, userPrompt);
+}
+async function buildSignedInOperatorContext() {
+    const creds = loadCredentials({ quiet: true });
+    if (!creds)
+        return null;
+    const resolved = await resolveAuthenticatedAccountSession();
+    if (resolved.ok) {
+        return buildOperatorIdentityContext(resolved.session);
+    }
+    return buildOfflineOperatorIdentityContext(creds);
+}
+/**
+ * Core agent loop: prime with RAG context, send messages + tool defs to the
+ * provider, execute any tool calls (with confirmation gating), feed results
+ * back, and repeat until the model stops calling tools or MAX_TURNS is hit.
+ *
+ * Accepts and returns `history` (the prior conversation, sans system prompt)
+ * so callers — e.g. the interactive REPL in index.ts — can carry context
+ * across turns. Without this, a follow-up like "yes" has nothing to refer
+ * to, since each call otherwise starts from a blank slate.
+ */
+export async function runAgent(provider, tools, userPrompt, history = [], options = {}) {
+    const confirm = options.confirmToolCall ?? defaultConfirmToolCall;
+    const useCustomStream = Boolean(options.onStream);
+    const trimmedHistory = history.length > MAX_HISTORY_MESSAGES
+        ? history.slice(history.length - MAX_HISTORY_MESSAGES)
+        : history;
+    const routingOptions = {
+        conversationContext: extractRoutingContextFromHistory(trimmedHistory),
+    };
+    const systemPrompt = await buildSystemPrompt(userPrompt, options.persona, routingOptions);
+    const canonicalUrlCatalog = [
+        ...extractKingdomUrlsFromText(systemPrompt),
+    ];
+    const messages = [
+        { role: "system", content: systemPrompt },
+        ...trimmedHistory,
+        { role: "user", content: userPrompt },
+    ];
+    // Everything pushed onto `messages` after this point (user query onward)
+    // becomes the new history returned to the caller; the system prompt is
+    // rebuilt fresh every call (it's keyed to the *current* query's RAG
+    // context), so it's excluded from what gets carried forward.
+    const conversationStartIndex = 1;
+    const toolDefs = tools.map((t) => ({
+        name: t.name,
+        description: t.description,
+        parameters: t.parameters,
+    }));
+    // Some smaller/local models re-call the same tool with identical args
+    // instead of synthesizing a final answer from the result. Track the last
+    // successful (tool, args, result) so we can short-circuit gracefully
+    // rather than burning through MAX_TURNS with no output.
+    let lastCallSignature = null;
+    let repeatCount = 0;
+    let lastSuccessfulResult = null;
+    let lastSuccessfulTool = null;
+    let bibleQueryMissCount = 0;
+    let synthesisNudgeCount = 0;
+    const MAX_SYNTHESIS_NUDGES = 1;
+    // Wraps a final answer with the transcript to hand back as next-turn
+    // history — every early-return path below must go through this so the
+    // REPL's conversation memory stays consistent regardless of how the turn
+    // ended (clean stop, repeat-loop short-circuit, or MAX_TURNS exhaustion).
+    const finish = (response) => {
+        const cleaned = sanitizeRoleplayProse(stripMetaContinuationPrompts(response));
+        const sanitized = sanitizeKingdomUrls(cleaned, canonicalUrlCatalog);
+        messages.push({ role: "assistant", content: sanitized });
+        return { response: sanitized, history: messages.slice(conversationStartIndex) };
+    };
+    for (let turn = 0; turn < MAX_TURNS; turn++) {
+        assertNotAborted(options.signal);
+        if (turn > 0) {
+            options.onStreamReset?.();
+        }
+        // Use streaming for text responses if available
+        let result;
+        if (provider.chatStream) {
+            const baseOnChunk = options.onStream ??
+                ((chunk) => {
+                    process.stdout.write(chunk);
+                });
+            const baseOnThinking = options.onThinkingStream;
+            const onChunk = (chunk) => {
+                assertNotAborted(options.signal);
+                baseOnChunk(chunk);
+            };
+            const onThinkingChunk = baseOnThinking
+                ? (chunk) => {
+                    assertNotAborted(options.signal);
+                    baseOnThinking(chunk);
+                }
+                : undefined;
+            result = await provider.chatStream(messages, toolDefs, {
+                onChunk,
+                ...(onThinkingChunk ? { onThinkingChunk } : {}),
+            });
+        }
+        else {
+            result = await provider.chat(messages, toolDefs);
+        }
+        assertNotAborted(options.signal);
+        if (result.stopReason === "stop" || result.toolCalls.length === 0) {
+            const gardenTools = collectGardenToolResultsSinceUser(messages);
+            const draft = result.message.content;
+            if (synthesisNudgeCount < MAX_SYNTHESIS_NUDGES &&
+                needsGardenSynthesis(draft, gardenTools)) {
+                if (draft.trim()) {
+                    messages.push({ role: "assistant", content: draft });
+                }
+                options.onSynthesisRetry?.();
+                messages.push({ role: "user", content: GARDEN_SYNTHESIS_NUDGE });
+                synthesisNudgeCount++;
+                continue;
+            }
+            if (!useCustomStream) {
+                console.log(); // Newline after streamed stdout output
+            }
+            return finish(draft);
+        }
+        messages.push({
+            role: "assistant",
+            content: result.message.content,
+            toolCalls: result.toolCalls,
+        });
+        for (const toolCall of result.toolCalls) {
+            assertNotAborted(options.signal);
+            const tool = findTool(tools, toolCall.name);
+            if (!tool) {
+                messages.push({
+                    role: "tool",
+                    toolCallId: toolCall.id,
+                    content: `Error: unknown tool "${toolCall.name}".`,
+                });
+                continue;
+            }
+            const signature = `${toolCall.name}:${JSON.stringify(toolCall.arguments)}`;
+            if (signature === lastCallSignature) {
+                repeatCount++;
+            }
+            else {
+                repeatCount = 0;
+                lastCallSignature = signature;
+            }
+            if (repeatCount >= 2 && lastSuccessfulResult && lastSuccessfulTool) {
+                // The model already has this result and is looping instead of
+                // answering. Return formatted context rather than raw JSON dumps.
+                const formatted = formatToolResultForFallback(lastSuccessfulTool, lastSuccessfulResult);
+                return finish(formatted);
+            }
+            let confirmed = true;
+            if (tool.requiresConfirmation) {
+                confirmed = await confirm(tool.name, toolCall.arguments);
+            }
+            if (!confirmed) {
+                const isElevated = tool.name === "account_query" &&
+                    typeof toolCall.arguments.asUserId === "string" &&
+                    toolCall.arguments.asUserId.trim() !== "";
+                recordAudit({
+                    toolName: tool.name,
+                    arguments: toolCall.arguments,
+                    confirmed: false,
+                    outcome: "declined",
+                    ...(isElevated ? { elevated: true } : {}),
+                });
+                options.onToolComplete?.(tool.name, "User declined", "declined");
+                messages.push({
+                    role: "tool",
+                    toolCallId: toolCall.id,
+                    content: "User declined to run this action.",
+                });
+                continue;
+            }
+            options.onToolStart?.(tool.name);
+            try {
+                let toolResult = await tool.execute(toolCall.arguments);
+                const isBlocked = toolResult.startsWith("Error: command blocked");
+                const isError = toolResult.startsWith("Error:") ||
+                    toolResult.startsWith("No verse found") ||
+                    toolResult.includes("does not look like a scripture reference");
+                if (toolCall.name === "bible_query" && isError) {
+                    bibleQueryMissCount++;
+                    if (bibleQueryMissCount >= 2) {
+                        toolResult +=
+                            "\n\n(Stop retrying bible_query with malformed queries. Use tv_query for series/channel " +
+                                "names (e.g. Forgive Me Father), and bible_query only with Book Chapter:Verse refs " +
+                                "from the routing hint companions — e.g. 1 John 1:9. Combine TV + VEIL + quoted " +
+                                "scripture in your final answer.)";
+                    }
+                }
+                const isElevated = tool.name === "account_query" &&
+                    typeof toolCall.arguments.asUserId === "string" &&
+                    toolCall.arguments.asUserId.trim() !== "";
+                recordAudit({
+                    toolName: tool.name,
+                    arguments: toolCall.arguments,
+                    confirmed: true,
+                    outcome: isBlocked ? "blocked" : "executed",
+                    resultPreview: toolResult.slice(0, 200),
+                    ...(isElevated ? { elevated: true } : {}),
+                });
+                if (isBlocked) {
+                    if (!useCustomStream) {
+                        console.log(chalk.red(`[BLXCKCHAT] ${toolResult}`));
+                    }
+                    options.onToolComplete?.(tool.name, toolResult, "blocked");
+                }
+                else if (isError) {
+                    options.onToolComplete?.(tool.name, toolResult, "error");
+                }
+                else {
+                    options.onToolComplete?.(tool.name, toolResult, "success");
+                }
+                if (!isError) {
+                    lastSuccessfulResult = toolResult;
+                    lastSuccessfulTool = tool.name;
+                    for (const entry of extractKingdomUrlsFromText(toolResult)) {
+                        const key = `${entry.surface}:${entry.slug}`;
+                        if (!canonicalUrlCatalog.some((e) => `${e.surface}:${e.slug}` === key)) {
+                            canonicalUrlCatalog.push(entry);
+                        }
+                    }
+                }
+                messages.push({
+                    role: "tool",
+                    toolCallId: toolCall.id,
+                    content: repeatCount >= 1
+                        ? `${toolResult}\n\n(You already called this tool with these exact arguments. You have the result — please answer the user's question now instead of calling it again.)`
+                        : toolResult,
+                });
+            }
+            catch (err) {
+                const errorMessage = err instanceof Error ? err.message : String(err);
+                const isElevated = tool.name === "account_query" &&
+                    typeof toolCall.arguments.asUserId === "string" &&
+                    toolCall.arguments.asUserId.trim() !== "";
+                recordAudit({
+                    toolName: tool.name,
+                    arguments: toolCall.arguments,
+                    confirmed: true,
+                    outcome: "error",
+                    resultPreview: errorMessage.slice(0, 200),
+                    ...(isElevated ? { elevated: true } : {}),
+                });
+                options.onToolComplete?.(tool.name, `Error: ${errorMessage}`, "error");
+                messages.push({
+                    role: "tool",
+                    toolCallId: toolCall.id,
+                    content: `Error: ${errorMessage}`,
+                });
+            }
+        }
+    }
+    return finish(lastSuccessfulResult && lastSuccessfulTool
+        ? formatToolResultForFallback(lastSuccessfulTool, lastSuccessfulResult)
+        : "BLXCKCHAT stopped after reaching the maximum number of tool-call turns. " +
+            "Try asking again — pre-fetched TV and scripture may already be in context for thematic queries.");
+}
+//# sourceMappingURL=agent-loop.js.map

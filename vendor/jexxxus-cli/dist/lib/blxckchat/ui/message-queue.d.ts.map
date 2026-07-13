@@ -1,0 +1,1 @@
+{"version":3,"file":"message-queue.d.ts","sourceRoot":"","sources":["../../../../src/lib/blxckchat/ui/message-queue.ts"],"names":[],"mappings":"AAAA,gFAAgF;AAChF,qBAAa,YAAY;IACvB,OAAO,CAAC,QAAQ,CAAC,KAAK,CAAgB;IAEtC,OAAO,CAAC,IAAI,EAAE,MAAM,GAAG,OAAO;IAO9B,OAAO,IAAI,MAAM,GAAG,SAAS;IAI7B,OAAO,IAAI,MAAM,EAAE;IAInB,IAAI,MAAM,IAAI,MAAM,CAEnB;IAED,KAAK,IAAI,IAAI;CAGd"}

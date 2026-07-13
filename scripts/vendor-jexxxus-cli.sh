@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
-# Vendors jexxx.us-cli for solo-repo Vercel deploys (no monorepo sibling).
+# Ensures jexxx.us-cli dist is available for prebuild (monorepo sibling or committed vendor).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SIBLING="$ROOT/../jexxx.us-cli"
-VENDOR_DIR="$ROOT/vendor/jexxxus-cli"
-REPO="${JEXXXUS_CLI_VENDOR_REPO:-https://github.com/blxckbooklabs/jexxx.us-cli.git}"
-REF="${JEXXXUS_CLI_VENDOR_REF:-main}"
+VENDOR_DIST="$ROOT/vendor/jexxxus-cli/dist"
 
 build_cli() {
   local dir="$1"
@@ -25,20 +23,14 @@ if [ -f "$SIBLING/package.json" ]; then
   exit 0
 fi
 
-if [ -f "$VENDOR_DIR/dist/index.js" ] && [ "${JEXXXUS_CLI_VENDOR_FORCE:-}" != "1" ]; then
-  echo "Using cached vendor/jexxxus-cli dist"
+if [ -f "$VENDOR_DIST/index.js" ]; then
+  REV=""
+  if [ -f "$ROOT/vendor/jexxxus-cli/VENDOR_REV" ]; then
+    REV="$(head -c 7 "$ROOT/vendor/jexxxus-cli/VENDOR_REV")"
+  fi
+  echo "Using committed vendor/jexxxus-cli dist${REV:+ @ ${REV}}"
   exit 0
 fi
 
-mkdir -p "$(dirname "$VENDOR_DIR")"
-
-if [ ! -d "$VENDOR_DIR/.git" ]; then
-  echo "Cloning jexxx.us-cli (${REF}) into vendor/jexxxus-cli"
-  git clone --depth 1 --branch "$REF" "$REPO" "$VENDOR_DIR"
-else
-  echo "Updating vendor/jexxxus-cli (${REF})"
-  git -C "$VENDOR_DIR" fetch origin "$REF" --depth 1
-  git -C "$VENDOR_DIR" checkout FETCH_HEAD
-fi
-
-build_cli "$VENDOR_DIR"
+echo "jexxx.us-cli dist missing. From the monorepo run: bash scripts/sync-vendor-cli.sh" >&2
+exit 1

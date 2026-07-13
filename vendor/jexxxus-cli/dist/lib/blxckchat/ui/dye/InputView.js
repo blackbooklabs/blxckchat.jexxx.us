@@ -1,0 +1,336 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import React from "react";
+import { Box, Text, useInput, useStdin, usePaste, useSelection, } from "@sauerapple/dye";
+import { copyToClipboard } from "../session/tui-snapshot.js";
+const PINK = "#ec4899";
+const PINK_DIM = "#9d174d";
+const PINK_GLOW = "#f472b6";
+const TEXT = "#f5f5f5";
+const TEXT_MUTED = "#a3a3a3";
+const BG_ELEVATED = "#111111";
+const BG_PANEL = "#0a0a0a";
+export const InputView = ({ value, onChange, onSubmit, onEscape, placeholder = "type a message…", disabled = false, slashVisible = false, messageFocus = false, }) => {
+    const [focused, setFocused] = React.useState(true);
+    const [cursorPos, setCursorPos] = React.useState(value.length);
+    const [selectionAnchor, setSelectionAnchor] = React.useState(null);
+    const [history, setHistory] = React.useState([]);
+    const [historyIdx, setHistoryIdx] = React.useState(-1);
+    const [draft, setDraft] = React.useState("");
+    // Dye's own SelectionManager runs a separate, global mouse-tracking
+    // pipeline (wired via <AlternateScreen mouseTracking> in DyeApp.tsx) that
+    // paints its own pink cell-selection overlay on ANY click/drag anywhere on
+    // screen -- including over this input box -- independent of this
+    // component's own cursorPos/selectionAnchor state. A single click here
+    // was landing as a (possibly zero-width) Dye-level "selection" at the
+    // clicked screen cell, rendered as a stray pink block with no relationship
+    // to this component's actual text-cursor position. clearSelection() wipes
+    // that global overlay; onClick below also maps the click to a real
+    // cursorPos so clicking actually moves the text cursor instead of leaving
+    // Dye's own selection highlight floating disconnected from the text.
+    const { clearSelection: clearDyeSelection } = useSelection();
+    React.useEffect(() => {
+        setCursorPos((prev) => Math.min(prev, value.length));
+    }, [value]);
+    usePaste((text) => {
+        if (disabled)
+            return;
+        let next;
+        let newPos;
+        if (hasSelection()) {
+            const s = selRange();
+            next = value.slice(0, s[0]) + text + value.slice(s[1]);
+            newPos = s[0] + text.length;
+            setSelectionAnchor(null);
+        }
+        else {
+            next = value.slice(0, cursorPos) + text + value.slice(cursorPos);
+            newPos = cursorPos + text.length;
+        }
+        setCursorPos(newPos);
+        onChange(next);
+    });
+    // Map a click's local column to a text index (accounting for the box's
+    // border + paddingLeft={1}) and position the cursor there. Also dismisses
+    // Dye's own global selection overlay for this click -- without this, a
+    // single click still starts a Dye-level "selection" at the raw screen
+    // cell, rendered as a pink block with no relationship to where the actual
+    // text cursor ends up.
+    const handleClick = (event) => {
+        if (disabled)
+            return;
+        clearSel();
+        const BORDER_WIDTH = 1;
+        const PADDING_LEFT = 1;
+        const textCol = event.localCol - BORDER_WIDTH - PADDING_LEFT;
+        setCursorPos(Math.max(0, Math.min(value.length, textCol)));
+    };
+    function hasSelection() {
+        return selectionAnchor !== null && selectionAnchor !== cursorPos;
+    }
+    function selRange() {
+        const a = selectionAnchor ?? cursorPos;
+        return a < cursorPos ? [a, cursorPos] : [cursorPos, a];
+    }
+    function clearSel() {
+        setSelectionAnchor(null);
+        // Every existing clearSel() call site (arrow keys, home/end, escape,
+        // submit, etc.) now also dismisses Dye's own global selection overlay --
+        // otherwise a stray click-selection from earlier could keep rendering
+        // its pink highlight even as the user moves the cursor with the keyboard.
+        clearDyeSelection();
+    }
+    function deleteSelection() {
+        const s = selRange();
+        onChange(value.slice(0, s[0]) + value.slice(s[1]));
+        setCursorPos(s[0]);
+        clearSel();
+    }
+    useInput((input, key) => {
+        if (disabled)
+            return;
+        if (key.escape) {
+            if (slashVisible)
+                return;
+            if (hasSelection()) {
+                clearSel();
+                return;
+            }
+            onEscape();
+            return;
+        }
+        if (key.ctrl && input === "c")
+            return;
+        if (key.ctrl && input === "d")
+            return;
+        if (key.return) {
+            if (slashVisible)
+                return;
+            if (hasSelection())
+                clearSel();
+            const trimmed = value.trim();
+            if (trimmed) {
+                setHistory((prev) => [...prev, trimmed]);
+                setHistoryIdx(history.length + 1);
+            }
+            onSubmit(trimmed);
+            return;
+        }
+        if ((key.backspace || key.delete) && hasSelection()) {
+            deleteSelection();
+            return;
+        }
+        if (key.backspace || key.delete) {
+            if (cursorPos > 0) {
+                const next = value.slice(0, cursorPos - 1) + value.slice(cursorPos);
+                setCursorPos(cursorPos - 1);
+                onChange(next);
+            }
+            return;
+        }
+        // --- Selection with Shift ---
+        if (key.shift && key.leftArrow && !key.ctrl && !key.meta) {
+            if (!hasSelection())
+                setSelectionAnchor(cursorPos);
+            if (cursorPos > 0)
+                setCursorPos(cursorPos - 1);
+            return;
+        }
+        if (key.shift && key.rightArrow && !key.ctrl && !key.meta) {
+            if (!hasSelection())
+                setSelectionAnchor(cursorPos);
+            if (cursorPos < value.length)
+                setCursorPos(cursorPos + 1);
+            return;
+        }
+        if (key.shift && key.home) {
+            if (!hasSelection())
+                setSelectionAnchor(cursorPos);
+            setCursorPos(0);
+            return;
+        }
+        if (key.shift && key.end) {
+            if (!hasSelection())
+                setSelectionAnchor(cursorPos);
+            setCursorPos(value.length);
+            return;
+        }
+        // --- Line selection: Ctrl+Shift+Left/Right ---
+        if (key.ctrl && key.shift && key.leftArrow) {
+            if (!hasSelection())
+                setSelectionAnchor(cursorPos);
+            setCursorPos(0);
+            return;
+        }
+        if (key.ctrl && key.shift && key.rightArrow) {
+            if (!hasSelection())
+                setSelectionAnchor(cursorPos);
+            setCursorPos(value.length);
+            return;
+        }
+        // --- Word selection: Option/Alt+Shift+Left/Right ---
+        // A real arrow-key press (even with modifiers held) comes through as
+        // key.leftArrow/key.rightArrow with key.meta/key.shift booleans set from
+        // the terminal's CSI modifier byte (see parse-keypress.js's fnKeyRe
+        // branch) -- never as `input === "B"/"F"`. That only matches a literal
+        // Option+Shift+B/F letter keypress, which is a different shortcut
+        // entirely (and not what "Option+Shift+Left/Right arrow" sends).
+        if (key.meta && key.shift && key.leftArrow) {
+            if (!hasSelection())
+                setSelectionAnchor(cursorPos);
+            let pos = cursorPos;
+            while (pos > 0 && value[pos - 1] === " ")
+                pos--;
+            while (pos > 0 && value[pos - 1] !== " ")
+                pos--;
+            setCursorPos(pos);
+            return;
+        }
+        if (key.meta && key.shift && key.rightArrow) {
+            if (!hasSelection())
+                setSelectionAnchor(cursorPos);
+            let pos = cursorPos;
+            while (pos < value.length && value[pos] === " ")
+                pos++;
+            while (pos < value.length && value[pos] !== " ")
+                pos++;
+            setCursorPos(pos);
+            return;
+        }
+        if (key.upArrow) {
+            if (slashVisible || messageFocus)
+                return;
+            if (hasSelection())
+                clearSel();
+            if (historyIdx > 0) {
+                const newIdx = historyIdx - 1;
+                if (newIdx === history.length - 1)
+                    setDraft(value);
+                setHistoryIdx(newIdx);
+                onChange(history[newIdx] ?? "");
+                setCursorPos((history[newIdx] ?? "").length);
+            }
+            return;
+        }
+        if (key.downArrow) {
+            if (slashVisible || messageFocus)
+                return;
+            if (hasSelection())
+                clearSel();
+            if (historyIdx < history.length - 1) {
+                const newIdx = historyIdx + 1;
+                setHistoryIdx(newIdx);
+                onChange(history[newIdx] ?? "");
+                setCursorPos((history[newIdx] ?? "").length);
+            }
+            else if (historyIdx === history.length - 1) {
+                setHistoryIdx(history.length);
+                onChange(draft);
+                setCursorPos(draft.length);
+            }
+            return;
+        }
+        if (key.leftArrow && !key.shift) {
+            clearSel();
+            setCursorPos(Math.max(0, cursorPos - 1));
+            return;
+        }
+        if (key.rightArrow && !key.shift) {
+            clearSel();
+            setCursorPos(Math.min(value.length, cursorPos + 1));
+            return;
+        }
+        if (key.home ||
+            (key.ctrl && input === "a") ||
+            (key.meta && input === "a")) {
+            clearSel();
+            setCursorPos(0);
+            return;
+        }
+        if (key.end || (key.ctrl && input === "e") || (key.meta && input === "e")) {
+            clearSel();
+            setCursorPos(value.length);
+            return;
+        }
+        if (key.meta && input === "b") {
+            clearSel();
+            let pos = cursorPos;
+            while (pos > 0 && value[pos - 1] === " ")
+                pos--;
+            while (pos > 0 && value[pos - 1] !== " ")
+                pos--;
+            setCursorPos(pos);
+            return;
+        }
+        if (key.meta && input === "f") {
+            clearSel();
+            let pos = cursorPos;
+            while (pos < value.length && value[pos] === " ")
+                pos++;
+            while (pos < value.length && value[pos] !== " ")
+                pos++;
+            setCursorPos(pos);
+            return;
+        }
+        if (key.meta && input === "d") {
+            if (hasSelection()) {
+                deleteSelection();
+                return;
+            }
+            let end = cursorPos;
+            while (end < value.length && value[end] === " ")
+                end++;
+            while (end < value.length && value[end] !== " ")
+                end++;
+            onChange(value.slice(0, cursorPos) + value.slice(end));
+            return;
+        }
+        if (key.ctrl && input === "u") {
+            clearSel();
+            onChange("");
+            setCursorPos(0);
+            return;
+        }
+        if (key.ctrl && input === "k") {
+            if (hasSelection()) {
+                deleteSelection();
+                return;
+            }
+            onChange(value.slice(0, cursorPos));
+            return;
+        }
+        if (key.ctrl && input === "w") {
+            if (hasSelection()) {
+                deleteSelection();
+                return;
+            }
+            const before = value.slice(0, cursorPos);
+            const after = value.slice(cursorPos);
+            const trimmed = before.replace(/\S+\s*$/, "");
+            onChange(trimmed + after);
+            setCursorPos(trimmed.length);
+            return;
+        }
+        if (input && input.length > 0 && input.charCodeAt(0) >= 32) {
+            if (hasSelection()) {
+                const s = selRange();
+                const next = value.slice(0, s[0]) + input + value.slice(s[1]);
+                setCursorPos(s[0] + input.length);
+                clearSel();
+                onChange(next);
+            }
+            else {
+                const next = value.slice(0, cursorPos) + input + value.slice(cursorPos);
+                setCursorPos(cursorPos + input.length);
+                onChange(next);
+            }
+        }
+    });
+    const displayText = value || placeholder;
+    const isPlaceholder = value.length === 0;
+    // Clamp cursor to valid value indices (not placeholder length)
+    const cursorIdx = Math.min(cursorPos, Math.max(0, value.length - 1));
+    const selForward = selectionAnchor !== null && cursorPos > selectionAnchor;
+    const selBackward = selectionAnchor !== null && cursorPos < selectionAnchor;
+    return (_jsx(Box, { width: "100%", borderStyle: "round", borderColor: disabled ? PINK : focused ? PINK_GLOW : PINK, backgroundColor: focused ? BG_PANEL : BG_ELEVATED, paddingLeft: 1, height: 3, onClick: handleClick, children: isPlaceholder ? (_jsx(Text, { color: TEXT_MUTED, children: placeholder })) : selForward ? (_jsxs(Text, { color: TEXT, children: [displayText.slice(0, selectionAnchor), _jsx(Text, { inverse: true, color: PINK, children: displayText.slice(selectionAnchor, cursorPos) }), _jsx(Text, { inverse: true, children: displayText[cursorPos] ?? " " }), displayText.slice(cursorPos + 1)] })) : selBackward ? (_jsxs(Text, { color: TEXT, children: [displayText.slice(0, cursorPos), _jsx(Text, { inverse: true, children: displayText[cursorPos] ?? " " }), _jsx(Text, { inverse: true, color: PINK, children: displayText.slice(cursorPos + 1, selectionAnchor ?? 0) }), displayText.slice(selectionAnchor ?? 0)] })) : (_jsxs(Text, { color: TEXT, children: [displayText.slice(0, cursorIdx), _jsx(Text, { inverse: true, children: displayText[cursorIdx] ?? " " }), displayText.slice(cursorIdx + 1)] })) }));
+};
+//# sourceMappingURL=InputView.js.map
