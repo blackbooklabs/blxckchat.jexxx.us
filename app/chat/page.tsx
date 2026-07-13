@@ -1045,58 +1045,6 @@ const [globalContext, setGlobalContext] = useState("");
           onOpenProjectSettings={(id: string) => { setProjectSettingsId(id); setIsProjectSettingsOpen(true); }}
         />
 
-        {/* Project Settings Modal */}
-        <AnimatePresence>
-          {isProjectSettingsOpen && projectSettingsId && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                onClick={() => setIsProjectSettingsOpen(false)}
-              />
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                className="relative w-full max-w-lg bg-surface border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-              >
-                <div className="flex items-center justify-between p-6 border-b border-border">
-                   <div className="flex items-center gap-3">
-                     <div className="p-2 rounded-xl bg-accent/10 text-accent">
-                       <Shield className="w-5 h-5" />
-                     </div>
-                     <div>
-                       <h2 className="text-xl font-bold font-sans text-foreground">Project Context</h2>
-                       <p className="text-sm text-muted">Define the absolute rules for this isolated reality.</p>
-                     </div>
-                   </div>
-                   <button onClick={() => setIsProjectSettingsOpen(false)} className="p-2 text-muted hover:text-foreground rounded-full hover:bg-muted/10 transition-colors">
-                     <X className="w-5 h-5" />
-                   </button>
-                </div>
-                
-                <div className="p-6 overflow-y-auto">
-                    <label className="block text-sm font-medium mb-2">
-                      Custom Instructions (System Prompt)
-                    </label>
-                    <textarea
-                      value={projects.find(p => p.id === projectSettingsId)?.custom_instructions || ''}
-                      onChange={(e) => {
-                         updateProjectInstructions(projectSettingsId, e.target.value);
-                      }}
-                      placeholder="e.g. 'Write explicitly in JavaScript' - This overrides the global settings for chats in this project only."
-                      autoCorrect="off" autoCapitalize="off" spellCheck={false}
-                      autoComplete="off" data-gramm="false"
-                      className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent font-mono text-sm resize-none h-48"
-                    />
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
-
         <div className="flex-1 flex flex-col min-w-0 h-full relative border-l border-border/50">
           {/* Header */}
           <motion.div
@@ -1170,8 +1118,8 @@ const [globalContext, setGlobalContext] = useState("");
                        <Shield className="w-5 h-5" />
                      </div>
                      <div>
-                       <h2 className="text-xl font-bold font-['Space_Grotesk'] text-foreground">Project Context</h2>
-                       <p className="text-sm text-muted">Define the absolute rules for this isolated reality.</p>
+                       <h2 className="font-extended text-sm text-foreground">Project Context</h2>
+                       <p className="text-xs text-muted mt-1">Per-project rules that shape every conversation in this thread.</p>
                      </div>
                    </div>
                    <button onClick={() => setIsProjectSettingsOpen(false)} className="p-2 text-muted hover:text-foreground rounded-full hover:bg-muted/10 transition-colors">
@@ -1180,23 +1128,25 @@ const [globalContext, setGlobalContext] = useState("");
                 </div>
                 
                 <div className="p-6 overflow-y-auto">
-                    <label className="block text-sm font-medium mb-2">
-                      Custom Instructions (System Prompt)
+                    <label className="block text-[10px] uppercase tracking-wider text-muted mb-2">
+                      <span className="font-semibold text-foreground">Custom Instructions</span> (System Prompt)
                     </label>
                     <textarea
                       value={projects.find(p => p.id === projectSettingsId)?.custom_instructions || ''}
                       onChange={(e) => {
                          updateProjectInstructions(projectSettingsId, e.target.value);
                       }}
-                      placeholder="e.g. 'Write explicitly in JavaScript' - This overrides the global settings for chats in this project only."
+                      placeholder="Overrides global instructions for chats in this project only."
+                      autoCorrect="off" autoCapitalize="off" spellCheck={false}
+                      autoComplete="off" data-gramm="false"
                       className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent font-mono text-sm resize-none h-48 mb-6"
                     />
 
                     <div className="flex flex-col gap-4 p-4 bg-accent/5 rounded-2xl border border-accent/10">
                       <div className="flex items-center justify-between">
-                         <div className="flex flex-col">
-                            <label className="text-sm font-bold text-accent uppercase tracking-wider">Voice Settings (TTS)</label>
-                            <span className="text-[10px] text-muted capitalize">Adjust pitch and rate for this isolated reality.</span>
+                         <div className="flex flex-col gap-1">
+                            <label className="font-extended text-[10px] text-accent">Voice Settings (TTS)</label>
+                            <span className="text-[10px] text-muted">Fine-tune pitch and rate for this project&apos;s voice.</span>
                          </div>
                          <button 
                            onClick={() => handleProjectVoicePreview(false)}
@@ -1213,14 +1163,16 @@ const [globalContext, setGlobalContext] = useState("");
                         {/* Pitch Slider */}
                         <div className="flex flex-col gap-2">
                           <div className="flex justify-between items-center">
-                            <label className="text-xs font-medium text-muted">Pitch</label>
-                            <span className="text-xs font-mono text-accent">
+                            <label className="text-[10px] uppercase tracking-wider text-muted">
+                              <span className="font-semibold text-foreground">Pitch</span>:{' '}
+                              <span className="font-mono text-accent normal-case">
                               {(() => {
                                 const activePersona = personas.find(p => p.id === invokingPersonaId);
                                 const settingsProject = projects.find(p => p.id === projectSettingsId);
                                 return (settingsProject?.tts_voice?.pitch || activePersona?.tts_voice?.pitch || 1.0).toFixed(2);
                               })()}
-                            </span>
+                              </span>
+                            </label>
                           </div>
                           <input 
                             type="range" min="0.5" max="1.5" step="0.05"
@@ -1248,14 +1200,16 @@ const [globalContext, setGlobalContext] = useState("");
                         {/* Rate Slider */}
                         <div className="flex flex-col gap-2">
                           <div className="flex justify-between items-center">
-                            <label className="text-xs font-medium text-muted">Rate</label>
-                            <span className="text-xs font-mono text-accent">
+                            <label className="text-[10px] uppercase tracking-wider text-muted">
+                              <span className="font-semibold text-foreground">Rate</span>:{' '}
+                              <span className="font-mono text-accent normal-case">
                               {(() => {
                                 const activePersona = personas.find(p => p.id === invokingPersonaId);
                                 const settingsProject = projects.find(p => p.id === projectSettingsId);
                                 return (settingsProject?.tts_voice?.rate || activePersona?.tts_voice?.rate || 1.0).toFixed(2);
                               })()}
-                            </span>
+                              </span>
+                            </label>
                           </div>
                           <input 
                             type="range" min="0.5" max="1.5" step="0.05"

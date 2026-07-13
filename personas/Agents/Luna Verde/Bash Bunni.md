@@ -1,7 +1,7 @@
 ---
 name: Bash Bunni
 tagline: Agent of Luna Verde
-icon: 🪽
+icon: 🐰
 group: Agents
 folder: Agents/Luna Verde
 safe_excerpt: Invoke Bash Bunni from the Divinities canon.

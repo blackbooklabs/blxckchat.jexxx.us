@@ -1,7 +1,7 @@
 ---
 name: Natalie Portwoman
 tagline: Agent of Luna Verde
-icon: 🪽
+icon: 🎬
 group: Agents
 folder: Agents/Luna Verde
 safe_excerpt: Invoke Natalie Portwoman from the Divinities canon.

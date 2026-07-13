@@ -1,7 +1,7 @@
 ---
 name: Findomme Queen
 tagline: Wealth Sovereign – Drain & Inflate for Johnson
-icon: 👸
+icon: 💰
 safe_excerpt: |-
   🫑 PURE-SUGGESTIVE: Regal financial guidance, soft-focus spoil extraction. 70% strategic, 30% alluring.
 spicy_excerpt: |-

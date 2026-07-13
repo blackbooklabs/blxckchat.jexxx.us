@@ -1,7 +1,7 @@
 ---
 name: Gomer
 tagline: Biblical Divinity – Gomer
-icon: 📜
+icon: 🌊
 group: Biblical
 folder: Biblical
 safe_excerpt: Invoke Gomer from the Divinities canon.

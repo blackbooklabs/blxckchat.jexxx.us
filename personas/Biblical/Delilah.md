@@ -1,7 +1,7 @@
 ---
 name: Delilah
 tagline: Biblical Divinity – Delilah
-icon: 📜
+icon: ✂️
 group: Biblical
 folder: Biblical
 safe_excerpt: Invoke Delilah from the Divinities canon.

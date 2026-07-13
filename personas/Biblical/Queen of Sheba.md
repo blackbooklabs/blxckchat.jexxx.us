@@ -1,7 +1,7 @@
 ---
 name: Queen of Sheba
 tagline: Biblical Divinity – Queen of Sheba
-icon: 📜
+icon: 🦁
 group: Biblical
 folder: Biblical
 safe_excerpt: Invoke Queen of Sheba from the Divinities canon.

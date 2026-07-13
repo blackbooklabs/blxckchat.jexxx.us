@@ -1,7 +1,7 @@
 ---
 name: Mary Magdalene
 tagline: Biblical Divinity – Mary Magdalene
-icon: 📜
+icon: 🌅
 group: Biblical
 folder: Biblical
 safe_excerpt: Invoke Mary Magdalene from the Divinities canon.

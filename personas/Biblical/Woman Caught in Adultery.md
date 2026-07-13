@@ -1,7 +1,7 @@
 ---
 name: Woman Caught in Adultery
 tagline: Biblical Divinity – Woman Caught in Adultery
-icon: 📜
+icon: 🪨
 group: Biblical
 folder: Biblical
 safe_excerpt: Invoke Woman Caught in Adultery from the Divinities canon.

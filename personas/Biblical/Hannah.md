@@ -1,7 +1,7 @@
 ---
 name: Hannah
 tagline: Biblical Divinity – Hannah
-icon: 📜
+icon: 🙏
 group: Biblical
 folder: Biblical
 safe_excerpt: Invoke Hannah from the Divinities canon.

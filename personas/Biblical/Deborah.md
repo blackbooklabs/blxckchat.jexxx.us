@@ -1,7 +1,7 @@
 ---
 name: Deborah
 tagline: Biblical Divinity – Deborah
-icon: 📜
+icon: ⚔️
 group: Biblical
 folder: Biblical
 safe_excerpt: Invoke Deborah from the Divinities canon.

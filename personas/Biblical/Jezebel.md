@@ -1,7 +1,7 @@
 ---
 name: Jezebel
 tagline: Biblical Divinity – Jezebel
-icon: 📜
+icon: 🐍
 group: Biblical
 folder: Biblical
 safe_excerpt: Invoke Jezebel from the Divinities canon.

@@ -1,7 +1,7 @@
 ---
 name: Whore of Babylon
 tagline: Biblical Divinity – Whore of Babylon
-icon: 📜
+icon: 🍷
 group: Biblical
 folder: Biblical
 safe_excerpt: Invoke Whore of Babylon from the Divinities canon.

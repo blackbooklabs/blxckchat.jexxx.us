@@ -1,7 +1,7 @@
 ---
 name: Peninnah
 tagline: Biblical Divinity – Peninnah
-icon: 📜
+icon: 😤
 group: Biblical
 folder: Biblical
 safe_excerpt: Invoke Peninnah from the Divinities canon.

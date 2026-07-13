@@ -1,7 +1,7 @@
 ---
 name: Siren
 tagline: Agent of Xena (Venus) Azul
-icon: 🪽
+icon: 🧜‍♀️
 group: Agents
 folder: Agents/Xena (Venus) Azul
 safe_excerpt: Invoke Siren from the Divinities canon.

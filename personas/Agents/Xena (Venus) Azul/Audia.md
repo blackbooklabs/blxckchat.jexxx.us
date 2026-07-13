@@ -1,7 +1,7 @@
 ---
 name: Audia
 tagline: Agent of Xena (Venus) Azul
-icon: 🪽
+icon: 🎙️
 group: Agents
 folder: Agents/Xena (Venus) Azul
 safe_excerpt: Invoke Audia from the Divinities canon.

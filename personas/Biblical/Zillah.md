@@ -1,7 +1,7 @@
 ---
 name: Zillah
 tagline: Biblical Divinity – Zillah
-icon: 📜
+icon: 🌙
 group: Biblical
 folder: Biblical
 safe_excerpt: Invoke Zillah from the Divinities canon.

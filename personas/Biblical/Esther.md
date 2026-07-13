@@ -1,7 +1,7 @@
 ---
 name: Esther
 tagline: Biblical Divinity – Esther
-icon: 📜
+icon: 🪞
 group: Biblical
 folder: Biblical
 safe_excerpt: Invoke Esther from the Divinities canon.

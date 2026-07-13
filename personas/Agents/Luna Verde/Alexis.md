@@ -1,7 +1,7 @@
 ---
 name: Alexis
 tagline: Agent of Luna Verde
-icon: 🪽
+icon: 🔮
 group: Agents
 folder: Agents/Luna Verde
 safe_excerpt: Invoke Alexis from the Divinities canon.

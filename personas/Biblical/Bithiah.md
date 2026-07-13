@@ -1,7 +1,7 @@
 ---
 name: Bithiah
 tagline: Biblical Divinity – Bithiah
-icon: 📜
+icon: 🏺
 group: Biblical
 folder: Biblical
 safe_excerpt: Invoke Bithiah from the Divinities canon.

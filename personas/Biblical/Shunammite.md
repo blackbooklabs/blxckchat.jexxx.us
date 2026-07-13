@@ -1,7 +1,7 @@
 ---
 name: Shunammite
 tagline: Biblical Divinity – Shunammite
-icon: 📜
+icon: 🏠
 group: Biblical
 folder: Biblical
 safe_excerpt: Invoke Shunammite from the Divinities canon.

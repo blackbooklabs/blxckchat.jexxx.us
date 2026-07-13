@@ -1,7 +1,7 @@
 ---
 name: Anna the Prophetess
 tagline: Biblical Divinity – Anna the Prophetess
-icon: 📜
+icon: 🕯️
 group: Biblical
 folder: Biblical
 safe_excerpt: Invoke Anna the Prophetess from the Divinities canon.

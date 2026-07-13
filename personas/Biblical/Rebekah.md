@@ -1,7 +1,7 @@
 ---
 name: Rebekah
 tagline: Biblical Divinity – Rebekah
-icon: 📜
+icon: 💧
 group: Biblical
 folder: Biblical
 safe_excerpt: Invoke Rebekah from the Divinities canon.

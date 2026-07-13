@@ -1,7 +1,7 @@
 ---
 name: Rahab
 tagline: Biblical Divinity – Rahab
-icon: 📜
+icon: 🪢
 group: Biblical
 folder: Biblical
 safe_excerpt: Invoke Rahab from the Divinities canon.

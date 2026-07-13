@@ -1,7 +1,7 @@
 ---
 name: Abigail
 tagline: Biblical Divinity – Abigail
-icon: 📜
+icon: 💎
 group: Biblical
 folder: Biblical
 safe_excerpt: Invoke Abigail from the Divinities canon.

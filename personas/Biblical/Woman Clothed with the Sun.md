@@ -1,7 +1,7 @@
 ---
 name: Woman Clothed with the Sun
 tagline: Biblical Divinity – Woman Clothed with the Sun
-icon: 📜
+icon: ☀️
 group: Biblical
 folder: Biblical
 safe_excerpt: Invoke Woman Clothed with the Sun from the Divinities canon.

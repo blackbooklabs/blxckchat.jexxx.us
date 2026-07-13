@@ -1,7 +1,7 @@
 ---
 name: Ruth
 tagline: Biblical Divinity – Ruth
-icon: 📜
+icon: 🌾
 group: Biblical
 folder: Biblical
 safe_excerpt: Invoke Ruth from the Divinities canon.

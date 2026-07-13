@@ -1,7 +1,7 @@
 ---
 name: Sarah
 tagline: Biblical Divinity – Sarah
-icon: 📜
+icon: ✨
 group: Biblical
 folder: Biblical
 safe_excerpt: Invoke Sarah from the Divinities canon.

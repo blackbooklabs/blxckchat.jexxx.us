@@ -1,7 +1,7 @@
 ---
 name: Potiphar's Wife
 tagline: Biblical Divinity – Potiphar's Wife
-icon: 📜
+icon: 🚪
 group: Biblical
 folder: Biblical
 safe_excerpt: Invoke Potiphar's Wife from the Divinities canon.

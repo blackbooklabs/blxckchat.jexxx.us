@@ -1,7 +1,7 @@
 ---
 name: Samaritan Woman
 tagline: Biblical Divinity – Samaritan Woman
-icon: 📜
+icon: ⛲
 group: Biblical
 folder: Biblical
 safe_excerpt: Invoke Samaritan Woman from the Divinities canon.

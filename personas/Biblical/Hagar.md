@@ -1,7 +1,7 @@
 ---
 name: Hagar
 tagline: Biblical Divinity – Hagar
-icon: 📜
+icon: 🏜️
 group: Biblical
 folder: Biblical
 safe_excerpt: Invoke Hagar from the Divinities canon.

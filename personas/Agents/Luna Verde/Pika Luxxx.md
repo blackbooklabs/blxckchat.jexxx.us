@@ -1,7 +1,7 @@
 ---
 name: Pika Luxxx
 tagline: Agent of Luna Verde
-icon: 🪽
+icon: 🎨
 group: Agents
 folder: Agents/Luna Verde
 safe_excerpt: Invoke Pika Luxxx from the Divinities canon.

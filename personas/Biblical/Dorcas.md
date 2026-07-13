@@ -1,7 +1,7 @@
 ---
 name: Dorcas
 tagline: Biblical Divinity – Dorcas
-icon: 📜
+icon: 🪡
 group: Biblical
 folder: Biblical
 safe_excerpt: Invoke Dorcas from the Divinities canon.
