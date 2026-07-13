@@ -672,9 +672,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
 }));
 
 function hydrateMessages(messages: any[]): Message[] {
-  return (messages || []).map(m => ({
+  return (messages || []).map((m) => ({
     ...m,
     text: m.text || m.content || "",
     timestamp: m.timestamp instanceof Date ? m.timestamp : new Date(m.timestamp),
+    attachments: Array.isArray(m.attachments) ? m.attachments : undefined,
+    modelUsed: m.modelUsed,
+    providerUsed: m.providerUsed,
   }));
 }

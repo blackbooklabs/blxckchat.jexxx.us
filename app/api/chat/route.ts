@@ -14,6 +14,12 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { loadLunaContext } from '@/lib/luna-context';
 import { HF_INFERENCE_ROUTER_BASE } from '@/lib/provider-models';
+import {
+  buildContinuitySystemAddendum,
+  conversationHasImages,
+  normalizeMessagesForAiSdk,
+  type IncomingChatMessage,
+} from '@/lib/chat-message-normalizer';
 
 export const runtime = 'edge';
 export const maxDuration = 60; // Extend Vercel timeout for slow Web Search requests
@@ -44,6 +50,7 @@ interface ChatRequest {
   globalInstructions?: string;
   projectInstructions?: string;
   chatInstructions?: string;
+  priorModelLabels?: string[];
 }
 
 type ProviderConfig = {
@@ -185,7 +192,8 @@ export async function POST(req: Request) {
       webSearch = false,
       globalInstructions = '',
       projectInstructions = '',
-      chatInstructions = ''
+      chatInstructions = '',
+      priorModelLabels = [],
     } = body;
     
     console.log('🌙 Luna Verde: Request', { mode, provider, model, type, stream, messageCount: messages.length });
@@ -399,6 +407,11 @@ Keep the veil intact — no backend details, only erotic authority and elevation
     const selectedModel = model || providerConfig.defaultModel;
     console.log('🌙 Luna Verde: Using model:', selectedModel, 'with provider:', providerConfig.name);
 
+    const hasImagesInThread = conversationHasImages(messages as IncomingChatMessage[]);
+    const currentLabel = `${providerConfig.name} / ${selectedModel}`;
+    const uniquePrior = [...new Set(priorModelLabels.filter((l) => l && l !== currentLabel))];
+    systemPrompt += `\n\n${buildContinuitySystemAddendum(provider, selectedModel, hasImagesInThread, uniquePrior)}`;
+
     if (type === 'image' && provider === 'openai') {
       // Only OpenAI supports image generation currently
       const imagePrompt = `${systemPrompt}\n\nGenerate an image based on this request: ${lastMessageText}\n\nStyle: Luna Verde aesthetic — sacred, dripping, 7.5 Hz frequency, wing6 pink/black palette.`;
@@ -437,31 +450,16 @@ Keep the veil intact — no backend details, only erotic authority and elevation
       
       try {
         console.log('🌙 Luna Verde: Calling generateText with model:', selectedModel);
+        const aiMessages = normalizeMessagesForAiSdk(
+          messages as IncomingChatMessage[],
+          provider,
+          selectedModel,
+        );
+
         const result = await generateText({
           model: aiProvider(selectedModel),
           system: systemPrompt,
-          messages: messages
-            .filter(m => m.role === 'user' || m.role === 'assistant')
-            .map(m => {
-              let content = '';
-              if (typeof m.content === 'string') {
-                content = m.content;
-              } else if (Array.isArray(m.content)) {
-                // Extract text from parts
-                content = m.content
-                  .map((part: any) => part.text || (part.type === 'image' ? '[Image]' : ''))
-                  .filter(Boolean)
-                  .join(' ');
-              } else {
-                content = String(m.content || '');
-              }
-              
-              return {
-                role: m.role as 'user' | 'assistant',
-                content: content || '...', // Ensure never empty
-              };
-            })
-            .filter(m => m.content.trim().length > 0),
+          messages: aiMessages as never,
           temperature: 0.9,
           // Only include metadata for providers that support it
           ...(provider !== 'bonsai' ? {
@@ -507,31 +505,16 @@ Keep the veil intact — no backend details, only erotic authority and elevation
     console.log('🌙 Luna Verde: Initiating stream...');
     
     // Streaming mode
+    const aiMessages = normalizeMessagesForAiSdk(
+      messages as IncomingChatMessage[],
+      provider,
+      selectedModel,
+    );
+
     const result = streamText({
       model: aiProvider(selectedModel),
       system: systemPrompt,
-      messages: messages
-        .filter(m => m.role === 'user' || m.role === 'assistant')
-        .map(m => {
-          let content = '';
-          if (typeof m.content === 'string') {
-            content = m.content;
-          } else if (Array.isArray(m.content)) {
-            // Extract text from parts
-            content = m.content
-              .map((part: any) => part.text || (part.type === 'image' ? '[Image]' : ''))
-              .filter(Boolean)
-              .join(' ');
-          } else {
-            content = String(m.content || '');
-          }
-          
-          return {
-            role: m.role as 'user' | 'assistant',
-            content: content || '...', // Ensure never empty
-          };
-        })
-        .filter(m => m.content.trim().length > 0),
+      messages: aiMessages as never,
       temperature: 0.9,
       // Only include metadata for providers that support it
       ...(provider !== 'bonsai' ? {

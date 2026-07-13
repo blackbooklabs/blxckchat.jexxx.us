@@ -20,6 +20,10 @@ import {
   saveRemoteByokSettings,
   writeLocalByokSettings,
 } from "@/lib/user-byok-persistence";
+import {
+  buildApiMessagesFromHistory,
+  collectPriorModelLabels,
+} from "@/lib/build-chat-payload";
 
 const REQUIRE_AUTH = process.env.NODE_ENV !== 'development';
 
@@ -222,7 +226,7 @@ const [globalContext, setGlobalContext] = useState("");
   const globalContextRef = useRef("");
   const [speakingId, setSpeakingId] = useState<string | null>(null);
   const [stagedFiles, setStagedFiles] = useState<File[]>([]);
-  const [stagedImages, setStagedImages] = useState<{name: string, data: string}[]>([]);
+  const [stagedImages, setStagedImages] = useState<{name: string, data: string, mimeType?: string}[]>([]);
   const [extractedContext, setExtractedContext] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -351,7 +355,7 @@ const [globalContext, setGlobalContext] = useState("");
         const reader = new FileReader();
         reader.onload = (event) => {
           const base64 = event.target?.result as string;
-          setStagedImages(prev => [...prev, { name: file.name, data: base64 }]);
+          setStagedImages(prev => [...prev, { name: file.name, data: base64, mimeType: file.type }]);
         };
         reader.readAsDataURL(file);
       } else if (file.type.startsWith('text/') || file.name.endsWith('.md') || file.name.endsWith('.json') || file.name.endsWith('.js') || file.name.endsWith('.ts')) {
@@ -844,7 +848,7 @@ const [globalContext, setGlobalContext] = useState("");
       const newAttachments: MessageAttachment[] = [
         ...currentStagedImages.map(img => ({
           type: 'image' as const,
-          mimeType: 'image/jpeg',
+          mimeType: img.mimeType || 'image/jpeg',
           name: img.name,
           url: img.data,
         })),
@@ -928,32 +932,20 @@ const [globalContext, setGlobalContext] = useState("");
           [HEADER_KEYS[activeProvider]]: providersConfig[activeProvider].apiKey,
         },
         body: JSON.stringify({
-          messages: [
-            ...messageList.map((m) => ({
-              role: m.sender === "user" ? "user" : "assistant",
-              content: m.attachments && m.attachments.some(a => a.type === 'image') 
-                ? [
-                    { type: "text" as const, text: m.text },
-                    ...m.attachments.filter(a => a.type === 'image' && a.url).map(img => ({
-                      type: "image" as const,
-                      image: img.url!
-                    }))
-                  ]
-                : m.text,
-            })),
-            ...(isRegenerating ? [] : [{ 
-              role: "user", 
-              content: currentStagedImages.length > 0 
-                ? [
-                    { type: "text" as const, text: finalInput },
-                    ...currentStagedImages.map(img => ({
-                      type: "image" as const,
-                      image: img.data
-                    }))
-                  ]
-                : finalInput 
-            }]),
-          ],
+          messages: buildApiMessagesFromHistory(
+            messageList,
+            isRegenerating
+              ? undefined
+              : {
+                  text: finalInput,
+                  images: currentStagedImages.map((img) => ({
+                    name: img.name,
+                    data: img.data,
+                    mimeType: img.mimeType || 'image/jpeg',
+                  })),
+                },
+          ),
+          priorModelLabels: collectPriorModelLabels(messageList),
           mode: isSpicy ? "venus" : "innocent",
           provider: activeProvider,
           model: providersConfig[activeProvider].model,
