@@ -38,7 +38,7 @@ const PROVIDERS = {
     ],
     defaultModel: 'gpt-4o',
     keyPlaceholder: 'sk-...',
-    color: 'from-green-500 to-emerald-600',
+    color: 'from-accent to-pink-600',
     comingSoon: true,
   },
   anthropic: {
@@ -51,7 +51,7 @@ const PROVIDERS = {
     ],
     defaultModel: 'claude-3-7-sonnet-20250219',
     keyPlaceholder: 'sk-ant-...',
-    color: 'from-amber-500 to-orange-600',
+    color: 'from-pink-500 to-accent',
     comingSoon: false,
   },
   grok: {
@@ -64,7 +64,7 @@ const PROVIDERS = {
     ],
     defaultModel: 'grok-3',
     keyPlaceholder: 'xai-...',
-    color: 'from-slate-500 to-gray-600',
+    color: 'from-pink-400 to-pink-500',
     comingSoon: true,
   },
   gemini: {
@@ -78,7 +78,7 @@ const PROVIDERS = {
     ],
     defaultModel: 'gemini-3.0-flash',
     keyPlaceholder: 'AIza...',
-    color: 'from-blue-500 to-indigo-600',
+    color: 'from-fuchsia-500 to-pink-500',
     comingSoon: true,
   },
   kimi: {
@@ -93,7 +93,7 @@ const PROVIDERS = {
     ],
     defaultModel: 'kimi-k2-0711',
     keyPlaceholder: 'sk-...',
-    color: 'from-purple-500 to-pink-600',
+    color: 'from-purple-500 to-accent',
     comingSoon: true,
   },
   groq: {
@@ -104,7 +104,7 @@ const PROVIDERS = {
     ],
     defaultModel: 'llama-3.3-70b-versatile',
     keyPlaceholder: 'gsk_...',
-    color: 'from-orange-500 to-red-600',
+    color: 'from-accent to-pink-500',
   },
   openrouter: {
     name: 'OpenRouter (Free Tier Models)',
@@ -119,7 +119,7 @@ const PROVIDERS = {
     ],
     defaultModel: 'openrouter/auto',
     keyPlaceholder: 'sk-or-v1-...',
-    color: 'from-teal-500 to-cyan-600',
+    color: 'from-pink-500 to-purple-500',
   },
   ollama: {
     name: 'Ollama (Local)',
@@ -130,21 +130,21 @@ const PROVIDERS = {
     ],
     defaultModel: 'llama3',
     keyPlaceholder: 'http://localhost:11434/api',
-    color: 'from-slate-400 to-zinc-500',
+    color: 'from-pink-400 to-accent',
   },
   bonsai: {
     name: 'Bonsai 1-bit (Local)',
     models: ['Bonsai-8B.gguf'],
     defaultModel: 'Bonsai-8B.gguf',
     keyPlaceholder: 'bonsai (optional)',
-    color: 'from-green-400 to-emerald-500',
+    color: 'from-accent to-pink-600',
   },
   kingdom: {
     name: 'Hugging Face',
     models: ['gemma-4-26b'],
     defaultModel: 'gemma-4-26b',
     keyPlaceholder: 'HF Token...',
-    color: 'from-amber-400 to-orange-500',
+    color: 'from-pink-600 to-pink-700',
   },
 };
 

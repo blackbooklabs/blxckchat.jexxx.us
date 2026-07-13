@@ -54,9 +54,9 @@ export default function Home() {
       <SEOContent />
       <CursorMotion color="rgba(255, 182, 193, 0.6)" size={10} />
       <MilkingAnimation intensity="passionate">
-        <main className="flex-1 flex flex-col items-center justify-center min-h-screen p-6 relative overflow-hidden">
+        <main className="flex-1 flex flex-col items-center justify-center min-h-[100svh] p-4 relative overflow-hidden">
           {/* Top Right Header Controls */}
-          <div className="absolute top-6 right-6 z-50 flex items-center gap-3">
+          <div className="absolute top-4 right-4 z-50 flex items-center gap-3">
             <ThemeToggle />
             <AuthButton />
           </div>
@@ -82,7 +82,7 @@ export default function Home() {
           >
             {/* Logo/Icon */}
             <motion.div
-              className="mb-8 inline-flex"
+              className="mb-4 inline-flex"
               variants={itemVariants}
             >
               <div className="relative">
@@ -106,7 +106,7 @@ export default function Home() {
 
             {/* Welcome title */}
             <motion.h1
-              className="text-5xl md:text-7xl font-bold tracking-tight mb-6"
+              className="text-4xl md:text-6xl font-bold tracking-tight mb-4"
               variants={itemVariants}
             >
               <span className="text-foreground">Welcome to </span>
@@ -115,7 +115,7 @@ export default function Home() {
 
             {/* Subtitle */}
             <motion.p
-              className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-xl mx-auto leading-relaxed"
+              className="text-lg md:text-xl text-muted-foreground mb-8 max-w-xl mx-auto leading-relaxed"
               variants={itemVariants}
             >
               A highly interactive, animated chat interface powered by Motion UI
@@ -123,24 +123,24 @@ export default function Home() {
 
             {/* Feature cards */}
             <motion.div
-              className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12"
+              className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"
               variants={itemVariants}
             >
               {[
                 {
                   icon: Sparkles,
-                  title: "Motion UI",
-                  description: "Smooth, purposeful animations",
+                  title: "Sovereign Intelligence",
+                  description: "Uncensored, private communion with local models",
                 },
                 {
                   icon: Zap,
-                  title: "Real-time",
-                  description: "Instant message delivery",
+                  title: "Absolute Privacy",
+                  description: "Your vault, your data, permanently secured",
                 },
                 {
                   icon: MessageCircle,
-                  title: "Interactive",
-                  description: "Rich chat experiences",
+                  title: "Divine Connection",
+                  description: "Intimate interactions with JEXXXUS Goddesses",
                 },
               ].map((feature, index) => (
                 <motion.div
@@ -193,7 +193,7 @@ export default function Home() {
 
             {/* Status indicator */}
             <motion.div
-              className="mt-12 flex items-center justify-center gap-2 text-sm text-muted"
+              className="mt-8 flex items-center justify-center gap-2 text-sm text-muted"
               variants={itemVariants}
             >
               <span className="relative flex h-2.5 w-2.5">
