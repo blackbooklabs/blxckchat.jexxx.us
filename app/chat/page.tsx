@@ -1059,15 +1059,15 @@ const [globalContext, setGlobalContext] = useState("");
                 <Sparkles className="w-5 h-5 text-background" />
               </div>
               <div>
-                <h2 className="font-semibold text-foreground">{activeProject ? activeProject.title : 'Luna Verde'}</h2>
-                <p className="text-sm text-muted flex items-center gap-2 flex-wrap">
+                <h2 className="font-doc-body text-base font-semibold text-foreground">{activeProject ? activeProject.title : 'Luna Verde'}</h2>
+                <p className="font-doc-body text-sm text-muted flex items-center gap-2 flex-wrap">
                   7.5 Hz • Real-time Context 
                   {isConfigured && (
                     <>
-                      <span className={`px-2 py-0.5 rounded-full text-xs bg-gradient-to-r ${provider.color} text-white font-medium`}>
+                      <span className={`font-doc-body px-2 py-0.5 rounded-full text-xs bg-gradient-to-r ${provider.color} text-white font-medium`}>
                         {provider.name}
                       </span>
-                      <span className="px-2 py-0.5 rounded-full text-xs bg-accent/20 text-accent font-mono border border-accent/30">
+                      <span className="font-doc-body px-2 py-0.5 rounded-full text-xs bg-accent/20 text-accent border border-accent/30">
                         {providersConfig[activeProvider].model}
                       </span>
                     </>
@@ -1261,7 +1261,7 @@ const [globalContext, setGlobalContext] = useState("");
                 <div className="flex items-center justify-between p-6 border-b border-border">
                   <div className="flex items-center gap-2">
                     <Key className="w-5 h-5 text-accent" />
-                    <h3 className="text-lg font-semibold">BYOK Settings</h3>
+                    <h3 className="font-extended text-sm">BYOK Settings</h3>
                   </div>
                   <button 
                     onClick={() => setShowSettings(false)}
@@ -1292,7 +1292,7 @@ const [globalContext, setGlobalContext] = useState("");
                           }`}
                         >
                           <div className={`w-3 h-3 rounded-full bg-gradient-to-r ${PROVIDERS[p].color} mb-1`} />
-                          <div className="text-sm font-medium">{PROVIDERS[p].name}</div>
+                          <div className="font-doc-body text-sm font-medium">{PROVIDERS[p].name}</div>
                           {isComingSoon && (
                             <div className="absolute top-2 right-2">
                               <span className="text-[9px] uppercase font-bold bg-muted/20 text-muted px-1.5 py-0.5 rounded backdrop-blur">
@@ -1325,7 +1325,7 @@ const [globalContext, setGlobalContext] = useState("");
                       <button
                         type="button"
                         onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
-                        className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent text-left font-mono text-sm flex items-center justify-between transition-all duration-300"
+                        className="font-doc-body w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent text-left text-sm flex items-center justify-between transition-all duration-300"
                       >
                         <span className="truncate">{providersConfig[activeProvider].model}</span>
                         <ChevronDown className={`w-4 h-4 text-muted transition-transform duration-200 ${isModelDropdownOpen ? 'rotate-180' : ''}`} />
@@ -1368,7 +1368,7 @@ const [globalContext, setGlobalContext] = useState("");
                                             setIsModelDropdownOpen(false);
                                             setModelSearch("");
                                           }}
-                                          className={`w-full px-4 py-2.5 text-left font-mono text-xs transition-colors hover:bg-accent/10 hover:text-accent flex items-center justify-between ${
+                                          className={`font-doc-body w-full px-4 py-2.5 text-left text-xs transition-colors hover:bg-accent/10 hover:text-accent flex items-center justify-between ${
                                             providersConfig[activeProvider].model === m ? 'text-accent bg-accent/5 font-semibold' : 'text-foreground/80'
                                           }`}
                                         >
@@ -1409,7 +1409,7 @@ const [globalContext, setGlobalContext] = useState("");
                       </AnimatePresence>
                     </div>
                     <p className="text-xs text-muted mt-2">
-                      Selected: <span className="text-accent font-mono font-medium">{providersConfig[activeProvider].model}</span>
+                      Selected: <span className="font-doc-body text-accent font-medium">{providersConfig[activeProvider].model}</span>
                     </p>
                   </div>
 
@@ -1662,7 +1662,7 @@ const [globalContext, setGlobalContext] = useState("");
                           </div>
                         )}
                         <div 
-                          className="text-sm leading-relaxed whitespace-pre-wrap mt-1"
+                          className="font-doc-body text-sm leading-relaxed whitespace-pre-wrap mt-1"
                           dangerouslySetInnerHTML={{ 
                             __html: (message.text || "")
                               .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
@@ -1713,7 +1713,7 @@ const [globalContext, setGlobalContext] = useState("");
                           : "..."}
                       </p>
                       {message.sender === "other" && message.modelUsed && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/20 text-accent/80 font-mono">
+                        <span className="font-doc-body text-[10px] px-1.5 py-0.5 rounded bg-accent/20 text-accent/80">
                           {message.modelUsed}
                         </span>
                       )}
@@ -1845,7 +1845,7 @@ const [globalContext, setGlobalContext] = useState("");
               rows={1}
               autoCorrect="off" autoCapitalize="off" spellCheck={false}
               autoComplete="off" data-gramm="false"
-              className="flex-1 px-4 py-3 bg-surface border border-border rounded-[24px] focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:opacity-50 disabled:cursor-not-allowed resize-none min-h-[48px] overflow-y-auto w-full leading-snug"
+              className="font-doc-body flex-1 px-4 py-3 bg-surface border border-border rounded-[24px] focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 disabled:opacity-50 disabled:cursor-not-allowed resize-none min-h-[48px] overflow-y-auto w-full leading-snug"
             />
             <MilkingAnimation intensity={isLoading ? "gentle" : "passionate"}>
               <motion.button

@@ -4,6 +4,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth, useClerk } from "@/lib/auth-client";
+import {
+  DEFAULT_DIVINITY_FOLDERS,
+  loadSidebarExpanded,
+  saveSidebarExpanded,
+} from "@/lib/sidebar-expanded-persistence";
 import { useChatStore, type PersonaPreset } from "@/store/useChatStore";
 import { 
   Plus, MessageSquare, Trash2, X, PanelLeftOpen, Folder, FolderOpen, Settings, Lock, Flame, 
@@ -233,7 +238,7 @@ function PersonaModal({ onClose, editTarget }: PersonaModalProps) {
 // Main Sidebar
 // ─────────────────────────────────────────────────────────────────────────────
 export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }: ChatSidebarProps) {
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, userId } = useAuth();
   const clerk = useClerk();
   const {
     projects,
@@ -307,6 +312,7 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
   }, [isResizing, sidebarWidth]);
 
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  const [expandedStateHydrated, setExpandedStateHydrated] = useState(false);
   // Rename state (renamingId comes from store)
   const [renameValue, setRenameValue] = useState("");
   const renameInputRef = useRef<HTMLInputElement>(null);
@@ -317,8 +323,29 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
   const chatRenameInputRef = useRef<HTMLInputElement>(null);
 
   const [expandedDivinityFolders, setExpandedDivinityFolders] = useState<Set<string>>(
-    () => new Set(['Agents', 'Agents/Luna Verde', 'Agents/Xena (Venus) Azul', 'Biblical']),
+    () => new Set(DEFAULT_DIVINITY_FOLDERS),
   );
+
+  useEffect(() => {
+    if (!userId) {
+      setExpandedStateHydrated(true);
+      return;
+    }
+    const saved = loadSidebarExpanded(userId);
+    if (saved) {
+      setExpandedDivinityFolders(new Set(saved.divinityFolders));
+      setExpandedProjects(new Set(saved.projectIds));
+    }
+    setExpandedStateHydrated(true);
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId || !expandedStateHydrated) return;
+    saveSidebarExpanded(userId, {
+      divinityFolders: [...expandedDivinityFolders],
+      projectIds: [...expandedProjects],
+    });
+  }, [userId, expandedDivinityFolders, expandedProjects, expandedStateHydrated]);
 
   const toggleDivinityFolder = (key: string) => {
     setExpandedDivinityFolders((prev) => {
@@ -397,7 +424,7 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
           )}
           <span className="text-xl group-hover:scale-110 transition-transform">{p.icon}</span>
           <div className="flex flex-col overflow-hidden flex-1">
-            <span className="text-sm font-medium text-foreground truncate">{p.name}</span>
+            <span className="font-doc-body text-sm font-medium text-foreground truncate">{p.name}</span>
             <span className="text-[10px] text-muted truncate">{p.tagline}</span>
           </div>
           {isSpicyUnlocked ? (
@@ -589,8 +616,8 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
           {/* New Project button */}
           <motion.button
             onClick={handleNewProject}
-            className="flex w-full items-center justify-center gap-2 px-4 py-2 bg-accent/10 hover:bg-accent/20 text-accent rounded-xl border border-accent/20 transition-colors font-medium text-sm shrink-0"
-            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+            className="font-extended flex w-full items-center justify-center gap-2 rounded-full bg-pink-600 px-4 py-2.5 text-[10px] text-white shadow-lg shadow-pink-500/30 transition-all hover:scale-105 hover:bg-pink-500 active:scale-95 shrink-0"
+            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
           >
             <Plus className="w-4 h-4" /> New Project
           </motion.button>
@@ -719,10 +746,10 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
                           onClick={e => e.stopPropagation()}
                           autoCorrect="off" autoCapitalize="off" spellCheck={false}
                           autoComplete="off" data-gramm="false"
-                          className="flex-1 bg-transparent border-b border-accent text-sm font-medium focus:outline-none text-foreground"
+                          className="font-doc-body flex-1 bg-transparent border-b border-accent text-sm font-medium focus:outline-none text-foreground"
                         />
                       ) : (
-                        <span className="text-sm font-medium truncate">{project.title}</span>
+                        <span className="font-doc-body text-sm font-medium truncate">{project.title}</span>
                       )}
                     </div>
 
@@ -786,7 +813,7 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
                                   className="flex-1 bg-transparent border-b border-accent text-xs focus:outline-none text-foreground"
                                 />
                               ) : (
-                                <span className="text-xs truncate flex-1">{chat.title}</span>
+                                <span className="font-doc-body text-xs truncate flex-1">{chat.title}</span>
                               )}
                               
                               {!renamingChatId && (

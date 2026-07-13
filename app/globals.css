@@ -114,6 +114,13 @@
   letter-spacing: 0.25em;
 }
 
+.font-doc-body {
+  font-family: var(--font-ibm-plex-sans), system-ui, -apple-system, sans-serif;
+  font-size: 1rem;
+  line-height: 1.7;
+  font-weight: 400;
+}
+
 .vcr-telemetry {
   font-family: var(--font-mono);
   text-transform: uppercase;

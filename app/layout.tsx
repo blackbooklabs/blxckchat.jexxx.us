@@ -1,6 +1,6 @@
 import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
-import { Inter, Syncopate, VT323 } from "next/font/google";
+import { IBM_Plex_Sans, Inter, Syncopate, VT323 } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { DomainRouting } from "@/components/DomainRouting";
@@ -18,6 +18,13 @@ export const dynamic = "force-dynamic";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-sans",
+  display: "swap",
+});
+
+const ibmPlexSans = IBM_Plex_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-ibm-plex-sans",
   display: "swap",
 });
 
@@ -94,7 +101,7 @@ export default function RootLayout({
           <link href="https://fonts.googleapis.com/css2?family=Pinyon+Script&display=swap" rel="stylesheet" />
         </head>
         <body
-          className={`${inter.variable} ${syncopate.variable} ${vt323.variable} font-sans antialiased min-h-screen bg-background text-foreground`}
+          className={`${inter.variable} ${ibmPlexSans.variable} ${syncopate.variable} ${vt323.variable} font-sans antialiased min-h-screen bg-background text-foreground`}
         >
           <KingdomThemeSync />
 
