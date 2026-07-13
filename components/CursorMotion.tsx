@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { motion, useSpring, useTransform } from "motion/react";
+import { motion, useSpring, useTransform } from "framer-motion";
 
 interface CursorMotionProps {
   color?: string;

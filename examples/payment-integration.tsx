@@ -3,7 +3,7 @@
 
 "use client";
 
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import { getCurrentPaymentProvider, SubscribeButtonProps } from "@/lib/payments";
 import { CCBillSubscribeButton } from "@/components/CCBillSubscribeButton";
 import { PaddleSubscribeButton } from "@/components/PaddleSubscribeButton";

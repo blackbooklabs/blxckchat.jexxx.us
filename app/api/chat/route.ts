@@ -11,6 +11,8 @@ import { createXai } from '@ai-sdk/xai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createGroq } from '@ai-sdk/groq';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { createAnthropic } from '@ai-sdk/anthropic';
+import { createOllama } from 'ollama-ai-provider';
 import { loadLunaContext } from '@/lib/luna-context';
 
 export const runtime = 'edge';
@@ -34,7 +36,7 @@ export async function OPTIONS(req: Request) {
 interface ChatRequest {
   messages: Array<{ role: 'user' | 'assistant' | 'system'; content: any }>;
   mode?: 'venus' | 'innocent';
-  provider?: 'openai' | 'grok' | 'gemini' | 'kimi' | 'groq' | 'openrouter' | 'bonsai' | 'kingdom';
+  provider?: 'openai' | 'anthropic' | 'grok' | 'gemini' | 'kimi' | 'groq' | 'openrouter' | 'ollama' | 'bonsai' | 'kingdom';
   model?: string;
   type?: 'text' | 'image';
   stream?: boolean;
@@ -60,6 +62,20 @@ const PROVIDERS: Record<string, ProviderConfig> = {
     createProvider: (apiKey: string) => createOpenAI({ apiKey }),
     defaultModel: 'gpt-4o',
     models: ['gpt-4o', 'gpt-4.5-preview', 'o3-mini', 'gpt-4o-mini', 'gpt-4-turbo'],
+  },
+  anthropic: {
+    name: 'Anthropic',
+    keyHeader: 'x-anthropic-key',
+    createProvider: (apiKey: string) => createAnthropic({ apiKey }),
+    defaultModel: 'claude-3-7-sonnet-20250219',
+    models: ['claude-3-7-sonnet-20250219', 'claude-3-5-sonnet-latest', 'claude-3-opus-latest', 'claude-3-5-haiku-latest'],
+  },
+  ollama: {
+    name: 'Ollama',
+    keyHeader: 'x-ollama-url', // We use URL here instead of key, but handled via the apiKey parameter as host
+    createProvider: (url: string) => createOllama({ baseURL: url || 'http://localhost:11434/api' }),
+    defaultModel: 'llama3',
+    models: ['llama3', 'mistral', 'gemma'],
   },
   grok: {
     name: 'Grok (xAI)',
@@ -175,7 +191,7 @@ export async function POST(req: Request) {
     // Extract API key from custom header
     const apiKey = req.headers.get(providerConfig.keyHeader);
     
-    if (!apiKey && provider !== 'bonsai') {
+    if (!apiKey && provider !== 'bonsai' && provider !== 'ollama') {
       console.error(`🌙 Luna Verde: Missing ${providerConfig.keyHeader} header`);
       return new Response(JSON.stringify({
         error: 'API Key Required',
@@ -190,7 +206,7 @@ export async function POST(req: Request) {
     }
 
     // Validate API key format (basic check)
-    if (provider !== 'bonsai' && (!apiKey || apiKey.length < 10)) {
+    if (provider !== 'bonsai' && provider !== 'ollama' && (!apiKey || apiKey.length < 10)) {
       return new Response(JSON.stringify({
         error: 'Invalid API Key',
         message: 'The API key provided appears to be invalid (too short).',

@@ -4,7 +4,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import { CCBILL_CONFIG } from "@/lib/payments";
 
 interface CCBillSubscribeButtonProps {

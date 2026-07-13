@@ -3,11 +3,13 @@
 
 "use client";
 
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import { MessageCircle, Sparkles, Heart, Zap } from "lucide-react";
 import CursorMotion from "@/components/CursorMotion";
 import MilkingAnimation from "@/components/MilkingAnimation";
 import SEOContent from "@/components/SEOContent";
+import { AuthButton } from "@/components/AuthButton";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 // Animation variants
 const containerVariants = {
@@ -53,6 +55,11 @@ export default function Home() {
       <CursorMotion color="rgba(255, 182, 193, 0.6)" size={10} />
       <MilkingAnimation intensity="passionate">
         <main className="flex-1 flex flex-col items-center justify-center min-h-screen p-6 relative overflow-hidden">
+          {/* Top Right Header Controls */}
+          <div className="absolute top-6 right-6 z-50 flex items-center gap-3">
+            <ThemeToggle />
+            <AuthButton />
+          </div>
           {/* Animated background elements */}
           <motion.div
             className="absolute top-1/4 left-1/4 w-96 h-96 bg-accent/20 rounded-full blur-[120px]"

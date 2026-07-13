@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth, SignInButton } from "@/lib/auth-client";
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import { Lock, LogIn, Sparkles } from "lucide-react";
 import { ReactNode } from "react";
 

@@ -1,6 +1,6 @@
 import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
-import localFont from "next/font/local";
+import { Inter, Syncopate, VT323 } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { DomainRouting } from "@/components/DomainRouting";
@@ -10,20 +10,28 @@ import {
   generateOrganizationSchema,
   generateFAQSchema,
 } from "@/lib/metadata.config";
+import { KingdomThemeSync } from "@/components/KingdomThemeSync";
+import { ShootingStars } from "@/components/ShootingStars";
 
 export const dynamic = "force-dynamic";
 
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
   display: "swap",
 });
 
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
+const syncopate = Syncopate({
+  subsets: ["latin"],
+  weight: ["700"],
+  variable: "--font-display",
+  display: "swap",
+});
+
+const vt323 = VT323({
+  subsets: ["latin"],
+  weight: ["400"],
+  variable: "--font-mono",
   display: "swap",
 });
 
@@ -46,14 +54,14 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: "your-google-verification-code", // Add your Google Search Console code
+    google: "your-google-verification-code",
   },
   category: "technology",
   classification: "AI Chat Platform",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#030303",
+  themeColor: "#050508",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -65,36 +73,50 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const isLocalBypass = process.env.NODE_ENV === "development";
-  const SafeClerkProvider = isLocalBypass
-    ? ({ children }: { children: React.ReactNode }) => <>{children}</>
-    : ClerkProvider;
-
   return (
-    <SafeClerkProvider>
+    <ClerkProvider
+      appearance={{
+        variables: {
+          colorPrimary: '#ec4899',
+        },
+        baseTheme: undefined, // Handled dynamically if needed, but defaults to dark usually for JEXXXUS
+      }}
+    >
       <html lang="en" className="dark" suppressHydrationWarning>
         <head>
           {/* Structured Data */}
           <JsonLd data={generateOrganizationSchema()} />
           <JsonLd data={generateFAQSchema()} />
+          
+          {/* Include Pinyon Script via standard link to avoid next/font complications with cursive */}
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+          <link href="https://fonts.googleapis.com/css2?family=Pinyon+Script&display=swap" rel="stylesheet" />
         </head>
         <body
-          className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased min-h-screen bg-background text-foreground`}
+          className={`${inter.variable} ${syncopate.variable} ${vt323.variable} font-sans antialiased min-h-screen bg-background text-foreground`}
         >
-          {/* Global background gradient */}
-          <div className="fixed inset-0 bg-background -z-10" />
-          <div className="fixed inset-0 bg-gradient-to-br from-accent/5 via-transparent to-accent-muted/5 -z-10 pointer-events-none" />
+          <KingdomThemeSync />
 
-          {/* Domain routing for sacred path configuration */}
-          <DomainRouting>
-            {/* Main content wrapper */}
-            <div className="relative flex min-h-screen flex-col">
-              {children}
+          <div className="relative min-h-screen bg-background isolate flex flex-col">
+            {/* Atmospheric Layers */}
+            <div className="fixed inset-0 z-0 opacity-40">
+              <ShootingStars />
             </div>
-          </DomainRouting>
+            <div className="crt-overlay" />
+            <div className="vhs-rainbow-strip fixed top-0 left-0 right-0 z-[60]" />
+
+            {/* Domain routing for sacred path configuration */}
+            <DomainRouting>
+              {/* Main content wrapper */}
+              <div className="relative z-10 flex flex-1 flex-col">
+                {children}
+              </div>
+            </DomainRouting>
+          </div>
           <Analytics />
         </body>
       </html>
-    </SafeClerkProvider>
+    </ClerkProvider>
   );
 }

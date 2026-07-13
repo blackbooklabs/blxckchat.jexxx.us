@@ -4,7 +4,7 @@
 "use client";
 
 import Link from "next/link";
-import { motion } from "motion/react";
+import { motion } from "framer-motion";
 import { Crown, MessageCircle, Wand2, ExternalLink } from "lucide-react";
 
 interface EcosystemNavProps {

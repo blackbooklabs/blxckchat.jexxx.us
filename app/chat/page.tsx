@@ -10,11 +10,13 @@ import ShootingStars from "@/components/ShootingStars";
 import { AuthGate } from "@/components/AuthGate";
 import ChatSidebar from "@/components/ChatSidebar";
 import { ZoomModal } from "@/components/ZoomModal";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { AuthButton } from "@/components/AuthButton";
 import { useChatStore, Message, MessageAttachment } from "@/store/useChatStore";
 
 const REQUIRE_AUTH = process.env.NODE_ENV !== 'development';
 
-type Provider = 'openai' | 'grok' | 'gemini' | 'kimi' | 'groq' | 'openrouter' | 'bonsai' | 'kingdom';
+type Provider = 'openai' | 'anthropic' | 'grok' | 'gemini' | 'kimi' | 'groq' | 'openrouter' | 'ollama' | 'bonsai' | 'kingdom';
 
 interface ProviderState {
   apiKey: string;
@@ -22,47 +24,6 @@ interface ProviderState {
   availableModels: string[];
 }
 
-// Clerk Authentication Button Component
-function AuthButton() {
-  const { isSignedIn, isLoaded } = useAuth();
-  
-  if (!isLoaded) {
-    return (
-      <div className="w-8 h-8 rounded-full bg-muted/20 animate-pulse" />
-    );
-  }
-  
-  if (isSignedIn) {
-    return (
-      <UserButton 
-        afterSignOutUrl="/"
-        appearance={{
-          elements: {
-            userButtonAvatarBox: "w-8 h-8 rounded-full ring-2 ring-accent/50",
-            userButtonPopoverCard: "bg-surface border border-border shadow-xl",
-            userPreviewTextContainer: "text-foreground",
-            userButtonPopoverActionButton: "text-foreground hover:bg-accent/10",
-            userButtonPopoverActionButtonText: "text-foreground",
-            userButtonPopoverFooter: "hidden",
-          }
-        }}
-      />
-    );
-  }
-  
-  return (
-    <SignInButton mode="modal">
-      <motion.button
-        className="flex items-center gap-2 px-3 py-2 bg-accent/10 hover:bg-accent/20 text-accent rounded-full border border-accent/30 transition-colors"
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-      >
-        <LogIn className="w-4 h-4" />
-        <span className="text-sm font-medium hidden sm:inline">Sign In</span>
-      </motion.button>
-    </SignInButton>
-  );
-}
 
 const PROVIDERS = {
   openai: {
@@ -79,6 +40,19 @@ const PROVIDERS = {
     keyPlaceholder: 'sk-...',
     color: 'from-green-500 to-emerald-600',
     comingSoon: true,
+  },
+  anthropic: {
+    name: 'Anthropic',
+    models: [
+      'claude-3-7-sonnet-20250219',
+      'claude-3-5-sonnet-latest',
+      'claude-3-opus-latest',
+      'claude-3-5-haiku-latest',
+    ],
+    defaultModel: 'claude-3-7-sonnet-20250219',
+    keyPlaceholder: 'sk-ant-...',
+    color: 'from-amber-500 to-orange-600',
+    comingSoon: false,
   },
   grok: {
     name: 'Grok (xAI)',
@@ -147,6 +121,17 @@ const PROVIDERS = {
     keyPlaceholder: 'sk-or-v1-...',
     color: 'from-teal-500 to-cyan-600',
   },
+  ollama: {
+    name: 'Ollama (Local)',
+    models: [
+      'llama3',
+      'mistral',
+      'gemma',
+    ],
+    defaultModel: 'llama3',
+    keyPlaceholder: 'http://localhost:11434/api',
+    color: 'from-slate-400 to-zinc-500',
+  },
   bonsai: {
     name: 'Bonsai 1-bit (Local)',
     models: ['Bonsai-8B.gguf'],
@@ -165,11 +150,13 @@ const PROVIDERS = {
 
 const HEADER_KEYS: Record<Provider, string> = {
   openai: 'x-openai-key',
+  anthropic: 'x-anthropic-key',
   grok: 'x-grok-key',
   gemini: 'x-gemini-key',
   kimi: 'x-kimi-key',
   groq: 'x-groq-key',
   openrouter: 'x-openrouter-key',
+  ollama: 'x-ollama-url',
   bonsai: 'x-bonsai-key',
   kingdom: 'x-kingdom-key',
 };
@@ -397,11 +384,13 @@ const [globalContext, setGlobalContext] = useState("");
   const [activeProvider, setActiveProvider] = useState<Provider>('bonsai');
   const [providersConfig, setProvidersConfig] = useState<Record<Provider, ProviderState>>({
     openai: { apiKey: '', model: PROVIDERS.openai.defaultModel, availableModels: PROVIDERS.openai.models },
+    anthropic: { apiKey: '', model: PROVIDERS.anthropic.defaultModel, availableModels: PROVIDERS.anthropic.models },
     grok: { apiKey: '', model: PROVIDERS.grok.defaultModel, availableModels: PROVIDERS.grok.models },
     gemini: { apiKey: '', model: PROVIDERS.gemini.defaultModel, availableModels: PROVIDERS.gemini.models },
     kimi: { apiKey: '', model: PROVIDERS.kimi.defaultModel, availableModels: PROVIDERS.kimi.models },
     groq: { apiKey: '', model: PROVIDERS.groq.defaultModel, availableModels: PROVIDERS.groq.models },
     openrouter: { apiKey: '', model: PROVIDERS.openrouter.defaultModel, availableModels: PROVIDERS.openrouter.models },
+    ollama: { apiKey: 'http://localhost:11434/api', model: PROVIDERS.ollama.defaultModel, availableModels: PROVIDERS.ollama.models },
     bonsai: { apiKey: 'bonsai', model: PROVIDERS.bonsai.defaultModel, availableModels: PROVIDERS.bonsai.models },
     kingdom: { apiKey: '', model: PROVIDERS.kingdom.defaultModel, availableModels: PROVIDERS.kingdom.models },
   });
@@ -866,6 +855,8 @@ const [globalContext, setGlobalContext] = useState("");
             </div>
             
             <div className="flex items-center gap-2">
+              <ThemeToggle />
+
               <motion.button
                 onClick={() => setShowSettings(true)}
                 className={`p-2 rounded-full transition-colors ${isConfigured ? 'bg-accent/20 text-accent' : 'bg-muted/20 text-muted hover:text-foreground'}`}
