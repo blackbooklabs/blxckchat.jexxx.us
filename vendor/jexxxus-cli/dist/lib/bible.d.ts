@@ -18,6 +18,7 @@ export interface BibleChapter {
     chapter: number;
     verseCount: number;
 }
+export declare function hasLocalBibleVault(): boolean;
 export declare function getBibleSections(): string[];
 export declare function getBibleBooks(section: string): string[];
 export declare function getBibleChapters(section: string, book: string): string[];
@@ -39,4 +40,6 @@ export declare function parseVerseReference(query: string): {
     verse: number;
 } | null;
 export declare function findVerse(query: string): BibleVerse | null;
+/** Local obsidian vault first, then bible.jexxx.us web API when vault is absent. */
+export declare function findVerseWithFallback(query: string): Promise<BibleVerse | null>;
 //# sourceMappingURL=bible.d.ts.map

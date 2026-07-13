@@ -10,7 +10,7 @@ import { runDoctorFromEnv } from "./lib/doctor.js";
 import { loadOperatorEnv } from "./lib/env.js";
 import { getImportOwnerError } from "./lib/guards.js";
 import { createNotificationsClient, sendSystemNotification, } from "./lib/notifications.js";
-import { getBibleSections, getBibleBooks, getBibleChapters, getBibleVerses, getVerse, getChapter, findBook, findVerse, } from "./lib/bible.js";
+import { getBibleSections, getBibleBooks, getBibleChapters, getBibleVerses, getVerse, getChapter, findBook, findVerseWithFallback, } from "./lib/bible.js";
 import { createOperatorClient } from "./lib/supabase.js";
 import { listProvidersRedacted, resolveStartupProvider, runConfigureFlow, } from "./lib/blxckchat/config.js";
 import { resolveProvider } from "./lib/blxckchat/providers/registry.js";
@@ -368,9 +368,9 @@ bibleCmd
 bibleCmd
     .command("query <query>")
     .description("Query a verse (e.g., \"Genesis 1:1\" or \"John 3 16\")")
-    .action((query) => {
+    .action(async (query) => {
     try {
-        const verseData = findVerse(query);
+        const verseData = await findVerseWithFallback(query);
         if (!verseData) {
             console.error(chalk.red(`[ERROR] Verse not found: ${query}`));
             process.exit(1);

@@ -1,4 +1,4 @@
-import { getBibleSections, getBibleBooks, getBibleChapters, findBook, findVerse, looksLikeVerseReference, } from "../../bible.js";
+import { getBibleSections, getBibleBooks, getBibleChapters, findBook, findVerseWithFallback, hasLocalBibleVault, looksLikeVerseReference, } from "../../bible.js";
 import { formatBibleVerseForChat } from "../bible-format.js";
 /**
  * Read-only wrapper around lib/bible.ts. Consolidated into a single tool
@@ -51,17 +51,29 @@ export const bibleTool = {
             (rawAction.includes("chapter") && Boolean(section) && Boolean(bookArg));
         const wantsVerse = Boolean(query) || rawAction === "query" || rawAction.includes("verse");
         if (wantsSections) {
-            return JSON.stringify(getBibleSections());
+            const sections = getBibleSections();
+            if (sections.length === 0) {
+                return ("Local Bible vault is not mounted on this host. Use action=query with a verse reference " +
+                    "(e.g. 'Genesis 1:1') — web lookup via bible.jexxx.us is used automatically.");
+            }
+            return JSON.stringify(sections);
         }
         if (wantsBooks) {
             if (!section)
                 return "Error: 'section' is required to list books.";
-            return JSON.stringify(getBibleBooks(section));
+            const books = getBibleBooks(section);
+            if (books.length === 0 && !hasLocalBibleVault()) {
+                return ("Local Bible vault is not mounted. Use action=query with Book Chapter:Verse for web lookup.");
+            }
+            return JSON.stringify(books);
         }
         if (wantsChapters) {
             if (!section || !bookArg) {
                 return ("Error: chapter listing requires section + book. For a single verse use action=query " +
                     "with Book Chapter:Verse (e.g. '1 John 1:9').");
+            }
+            if (!hasLocalBibleVault()) {
+                return (`Local Bible vault is not mounted. Use action=query with "${bookArg} 1:1" style references for web lookup.`);
             }
             const bookInfo = findBook(bookArg);
             const bookFolder = bookInfo?.book ?? bookArg;
@@ -78,7 +90,7 @@ export const bibleTool = {
                     `For video channels, series, or titles like "${query}", use tv_query with action=search instead. ` +
                     `For VEIL articles, use veil_query.`);
             }
-            const verse = findVerse(query);
+            const verse = await findVerseWithFallback(query);
             if (!verse) {
                 return (`No verse found matching "${query}". If the user meant a JEXXXUS | TV video or channel, ` +
                     `call tv_query with action=search instead of retrying bible_query.`);

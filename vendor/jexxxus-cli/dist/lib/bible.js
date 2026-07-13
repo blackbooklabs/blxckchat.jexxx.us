@@ -1,18 +1,17 @@
 import * as fs from "fs";
 import * as path from "path";
-import { resolveBibleVaultPath, validateVaultPath } from "./path-resolver.js";
+import { fetchVerseFromWeb } from "./bible-web.js";
+import { resolveBibleVaultPath } from "./path-resolver.js";
 function getVaultPath() {
     return resolveBibleVaultPath();
 }
-function requireVaultPath() {
-    const vaultPath = getVaultPath();
-    if (!vaultPath) {
-        throw new Error("[Bible] Local vault not configured. Set JEXXXUS_BIBLE_VAULT_PATH env var or use web-based queries.");
-    }
-    return vaultPath;
+export function hasLocalBibleVault() {
+    return getVaultPath() !== null;
 }
 export function getBibleSections() {
-    const vaultPath = requireVaultPath();
+    const vaultPath = getVaultPath();
+    if (!vaultPath)
+        return [];
     const entries = fs.readdirSync(vaultPath);
     return entries
         .filter((e) => fs.statSync(path.join(vaultPath, e)).isDirectory() &&
@@ -20,7 +19,9 @@ export function getBibleSections() {
         .sort();
 }
 export function getBibleBooks(section) {
-    const vaultPath = requireVaultPath();
+    const vaultPath = getVaultPath();
+    if (!vaultPath)
+        return [];
     const sectionPath = path.join(vaultPath, section);
     if (!fs.existsSync(sectionPath)) {
         throw new Error(`[Bible] Section not found: ${section}`);
@@ -32,7 +33,9 @@ export function getBibleBooks(section) {
         .sort();
 }
 export function getBibleChapters(section, book) {
-    const vaultPath = requireVaultPath();
+    const vaultPath = getVaultPath();
+    if (!vaultPath)
+        return [];
     const bookPath = path.join(vaultPath, section, book);
     if (!fs.existsSync(bookPath)) {
         throw new Error(`[Bible] Book not found: ${section}/${book}`);
@@ -47,7 +50,9 @@ export function getBibleChapters(section, book) {
     });
 }
 export function getBibleVerses(section, book, chapter) {
-    const vaultPath = requireVaultPath();
+    const vaultPath = getVaultPath();
+    if (!vaultPath)
+        return [];
     const chapterPath = path.join(vaultPath, section, book, chapter);
     if (!fs.existsSync(chapterPath)) {
         throw new Error(`[Bible] Chapter not found: ${section}/${book}/${chapter}`);
@@ -88,7 +93,10 @@ function parseVerseFrontmatter(content) {
     return fm;
 }
 export function getVerse(section, book, chapter, verseFile) {
-    const vaultPath = requireVaultPath();
+    const vaultPath = getVaultPath();
+    if (!vaultPath) {
+        throw new Error("[Bible] Local vault not configured. Set JEXXXUS_BIBLE_VAULT_PATH or use bible_query action=query for web lookup.");
+    }
     const versePath = path.join(vaultPath, section, book, chapter, verseFile);
     if (!fs.existsSync(versePath)) {
         throw new Error(`[Bible] Verse not found: ${section}/${book}/${chapter}/${verseFile}`);
@@ -123,6 +131,8 @@ export function normalizeBookLookupKey(bookName) {
         .replace(/\s+/g, "");
 }
 export function findBook(bookName) {
+    if (!getVaultPath())
+        return null;
     const sections = getBibleSections();
     const queryKey = normalizeBookLookupKey(bookName);
     for (const section of sections) {
@@ -153,6 +163,9 @@ export function parseVerseReference(query) {
     return { bookName: match[1].trim(), chapter, verse };
 }
 export function findVerse(query) {
+    return findVerseFromLocalVault(query);
+}
+function findVerseFromLocalVault(query) {
     const parsed = parseVerseReference(query);
     if (!parsed)
         return null;
@@ -171,5 +184,15 @@ export function findVerse(query) {
     catch {
         return null;
     }
+}
+/** Local obsidian vault first, then bible.jexxx.us web API when vault is absent. */
+export async function findVerseWithFallback(query) {
+    const local = findVerseFromLocalVault(query);
+    if (local)
+        return local;
+    const parsed = parseVerseReference(query);
+    if (!parsed)
+        return null;
+    return fetchVerseFromWeb(parsed.bookName, parsed.chapter, parsed.verse);
 }
 //# sourceMappingURL=bible.js.map
