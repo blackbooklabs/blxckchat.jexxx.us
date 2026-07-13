@@ -571,7 +571,7 @@ const [globalContext, setGlobalContext] = useState("");
         if (clientFetched) return;
 
         // Try proxying through server (works for public Ollama instances)
-        const res = await fetch('/api/models', {
+        const res = await fetch('/api/models/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -620,7 +620,7 @@ const [globalContext, setGlobalContext] = useState("");
         }
       }
 
-      const res = await fetch('/api/models', {
+      const res = await fetch('/api/models/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -628,20 +628,35 @@ const [globalContext, setGlobalContext] = useState("");
         },
         body: JSON.stringify({ provider: providerName })
       });
-      
+
+      const contentType = res.headers.get('content-type') ?? '';
+      const isJson = contentType.includes('application/json');
+
       if (!res.ok) {
         let errMsg = `Failed to fetch models (status ${res.status})`;
         try {
-          const contentType = res.headers.get('content-type');
-          if (contentType && contentType.includes('application/json')) {
+          if (isJson) {
             const errData = await res.json();
             errMsg = errData.error || errData.message || errMsg;
           } else {
             const text = await res.text();
-            errMsg = text.slice(0, 100) || errMsg;
+            if (text.trimStart().startsWith('<!DOCTYPE') || text.trimStart().startsWith('<html')) {
+              errMsg =
+                res.status === 404
+                  ? 'Model API route missing on server (deployment may be stale). Try again after the site redeploys.'
+                  : 'Server returned HTML instead of JSON — check that /api/models/ is deployed.';
+            } else {
+              errMsg = text.slice(0, 160) || errMsg;
+            }
           }
         } catch (_) {}
         throw new Error(errMsg);
+      }
+
+      if (!isJson) {
+        throw new Error(
+          'Server returned HTML instead of JSON — /api/models/ may not be deployed yet.',
+        );
       }
 
       const data = await res.json();
