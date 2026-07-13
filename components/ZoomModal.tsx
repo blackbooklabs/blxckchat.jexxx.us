@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Wand2, Download } from "lucide-react";
+import { X, Download } from "lucide-react";
 import { useEffect } from "react";
 
 interface ZoomModalProps {
@@ -9,11 +9,9 @@ interface ZoomModalProps {
   name?: string;
   isOpen: boolean;
   onClose: () => void;
-  onPattern?: (url: string) => void;
 }
 
-export function ZoomModal({ url, name, isOpen, onClose, onPattern }: ZoomModalProps) {
-  // Close on Escape
+export function ZoomModal({ url, name, isOpen, onClose }: ZoomModalProps) {
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -39,21 +37,11 @@ export function ZoomModal({ url, name, isOpen, onClose, onPattern }: ZoomModalPr
             className="relative max-w-7xl w-full max-h-full flex flex-col items-center gap-4"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header / Actions */}
             <div className="absolute -top-12 left-0 right-0 flex items-center justify-between text-white/70">
               <span className="text-sm font-medium truncate max-w-[200px]">
                 {name || "Sacred Vision"}
               </span>
               <div className="flex items-center gap-4">
-                {onPattern && (
-                  <button
-                    onClick={() => onPattern(url)}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-accent/20 hover:bg-accent/40 text-accent rounded-full text-xs font-bold border border-accent/30 transition-all"
-                  >
-                    <Wand2 className="w-3.5 h-3.5" />
-                    Pattern this soul
-                  </button>
-                )}
                 <a
                   href={url}
                   download={name || "vision.jpg"}
@@ -72,7 +60,6 @@ export function ZoomModal({ url, name, isOpen, onClose, onPattern }: ZoomModalPr
               </div>
             </div>
 
-            {/* Image */}
             <div className="relative group overflow-hidden rounded-2xl border border-white/10 shadow-2xl bg-black">
               <img
                 src={url}
@@ -81,7 +68,6 @@ export function ZoomModal({ url, name, isOpen, onClose, onPattern }: ZoomModalPr
               />
             </div>
 
-            {/* Footer / Caption */}
             <div className="text-white/40 text-[10px] uppercase tracking-[0.2em] font-light">
               JEXXXUS Empire • Vision Payload Analysis
             </div>

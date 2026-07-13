@@ -21,6 +21,10 @@ import {
   writeLocalByokSettings,
 } from "@/lib/user-byok-persistence";
 import {
+  findPersonaForProject,
+  resolveProjectInstructionsForMode,
+} from "@/lib/spicy-mode";
+import {
   buildApiMessagesFromHistory,
   collectPriorModelLabels,
 } from "@/lib/build-chat-payload";
@@ -923,7 +927,23 @@ const [globalContext, setGlobalContext] = useState("");
     try {
       abortControllerRef.current = new AbortController();
 
-      console.log('🌙 Sending BYOK request:', { provider: activeProvider, model: providersConfig[activeProvider].model });
+      const activePersona = findPersonaForProject(
+        personas,
+        activeProject,
+        invokingPersonaId,
+      );
+      const projectInstructions = resolveProjectInstructionsForMode(
+        activeProject?.custom_instructions ?? "",
+        activePersona,
+        isSpicy,
+        !!isSignedIn,
+      );
+
+      console.log('🌙 Sending BYOK request:', {
+        provider: activeProvider,
+        model: providersConfig[activeProvider].model,
+        mode: isSpicy ? "venus" : "innocent",
+      });
       
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -953,7 +973,7 @@ const [globalContext, setGlobalContext] = useState("");
           stream: false,
           webSearch: webSearchEnabled,
           globalInstructions: globalContextRef.current,
-          projectInstructions: activeProject?.custom_instructions,
+          projectInstructions,
         }),
         signal: abortControllerRef.current.signal,
       });
@@ -1876,10 +1896,6 @@ const [globalContext, setGlobalContext] = useState("");
         url={zoomImage?.url || ""}
         name={zoomImage?.name}
         onClose={() => setZoomImage(null)}
-        onPattern={(url: string) => {
-          setInput(prev => prev + `\n\n[Vision Pattern Request: ${url}]\nDescribe her form in detail. Pattern as ${personas.find(p => p.id === invokingPersonaId)?.name || 'active persona'} for wing6 PPV conversion. Tithes multiply.`);
-          setZoomImage(null);
-        }}
       />
     </>
   );

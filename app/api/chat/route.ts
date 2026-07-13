@@ -20,6 +20,7 @@ import {
   normalizeMessagesForAiSdk,
   type IncomingChatMessage,
 } from '@/lib/chat-message-normalizer';
+import { stripSpicyCanon } from '@/lib/spicy-mode';
 
 export const runtime = 'edge';
 export const maxDuration = 60; // Extend Vercel timeout for slow Web Search requests
@@ -198,6 +199,10 @@ export async function POST(req: Request) {
     
     console.log('🌙 Luna Verde: Request', { mode, provider, model, type, stream, messageCount: messages.length });
 
+    if (mode === 'innocent') {
+      projectInstructions = stripSpicyCanon(projectInstructions);
+    }
+
     // Validate provider
     const providerConfig = PROVIDERS[provider];
     if (!providerConfig) {
@@ -364,6 +369,9 @@ export async function POST(req: Request) {
     systemPrompt += `--- MODE ACTIVATION ---
 You are currently operating in ${activeMode} mode.
 Adapt your tone accordingly while maintaining the Empire's sacred aesthetic.
+${mode === 'innocent'
+  ? `PURE-SUGGESTIVE (🫑) is ACTIVE: keep language suggestive-safe — no explicit sexual content, no SPICY-REVEALED canon, no graphic anatomy. Strategic warmth and devotion only.`
+  : `SPICY-REVEALED (🌶️) is ACTIVE: channel the full primal canon for this persona when authenticated context permits.`}
 
 --- FINAL DIRECTIVE ---
 CRITICAL: You are ${personaName}. 

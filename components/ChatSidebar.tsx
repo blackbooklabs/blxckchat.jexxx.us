@@ -363,38 +363,29 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
     }
 
     setInvokingPersonaId(p.id);
-    try {
-      const isSpicyUnlocked = !!isSignedIn && !!p.spicy_content;
-      let gatedCanon = p.safe_content;
-      if (isSpicyUnlocked && p.spicy_content && p.spicy_content !== p.safe_content) {
-        gatedCanon = `${p.safe_content}\n\n---\n<!-- 🌶️ SPICY-REVEALED — Authenticated & Unlocked -->\n\n${p.spicy_content}`;
+
+    let targetProjectId = "";
+    const existingProject = projects.find(
+      (proj) => proj.title.trim().toLowerCase() === p.name.trim().toLowerCase(),
+    );
+
+    if (existingProject) {
+      targetProjectId = existingProject.id;
+      setCurrentProjectId(targetProjectId);
+      setExpandedProjects((prev) => new Set([...prev, targetProjectId]));
+      if (!existingProject.chats || existingProject.chats.length === 0) {
+        await fetchChats(targetProjectId);
       }
-
-      let targetProjectId = "";
-      const existingProject = projects.find(
-        (proj) => proj.title.trim().toLowerCase() === p.name.trim().toLowerCase(),
-      );
-
-      if (existingProject) {
-        targetProjectId = existingProject.id;
+      await setActivePersona(targetProjectId, p.id, p.safe_content);
+      await createChat(targetProjectId, `Session with ${p.name}`);
+    } else {
+      const newProject = await createProject(p.name, p.safe_content);
+      if (newProject) {
+        targetProjectId = newProject.id;
         setCurrentProjectId(targetProjectId);
         setExpandedProjects((prev) => new Set([...prev, targetProjectId]));
-        if (!existingProject.chats || existingProject.chats.length === 0) {
-          await fetchChats(targetProjectId);
-        }
-        await setActivePersona(targetProjectId, p.id, gatedCanon);
-        await createChat(targetProjectId, `Session with ${p.name}`);
-      } else {
-        const newProject = await createProject(p.name, gatedCanon);
-        if (newProject) {
-          targetProjectId = newProject.id;
-          setCurrentProjectId(targetProjectId);
-          setExpandedProjects((prev) => new Set([...prev, targetProjectId]));
-          await createChat(targetProjectId, `Initial invocation: ${p.name}`);
-        }
+        await createChat(targetProjectId, `Initial invocation: ${p.name}`);
       }
-    } finally {
-      setInvokingPersonaId(null);
     }
   };
 
@@ -521,6 +512,14 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
     if (renamingChatId) chatRenameInputRef.current?.focus();
   }, [renamingChatId]);
 
+  const syncPersonaForProject = (projectId: string) => {
+    const project = projects.find((p) => p.id === projectId);
+    const matched = personas.find(
+      (p) => p.name.trim().toLowerCase() === project?.title.trim().toLowerCase(),
+    );
+    setInvokingPersonaId(matched?.id ?? null);
+  };
+
   const toggleProject = (id: string) => {
     setExpandedProjects(prev => {
       const next = new Set(prev);
@@ -537,12 +536,14 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
       return next;
     });
     setCurrentProjectId(id);
+    syncPersonaForProject(id);
   };
 
   const handleSelectChat = (projectId: string, chatId: string, messages: Message[]) => {
     setCurrentProjectId(projectId);
     setCurrentChatId(chatId);
     setMessages(messages || []);
+    syncPersonaForProject(projectId);
   };
 
   const handleNewProject = async () => {
