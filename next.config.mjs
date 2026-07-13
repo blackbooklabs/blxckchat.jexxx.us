@@ -13,6 +13,8 @@ const nextConfig = {
     // Enable app directory features
     optimizePackageImports: ["framer-motion", "lucide-react"],
   },
+
+  serverExternalPackages: ["chalk", "blessed", "figlet", "gradient-string", "marked"],
   
   // Disable x-powered-by header for security
   poweredByHeader: false,

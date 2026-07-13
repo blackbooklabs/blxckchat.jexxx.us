@@ -328,6 +328,7 @@ export async function POST(req: Request) {
     let systemPrompt = "--- EMPIRE ARCHITECTURE ---\n";
     systemPrompt += `Current project: BLXCKCHAT — Sacred chat interface for the JEXXXUS Empire\n`;
     systemPrompt += `Provider: ${providerConfig.name} (BYOK)\n`;
+    systemPrompt += `Surface: BYOK chat gateway (sign in to unlock Kingdom Agent — same vault CRUD + VEIL/TV tools as JEXXXUS | CLI)\n`;
     systemPrompt += `----------------------\n\n`;
 
     // 🏰 SUPPLEMENTAL CONTEXT: Background knowledge ONLY. 

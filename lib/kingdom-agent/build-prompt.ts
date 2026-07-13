@@ -1,0 +1,117 @@
+import type { AuthenticatedAccountSession } from "@/lib/kingdom-agent/types";
+import { loadCliModule } from "@/lib/kingdom-agent/cli-loader";
+import { buildOperatorIdentityContextWeb } from "@/lib/kingdom-agent/operator-context";
+
+export interface KingdomPromptOptions {
+  userPrompt: string;
+  personaSystemPrompt?: string;
+  conversationHistory?: string;
+  session: AuthenticatedAccountSession;
+}
+
+const WEB_SURFACE_BRIDGE = `## BLXCKCHAT web surface (blxckchat.jexxx.us)
+
+You are the **holistic JEXXXUS ecosystem agent** in the browser — same vault CRUD and kingdom tools as JEXXXUS | CLI, scoped to the signed-in Clerk user via Supabase RLS.
+
+- Use **account_query** before answering about contacts, journal, NXT dates, or private TV playlists.
+- Use **add_contact**, **update_contact**, **delete_contact**, **manage_contact_event**, **manage_playlist**, and journal tools for writes — only when the user clearly requested the change.
+- Use **veil_query** / **tv_query** / **bible_query** / **law_query** for public kingdom content (article suggestions, sacrament catalog, scripture, policies).
+- Never fabricate vault rows, playlist names, or policy text — tool output is authoritative.
+- You are not a general coding agent; stay within available tools and the user's JEXXXUS vault.`;
+
+const PERSONA_BRIDGE = `Retain your persona voice above. You still have BLXCKCHAT kingdom tools (Bible, VEIL, TV, Law, signed-in vault CRUD). Stay in character when explaining tool actions.`;
+
+export async function buildKingdomSystemPrompt(
+  options: KingdomPromptOptions,
+): Promise<string> {
+  const { userPrompt, personaSystemPrompt, conversationHistory, session } = options;
+
+  const [
+    agentLoop,
+    accountRouting,
+    kingdomRouting,
+    accountPrefetchMod,
+    gardenPrefetchMod,
+  ] = await Promise.all([
+    loadCliModule<{ EMPIRE_AGENT_SYSTEM_PROMPT: string }>(
+      "lib/blxckchat/agent-loop.js",
+    ),
+    loadCliModule<{
+      formatAccountRoutingHint: (p: string) => string | null;
+      isVaultPrimaryPrompt: (p: string) => boolean;
+      ACCOUNT_VAULT_REPLY_RULES: string;
+    }>("lib/blxckchat/account-routing.js"),
+    loadCliModule<{
+      formatKingdomRoutingHint: (
+        p: string,
+        o?: { conversationContext?: string },
+      ) => string | null;
+    }>("lib/blxckchat/kingdom-routing.js"),
+    loadCliModule<{
+      prefetchAccountContext: (p: string) => Promise<string | null>;
+    }>("lib/blxckchat/account-prefetch.js"),
+    loadCliModule<{
+      prefetchGardenContext: (
+        p: string,
+        o?: { conversationContext?: string },
+      ) => Promise<string | null>;
+    }>("lib/blxckchat/garden-prefetch.js"),
+  ]);
+
+  let prompt = personaSystemPrompt
+    ? `${personaSystemPrompt.trim()}\n\n---\n\n${PERSONA_BRIDGE}\n\n${WEB_SURFACE_BRIDGE}`
+    : `${agentLoop.EMPIRE_AGENT_SYSTEM_PROMPT}\n\n${WEB_SURFACE_BRIDGE}`;
+
+  const routingOptions = {
+    conversationContext: conversationHistory ?? "",
+  };
+
+  const vaultPrimary = accountRouting.isVaultPrimaryPrompt(userPrompt);
+  const routingHint = vaultPrimary
+    ? null
+    : kingdomRouting.formatKingdomRoutingHint(userPrompt, routingOptions);
+  const accountHint = accountRouting.formatAccountRoutingHint(userPrompt);
+
+  if (routingHint) prompt = `${prompt}\n\n${routingHint}`;
+  if (accountHint) prompt = `${prompt}\n\n${accountHint}`;
+  if (vaultPrimary && personaSystemPrompt) {
+    prompt = `${prompt}\n\n## Vault-only override (persona secondary)\n${accountRouting.ACCOUNT_VAULT_REPLY_RULES}`;
+  }
+
+  const gardenPrefetchText = vaultPrimary
+    ? null
+    : await gardenPrefetchMod.prefetchGardenContext(userPrompt, routingOptions);
+  if (gardenPrefetchText) prompt = `${prompt}\n\n${gardenPrefetchText}`;
+
+  const accountPrefetchText = await accountPrefetchMod.prefetchAccountContext(userPrompt);
+  if (accountPrefetchText) prompt = `${prompt}\n\n${accountPrefetchText}`;
+
+  const operatorContext = await buildOperatorIdentityContextWeb(session);
+  prompt = `${prompt}\n\n${operatorContext}`;
+
+  return prompt;
+}
+
+export async function extractHistoryContext(
+  messages: Array<{ role: string; content: unknown }>,
+): Promise<string> {
+  const kingdomRouting = await loadCliModule<{
+    extractRoutingContextFromHistory: (
+      messages: Array<{ role: string; content: string }>,
+    ) => string;
+  }>("lib/blxckchat/kingdom-routing.js");
+
+  const simplified = messages.map((m) => ({
+    role: m.role,
+    content:
+      typeof m.content === "string"
+        ? m.content
+        : Array.isArray(m.content)
+          ? m.content
+              .filter((p: { type?: string }) => p.type === "text")
+              .map((p: { text?: string }) => p.text)
+              .join(" ")
+          : String(m.content ?? ""),
+  }));
+  return kingdomRouting.extractRoutingContextFromHistory(simplified);
+}

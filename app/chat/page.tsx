@@ -939,13 +939,17 @@ const [globalContext, setGlobalContext] = useState("");
         !!isSignedIn,
       );
 
+      const apiEndpoint = isSignedIn ? "/api/agent" : "/api/chat";
+
       console.log('🌙 Sending BYOK request:', {
+        endpoint: apiEndpoint,
         provider: activeProvider,
         model: providersConfig[activeProvider].model,
         mode: isSpicy ? "venus" : "innocent",
+        kingdomAgent: isSignedIn,
       });
       
-      const response = await fetch("/api/chat", {
+      const response = await fetch(apiEndpoint, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -965,13 +969,17 @@ const [globalContext, setGlobalContext] = useState("");
                   })),
                 },
           ),
-          priorModelLabels: collectPriorModelLabels(messageList),
+          ...(isSignedIn
+            ? {}
+            : {
+                priorModelLabels: collectPriorModelLabels(messageList),
+                type: "text",
+                stream: false,
+                webSearch: webSearchEnabled,
+              }),
           mode: isSpicy ? "venus" : "innocent",
           provider: activeProvider,
           model: providersConfig[activeProvider].model,
-          type: "text",
-          stream: false,
-          webSearch: webSearchEnabled,
           globalInstructions: globalContextRef.current,
           projectInstructions,
         }),
