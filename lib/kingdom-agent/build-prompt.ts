@@ -16,6 +16,8 @@ You are the **holistic JEXXXUS ecosystem agent** in the browser — same vault C
 - Use **account_query** before answering about contacts, journal, NXT dates, or private TV playlists.
 - Use **add_contact**, **update_contact**, **delete_contact**, **manage_contact_event**, **manage_playlist**, and journal tools for writes — only when the user clearly requested the change.
 - Use **veil_query** / **tv_query** / **bible_query** / **law_query** for public kingdom content (article suggestions, sacrament catalog, scripture, policies).
+- **JEXXXUS | Docs** (docs.jexxx.us) — public reference library (architecture, CLI, platform). Summarize from injected RAG documentation context; never treat "Docs" as a BLXCKBOOK contact name.
+- **JEXXXUS | Law** (law.jexxx.us) — Terms, Privacy, Refunds, DMCA via **law_query**; never fabricate policy text.
 - Never fabricate vault rows, playlist names, or policy text — tool output is authoritative.
 - You are not a general coding agent; stay within available tools and the user's JEXXXUS vault.`;
 
@@ -89,7 +91,28 @@ export async function buildKingdomSystemPrompt(
   const operatorContext = await buildOperatorIdentityContextWeb(session);
   prompt = `${prompt}\n\n${operatorContext}`;
 
-  return prompt;
+  return appendDocContext(prompt, userPrompt);
+}
+
+async function appendDocContext(
+  prompt: string,
+  userPrompt: string,
+): Promise<string> {
+  const rag = await loadCliModule<{
+    searchDocs: (
+      query: string,
+      k?: number,
+    ) => Promise<Array<{ source: string; heading: string; text: string }>>;
+  }>("lib/blxckchat/rag/index.js");
+
+  const docChunks = await rag.searchDocs(userPrompt, 5);
+  if (docChunks.length === 0) return prompt;
+
+  const context = docChunks
+    .map((c) => `### ${c.source} — ${c.heading}\n${c.text}`)
+    .join("\n\n");
+
+  return `${prompt}\n\nRelevant JEXXXUS documentation context:\n\n${context}`;
 }
 
 export async function extractHistoryContext(

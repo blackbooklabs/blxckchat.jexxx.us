@@ -42,5 +42,8 @@ coverage/
 tmp/
 temp/models/
 
+# Vendored jexxx.us-cli (cloned at Vercel prebuild)
+vendor/jexxxus-cli/
+
 # clerk configuration (can include secrets)
 /.clerk/

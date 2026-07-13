@@ -1,7 +1,7 @@
 {
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node ../jexxx.us-cli/node_modules/typescript/bin/tsc -p ../jexxx.us-cli/tsconfig.json || (cd ../jexxx.us-cli && npm run build)",
+    "prebuild": "bash scripts/vendor-jexxxus-cli.sh",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
