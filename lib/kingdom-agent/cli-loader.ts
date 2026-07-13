@@ -23,13 +23,18 @@ export function cliDistRoot(): string {
   );
 }
 
-/** Load a built jexxx.us-cli dist module. */
+/** Load a built jexxx.us-cli dist module at runtime (not webpack-bundled). */
 export function loadCliModule<T>(relativePath: string): Promise<T> {
   const cached = moduleCache.get(relativePath);
   if (cached) return cached as Promise<T>;
 
   const href = pathToFileURL(path.join(cliDistRoot(), relativePath)).href;
-  const promise = import(href) as Promise<T>;
+  // Bypass Next/Turbopack static import analysis — load ESM from disk at runtime.
+  const runtimeImport = new Function(
+    "specifier",
+    "return import(specifier)",
+  ) as (specifier: string) => Promise<T>;
+  const promise = runtimeImport(href);
   moduleCache.set(relativePath, promise);
   return promise;
 }

@@ -12,6 +12,10 @@ const nextConfig = {
   experimental: {
     // Enable app directory features
     optimizePackageImports: ["framer-motion", "lucide-react"],
+    // Kingdom Agent loads vendored jexxx.us-cli dist via runtime import()
+    outputFileTracingIncludes: {
+      "/api/agent": ["./vendor/jexxxus-cli/dist/**/*"],
+    },
   },
 
   serverExternalPackages: ["chalk", "blessed", "figlet", "gradient-string", "marked"],
