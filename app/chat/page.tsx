@@ -516,20 +516,27 @@ const [globalContext, setGlobalContext] = useState("");
         let url = key ? key.trim() : 'http://localhost:11434';
         url = url.replace(/\/api$/, '').replace(/\/v1$/, '').replace(/\/$/, '');
         
+        let clientFetched = false;
         try {
           const res = await fetch(`${url}/api/tags`);
           if (res.ok) {
-            const data = await res.json();
-            if (data.models && data.models.length > 0) {
-              const names = data.models.map((m: any) => m.name);
-              updateProviderConfig(providerName, { availableModels: names, model: names[0] });
-              return;
+            const contentType = res.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const data = await res.json();
+              if (data.models && data.models.length > 0) {
+                const names = data.models.map((m: any) => m.name);
+                updateProviderConfig(providerName, { availableModels: names, model: names[0] });
+                clientFetched = true;
+              }
             }
           }
         } catch (err) {
           console.warn("Client-side direct Ollama fetch failed, trying proxy...", err);
         }
 
+        if (clientFetched) return;
+
+        // Try proxying through server (works for public Ollama instances)
         const res = await fetch('/api/models', {
           method: 'POST',
           headers: {
@@ -538,26 +545,45 @@ const [globalContext, setGlobalContext] = useState("");
           },
           body: JSON.stringify({ provider: 'ollama' })
         });
+        
+        if (!res.ok) {
+          let errMsg = `Ollama connection failed (status ${res.status})`;
+          try {
+            const contentType = res.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const errData = await res.json();
+              errMsg = errData.error || errData.message || errMsg;
+            }
+          } catch (_) {}
+          throw new Error(errMsg);
+        }
+
         const data = await res.json();
         if (data.models && data.models.length > 0) {
           updateProviderConfig(providerName, { availableModels: data.models, model: data.models[0] });
           return;
         }
         
-        throw new Error("Could not connect to Ollama. Make sure it is running and OLLAMA_ORIGINS='*' is set.");
+        throw new Error("Could not connect to Ollama. Ensure your local server is running and OLLAMA_ORIGINS='*' is set.");
       }
 
       if (providerName === 'bonsai') {
-        const res = await fetch('http://localhost:8080/v1/models');
-        if (!res.ok) throw new Error("Bonsai instance connection failed");
-        const data = await res.json();
-        if (data.data && data.data.length > 0) {
-          const names = data.data.map((m: any) => m.id);
-          updateProviderConfig(providerName, { availableModels: names, model: names[0] });
-        } else {
-          throw new Error("No Bonsai models found");
+        try {
+          const res = await fetch('http://localhost:8080/v1/models');
+          if (!res.ok) throw new Error(`Status ${res.status}`);
+          const contentType = res.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data = await res.json();
+            if (data.data && data.data.length > 0) {
+              const names = data.data.map((m: any) => m.id);
+              updateProviderConfig(providerName, { availableModels: names, model: names[0] });
+              return;
+            }
+          }
+          throw new Error("Invalid response format");
+        } catch (err) {
+          throw new Error(`Bonsai local instance not found on http://localhost:8080. ${err instanceof Error ? err.message : String(err)}`);
         }
-        return;
       }
 
       const res = await fetch('/api/models', {
@@ -568,6 +594,22 @@ const [globalContext, setGlobalContext] = useState("");
         },
         body: JSON.stringify({ provider: providerName })
       });
+      
+      if (!res.ok) {
+        let errMsg = `Failed to fetch models (status ${res.status})`;
+        try {
+          const contentType = res.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const errData = await res.json();
+            errMsg = errData.error || errData.message || errMsg;
+          } else {
+            const text = await res.text();
+            errMsg = text.slice(0, 100) || errMsg;
+          }
+        } catch (_) {}
+        throw new Error(errMsg);
+      }
+
       const data = await res.json();
       if (data.models && data.models.length > 0) {
         updateProviderConfig(providerName, { availableModels: data.models, model: data.models[0] });
