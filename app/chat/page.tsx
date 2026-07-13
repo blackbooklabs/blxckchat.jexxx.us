@@ -13,6 +13,13 @@ import { ZoomModal } from "@/components/ZoomModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthButton } from "@/components/AuthButton";
 import { useChatStore, Message, MessageAttachment } from "@/store/useChatStore";
+import type { UserByokSettings } from "@/lib/byok-settings-types";
+import {
+  fetchRemoteByokSettings,
+  readLocalByokSettings,
+  saveRemoteByokSettings,
+  writeLocalByokSettings,
+} from "@/lib/user-byok-persistence";
 
 const REQUIRE_AUTH = process.env.NODE_ENV !== 'development';
 
@@ -27,29 +34,31 @@ interface ProviderState {
 
 const PROVIDERS = {
   openai: {
-    name: 'OpenAI',
+    name: 'GPT (OpenAI)',
     models: [
+      'gpt-4.1',
+      'gpt-4.1-mini',
       'gpt-4o',
-      'gpt-4.5-preview',
+      'o3',
       'o3-mini',
+      'o4-mini',
       'gpt-4o-mini',
-      'gpt-4-turbo',
-      'o1',
     ],
-    defaultModel: 'gpt-4o',
+    defaultModel: 'gpt-4.1',
     keyPlaceholder: 'sk-...',
     color: 'from-accent to-pink-600',
     comingSoon: false,
   },
   anthropic: {
-    name: 'Anthropic',
+    name: 'Claude (Anthropic)',
     models: [
+      'claude-sonnet-4-6',
+      'claude-opus-4-6',
+      'claude-haiku-4-5',
       'claude-3-7-sonnet-20250219',
-      'claude-3-5-sonnet-latest',
-      'claude-3-opus-latest',
       'claude-3-5-haiku-latest',
     ],
-    defaultModel: 'claude-3-7-sonnet-20250219',
+    defaultModel: 'claude-sonnet-4-6',
     keyPlaceholder: 'sk-ant-...',
     color: 'from-pink-500 to-accent',
     comingSoon: false,
@@ -68,12 +77,12 @@ const PROVIDERS = {
     comingSoon: false,
   },
   gemini: {
-    name: 'Google Gemini',
+    name: 'Gemini (Google)',
     models: [
       'gemini-2.5-flash',
       'gemini-2.5-pro',
-      'gemini-2.0-flash-001',
-      'gemini-2.0-pro-exp-02-05',
+      'gemini-2.0-flash',
+      'gemini-2.0-flash-lite',
       'gemini-1.5-pro',
     ],
     defaultModel: 'gemini-2.5-flash',
@@ -196,7 +205,8 @@ export default function ChatInterface() {
     invokingPersonaId,
     emitAnalytics,
     autoPatternVisions,
-    toggleAutoPatternVisions
+    toggleAutoPatternVisions,
+    setAutoPatternVisions,
   } = useChatStore();
 
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
@@ -410,64 +420,151 @@ const [globalContext, setGlobalContext] = useState("");
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const hasFetchedInitialData = useRef(false);
+  const settingsHydrated = useRef(false);
+  const saveSettingsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [mounted, setMounted] = useState(false);
 
-  // Load saved config on mount
+  const mergeProviderConfigs = useCallback(
+    (cached: Record<string, ProviderState> | undefined): Record<Provider, ProviderState> => {
+      const base = {
+        openai: { apiKey: '', model: PROVIDERS.openai.defaultModel, availableModels: PROVIDERS.openai.models },
+        anthropic: { apiKey: '', model: PROVIDERS.anthropic.defaultModel, availableModels: PROVIDERS.anthropic.models },
+        grok: { apiKey: '', model: PROVIDERS.grok.defaultModel, availableModels: PROVIDERS.grok.models },
+        gemini: { apiKey: '', model: PROVIDERS.gemini.defaultModel, availableModels: PROVIDERS.gemini.models },
+        kimi: { apiKey: '', model: PROVIDERS.kimi.defaultModel, availableModels: PROVIDERS.kimi.models },
+        groq: { apiKey: '', model: PROVIDERS.groq.defaultModel, availableModels: PROVIDERS.groq.models },
+        openrouter: { apiKey: '', model: PROVIDERS.openrouter.defaultModel, availableModels: PROVIDERS.openrouter.models },
+        ollama: { apiKey: 'http://localhost:11434/api', model: PROVIDERS.ollama.defaultModel, availableModels: PROVIDERS.ollama.models },
+        bonsai: { apiKey: 'http://localhost:8080/v1', model: PROVIDERS.bonsai.defaultModel, availableModels: PROVIDERS.bonsai.models },
+        kingdom: { apiKey: '', model: PROVIDERS.kingdom.defaultModel, availableModels: PROVIDERS.kingdom.models },
+      } satisfies Record<Provider, ProviderState>;
+
+      if (!cached) return base;
+
+      const next = { ...base };
+      Object.keys(cached).forEach((pKey) => {
+        const p = pKey as Provider;
+        if (!PROVIDERS[p]) return;
+        const row = cached[p];
+        const cachedModels = Array.isArray(row.availableModels) ? row.availableModels : [];
+        const availableModels = cachedModels.length > 0 ? cachedModels : PROVIDERS[p].models;
+        const isValidModel = availableModels.includes(row.model);
+        next[p] = {
+          ...next[p],
+          ...row,
+          availableModels,
+          model: isValidModel ? row.model : PROVIDERS[p].defaultModel,
+        };
+      });
+
+      if (!next.bonsai.apiKey && process.env.NODE_ENV === 'development') {
+        next.bonsai.apiKey = 'bonsai';
+      }
+      return next;
+    },
+    [],
+  );
+
+  const applyByokSettings = useCallback(
+    (settings: UserByokSettings) => {
+      if (settings.globalContext !== undefined) {
+        setGlobalContext(settings.globalContext);
+        globalContextRef.current = settings.globalContext;
+      }
+      if (settings.providersConfig) {
+        setProvidersConfig(mergeProviderConfigs(settings.providersConfig as Record<string, ProviderState>));
+      }
+      if (settings.activeProvider && Object.keys(PROVIDERS).includes(settings.activeProvider)) {
+        setActiveProvider(settings.activeProvider as Provider);
+      }
+      if (typeof settings.autoPatternVisions === 'boolean') {
+        setAutoPatternVisions(settings.autoPatternVisions);
+      }
+      if (typeof settings.isSpicy === 'boolean') {
+        setIsSpicy(settings.isSpicy);
+      }
+      if (typeof settings.webSearchEnabled === 'boolean') {
+        setWebSearchEnabled(settings.webSearchEnabled);
+      }
+    },
+    [mergeProviderConfigs, setAutoPatternVisions],
+  );
+
+  const buildByokSettingsSnapshot = useCallback(
+    (
+      active: Provider,
+      configs: Record<Provider, ProviderState>,
+      context: string,
+    ): UserByokSettings => ({
+      activeProvider: active,
+      providersConfig: configs,
+      globalContext: context,
+      autoPatternVisions,
+      isSpicy,
+      webSearchEnabled,
+    }),
+    [autoPatternVisions, isSpicy, webSearchEnabled],
+  );
+
+  const queueSaveUserSettings = useCallback(
+    (
+      active: Provider,
+      configs: Record<Provider, ProviderState>,
+      context: string,
+    ) => {
+      if (!userId || !settingsHydrated.current) return;
+      const snapshot = buildByokSettingsSnapshot(active, configs, context);
+      writeLocalByokSettings(userId, snapshot);
+      if (saveSettingsTimer.current) clearTimeout(saveSettingsTimer.current);
+      saveSettingsTimer.current = setTimeout(() => {
+        void saveRemoteByokSettings(snapshot);
+      }, 600);
+    },
+    [userId, buildByokSettingsSnapshot],
+  );
+
   useEffect(() => {
     setMounted(true);
-    const saved = sessionStorage.getItem('luna-api-config');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.globalContext) {
-          setGlobalContext(parsed.globalContext);
-          globalContextRef.current = parsed.globalContext;
-        }
-        if (parsed.providersConfig) {
-          // Merge old config but force-update the availableModels array to the 2026 latest 
-          setProvidersConfig(prev => {
-            const next = { ...prev };
-            Object.keys(parsed.providersConfig).forEach(pKey => {
-              const p = pKey as Provider;
-              const cached = parsed.providersConfig[p];
-              // If the cached model is completely removed from the new hardcoded list, fall back to the new default
-              const cachedModels = Array.isArray(cached.availableModels)
-                ? cached.availableModels
-                : [];
-              const availableModels =
-                cachedModels.length > 0 ? cachedModels : PROVIDERS[p].models;
-              const isValidModel = availableModels.includes(cached.model);
-              next[p] = {
-                ...prev[p],
-                ...cached,
-                availableModels,
-                model: isValidModel ? cached.model : PROVIDERS[p].defaultModel,
-              };
-            });
-            // Ensure local Bonsai key is always present
-          if (!next.bonsai.apiKey && process.env.NODE_ENV === 'development') {
-            next.bonsai.apiKey = 'bonsai';
-          }
-          return next;
-          });
-          
-          const parsedActive = parsed.activeProvider || 'bonsai';
-          setActiveProvider(Object.keys(PROVIDERS).includes(parsedActive) ? parsedActive as Provider : 'bonsai');
-        } else if (parsed.provider) {
-          // Migration from old to new schema
-          const oldProvider = parsed.provider as Provider;
-          setActiveProvider(oldProvider);
-          setProvidersConfig((prev) => ({
-            ...prev,
-            [oldProvider]: { ...prev[oldProvider], apiKey: parsed.apiKey, model: parsed.model }
-          }));
-        }
-      } catch (e) {
-        console.error('Failed to parse saved config');
-      }
-    }
   }, []);
+
+  // Hydrate BYOK settings per Clerk account (server → localStorage → legacy session)
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const hydrate = async () => {
+      let settings: UserByokSettings | null = null;
+
+      if (isSignedIn && userId) {
+        settings = await fetchRemoteByokSettings();
+        if (!settings) settings = readLocalByokSettings(userId);
+      }
+
+      if (!settings) {
+        const saved = sessionStorage.getItem('luna-api-config');
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            settings = {
+              activeProvider: parsed.activeProvider || 'openai',
+              providersConfig: mergeProviderConfigs(parsed.providersConfig),
+              globalContext: parsed.globalContext || '',
+              autoPatternVisions: false,
+              isSpicy: true,
+              webSearchEnabled: false,
+            };
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+
+      if (settings) applyByokSettings(settings);
+      settingsHydrated.current = true;
+    };
+
+    void hydrate();
+  }, [isLoaded, isSignedIn, userId, applyByokSettings, mergeProviderConfigs]);
 
   // Initial data fetch
   useEffect(() => {
@@ -520,6 +617,7 @@ const [globalContext, setGlobalContext] = useState("");
         globalContext: contextToSave,
       }),
     );
+    queueSaveUserSettings(newActive, newConfigs, contextToSave);
   };
 
   const saveConfig = (
@@ -684,6 +782,12 @@ const [globalContext, setGlobalContext] = useState("");
       setIsFetchingModels(false);
     }
   };
+
+  // Persist toggles immediately once settings are hydrated
+  useEffect(() => {
+    if (!settingsHydrated.current || !userId) return;
+    queueSaveUserSettings(activeProvider, providersConfig, globalContextRef.current);
+  }, [autoPatternVisions, isSpicy, webSearchEnabled, userId, activeProvider, providersConfig, queueSaveUserSettings]);
 
   // Refresh model list when switching providers (if credentials exist)
   useEffect(() => {
@@ -1402,7 +1506,7 @@ const [globalContext, setGlobalContext] = useState("");
                          <label className="text-sm font-medium">Vision Auto-Patterning</label>
                        </div>
                        <button
-                         onClick={toggleAutoPatternVisions}
+                         onClick={() => toggleAutoPatternVisions()}
                          className={`w-10 h-5 rounded-full transition-colors relative ${autoPatternVisions ? 'bg-accent' : 'bg-muted/30'}`}
                        >
                          <motion.div 

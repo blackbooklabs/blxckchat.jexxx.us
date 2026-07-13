@@ -57,18 +57,18 @@ type ProviderConfig = {
 
 const PROVIDERS: Record<string, ProviderConfig> = {
   openai: {
-    name: 'OpenAI',
+    name: 'GPT (OpenAI)',
     keyHeader: 'x-openai-key',
     createProvider: (apiKey: string) => createOpenAI({ apiKey }),
-    defaultModel: 'gpt-4o',
-    models: ['gpt-4o', 'gpt-4.5-preview', 'o3-mini', 'gpt-4o-mini', 'gpt-4-turbo'],
+    defaultModel: 'gpt-4.1',
+    models: ['gpt-4.1', 'gpt-4.1-mini', 'gpt-4o', 'o3', 'o3-mini', 'o4-mini', 'gpt-4o-mini'],
   },
   anthropic: {
-    name: 'Anthropic',
+    name: 'Claude (Anthropic)',
     keyHeader: 'x-anthropic-key',
     createProvider: (apiKey: string) => createAnthropic({ apiKey }),
-    defaultModel: 'claude-3-7-sonnet-20250219',
-    models: ['claude-3-7-sonnet-20250219', 'claude-3-5-sonnet-latest', 'claude-3-opus-latest', 'claude-3-5-haiku-latest'],
+    defaultModel: 'claude-sonnet-4-6',
+    models: ['claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5', 'claude-3-7-sonnet-20250219', 'claude-3-5-haiku-latest'],
   },
   ollama: {
     name: 'Ollama',
@@ -100,7 +100,7 @@ const PROVIDERS: Record<string, ProviderConfig> = {
     models: ['grok-3', 'grok-3-vision', 'grok-2-1212', 'grok-beta'],
   },
   gemini: {
-    name: 'Google Gemini',
+    name: 'Gemini (Google)',
     keyHeader: 'x-gemini-key',
     createProvider: (apiKey: string) => createGoogleGenerativeAI({ apiKey }),
     defaultModel: 'gemini-2.5-flash',

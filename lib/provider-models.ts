@@ -24,6 +24,31 @@ const HF_KINGDOM_DEDICATED_ENDPOINT =
   'https://kcx3mijtq0pfkvtc.us-east-1.aws.endpoints.huggingface.cloud/v1';
 
 const STATIC_FALLBACKS: Partial<Record<ModelsProvider, string[]>> = {
+  openai: [
+    'gpt-4.1',
+    'gpt-4.1-mini',
+    'gpt-4.1-nano',
+    'gpt-4o',
+    'gpt-4o-mini',
+    'o3',
+    'o3-mini',
+    'o4-mini',
+    'chatgpt-4o-latest',
+  ],
+  anthropic: [
+    'claude-sonnet-4-6',
+    'claude-opus-4-6',
+    'claude-haiku-4-5',
+    'claude-3-7-sonnet-20250219',
+    'claude-3-5-haiku-latest',
+  ],
+  gemini: [
+    'gemini-2.5-flash',
+    'gemini-2.5-pro',
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
+    'gemini-1.5-pro',
+  ],
   grok: ['grok-4', 'grok-3', 'grok-3-mini', 'grok-2-1212', 'grok-2-vision-1212'],
   kimi: [
     'kimi-latest',
@@ -34,6 +59,9 @@ const STATIC_FALLBACKS: Partial<Record<ModelsProvider, string[]>> = {
     'moonshot-v1-8k',
   ],
 };
+
+const CHAT_MODEL_EXCLUDE =
+  /embed|embedding|tts|whisper|dall-e|davinci|babbage|moderation|realtime|audio|transcribe|search|sora|image|vision-preview|computer-use/i;
 
 export function resolveModelsEndpoint(baseUrl: string): string {
   const trimmed = baseUrl.trim().replace(/\/$/, '');
@@ -108,13 +136,18 @@ async function fetchOpenAiModels(key: string): Promise<string[]> {
     headers: { Authorization: `Bearer ${key}` },
   })) as { data?: Array<{ id?: string }> };
 
-  const allowed = ['gpt', 'o1', 'o3', 'o4', 'chatgpt'];
   const ids = (data.data ?? [])
     .map((m) => m.id)
     .filter((id): id is string => Boolean(id))
-    .filter((id) => allowed.some((sub) => id.includes(sub)));
+    .filter((id) => !CHAT_MODEL_EXCLUDE.test(id))
+    .filter(
+      (id) =>
+        /^(gpt-|o[0-9]|chatgpt-)/i.test(id) ||
+        id.startsWith('ft:') ||
+        id.includes('gpt-4'),
+    );
 
-  return uniqueSorted(ids);
+  return mergeWithFallback('openai', ids);
 }
 
 async function fetchAnthropicModels(key: string): Promise<string[]> {
@@ -122,15 +155,17 @@ async function fetchAnthropicModels(key: string): Promise<string[]> {
     headers: {
       'x-api-key': key,
       'anthropic-version': '2023-06-01',
+      'anthropic-beta': 'models-2025-01-01',
     },
   })) as { data?: Array<{ id?: string; type?: string }> };
 
   const ids = (data.data ?? [])
     .filter((m) => !m.type || m.type === 'model')
     .map((m) => m.id)
-    .filter((id): id is string => Boolean(id));
+    .filter((id): id is string => Boolean(id))
+    .filter((id) => id.toLowerCase().includes('claude'));
 
-  return uniqueSorted(ids);
+  return mergeWithFallback('anthropic', ids);
 }
 
 async function fetchGrokModels(key: string): Promise<string[]> {
@@ -156,27 +191,41 @@ async function fetchGrokModels(key: string): Promise<string[]> {
 }
 
 async function fetchGeminiModels(key: string): Promise<string[]> {
-  // Native Gemini API (AI SDK + Open WebUI pattern)
+  const collected: string[] = [];
+
+  // OpenAI-compatible Gemini surface (often most current model IDs)
+  try {
+    const compatible = await fetchOpenAiCompatibleModels(
+      'https://generativelanguage.googleapis.com/v1beta/openai',
+      key,
+    );
+    collected.push(
+      ...compatible.filter(
+        (id) =>
+          id.toLowerCase().includes('gemini') &&
+          !CHAT_MODEL_EXCLUDE.test(id),
+      ),
+    );
+  } catch {
+    /* try native list */
+  }
+
+  // Native Gemini API
   try {
     const data = (await fetchJson(
       `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(key)}`,
     )) as {
       models?: Array<{
         name?: string;
-        displayName?: string;
         supportedGenerationMethods?: string[];
-        inputTokenLimit?: number;
-        outputTokenLimit?: number;
       }>;
     };
 
     const native = (data.models ?? [])
       .filter((m) => {
         const name = (m.name ?? '').replace('models/', '');
-        if (!name.toLowerCase().includes('gemini')) return false;
-        if (/embed|aqa|imagen|tts|live|computer-use|gemma/i.test(name)) {
-          return false;
-        }
+        if (!/^gemini/i.test(name)) return false;
+        if (CHAT_MODEL_EXCLUDE.test(name)) return false;
         if (m.supportedGenerationMethods?.length) {
           return m.supportedGenerationMethods.includes('generateContent');
         }
@@ -185,18 +234,13 @@ async function fetchGeminiModels(key: string): Promise<string[]> {
       .map((m) => (m.name ?? '').replace('models/', ''))
       .filter(Boolean);
 
-    if (native.length > 0) return uniqueSorted(native);
+    collected.push(...native);
   } catch {
-    /* fall through to OpenAI-compatible gateway */
+    /* merge fallbacks below */
   }
 
-  // CLI / Bolt fallback: Gemini OpenAI-compatible surface
-  const compatible = await fetchOpenAiCompatibleModels(
-    'https://generativelanguage.googleapis.com/v1beta/openai',
-    key,
-  );
-  const gemini = compatible.filter((id) => id.toLowerCase().includes('gemini'));
-  if (gemini.length > 0) return uniqueSorted(gemini);
+  const merged = mergeWithFallback('gemini', collected);
+  if (merged.length > 0) return merged;
 
   throw new Error('No Gemini models returned — check your API key at aistudio.google.com');
 }

@@ -48,6 +48,9 @@ export interface PersonaPreset {
   name: string;
   tagline: string;
   icon: string;
+  group?: string;
+  folder?: string;
+  relativePath?: string;
   safe_content: string;    // The full system prompt (Safe)
   spicy_content: string | null; // The full system prompt (Spicy)
   safe_excerpt?: string;   // UI-only short summary
@@ -130,6 +133,7 @@ interface ChatState {
   emitAnalytics: (eventType: any, metadata?: Record<string, any>, personaId?: string, projectId?: string) => void;
   fetchBlackbookTargets: () => Promise<void>;
   toggleAutoPatternVisions: () => void;
+  setAutoPatternVisions: (enabled: boolean) => void;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -219,7 +223,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             tts_voice = { pitch: 1.12, rate: 0.88, voiceName: "Google UK English Female", lang: "en-GB" };
           } else if (p.name.includes('DRIZL')) {
             tts_voice = { pitch: 0.58, rate: 1.02, voiceName: "Google US English Male", lang: "en-US" };
-          } else if (p.name.includes('SolomonAI')) {
+          } else if (p.name.includes('Solomon')) {
             tts_voice = { pitch: 0.85, rate: 0.96, voiceName: "Google US English Male", lang: "en-US" };
           } else if (p.name.includes('Xena') || p.name.includes('Venus')) {
             tts_voice = { pitch: 1.05, rate: 0.98, voiceName: "Google UK English Female", lang: "en-GB" };
@@ -631,7 +635,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }).catch(() => {});
   },
 
-  toggleAutoPatternVisions: () => set((state) => ({ autoPatternVisions: !state.autoPatternVisions })),
+  toggleAutoPatternVisions: () =>
+    set((state) => ({ autoPatternVisions: !state.autoPatternVisions })),
+  setAutoPatternVisions: (enabled) => set({ autoPatternVisions: enabled }),
 
   fetchBlackbookTargets: async () => {
     const { getSupabase } = await import('@/lib/supabase');

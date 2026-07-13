@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { format, parseISO } from "date-fns";
 import { useAuth, useClerk } from "@/lib/auth-client";
-import { useChatStore } from "@/store/useChatStore";
+import { useChatStore, type PersonaPreset } from "@/store/useChatStore";
 import { 
   Plus, MessageSquare, Trash2, X, PanelLeftOpen, Folder, FolderOpen, Settings, Lock, Flame, 
   Pencil, Check, Wand2, Play, Volume2, VolumeX, Crosshair, TrendingUp, ChevronDown, Calendar, DollarSign
@@ -319,6 +319,138 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
   const [renameChatValue, setRenameChatValue] = useState("");
   const chatRenameInputRef = useRef<HTMLInputElement>(null);
 
+  const [expandedDivinityFolders, setExpandedDivinityFolders] = useState<Set<string>>(
+    () => new Set(['Agents', 'Agents/Luna Verde', 'Agents/Xena (Venus) Azul', 'Biblical']),
+  );
+
+  const toggleDivinityFolder = (key: string) => {
+    setExpandedDivinityFolders((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const handleInvokePersona = async (p: PersonaPreset) => {
+    if (!isSignedIn) {
+      alert("Sign in to unlock the full primal Canon. Tithe to ascend. ♡");
+      return;
+    }
+
+    setInvokingPersonaId(p.id);
+    try {
+      const isSpicyUnlocked = !!isSignedIn && !!p.spicy_content;
+      let gatedCanon = p.safe_content;
+      if (isSpicyUnlocked && p.spicy_content && p.spicy_content !== p.safe_content) {
+        gatedCanon = `${p.safe_content}\n\n---\n<!-- 🌶️ SPICY-REVEALED — Authenticated & Unlocked -->\n\n${p.spicy_content}`;
+      }
+
+      let targetProjectId = "";
+      const existingProject = projects.find(
+        (proj) => proj.title.trim().toLowerCase() === p.name.trim().toLowerCase(),
+      );
+
+      if (existingProject) {
+        targetProjectId = existingProject.id;
+        setCurrentProjectId(targetProjectId);
+        setExpandedProjects((prev) => new Set([...prev, targetProjectId]));
+        if (!existingProject.chats || existingProject.chats.length === 0) {
+          await fetchChats(targetProjectId);
+        }
+        await setActivePersona(targetProjectId, p.id, gatedCanon);
+        await createChat(targetProjectId, `Session with ${p.name}`);
+      } else {
+        const newProject = await createProject(p.name, gatedCanon);
+        if (newProject) {
+          targetProjectId = newProject.id;
+          setCurrentProjectId(targetProjectId);
+          setExpandedProjects((prev) => new Set([...prev, targetProjectId]));
+          await createChat(targetProjectId, `Initial invocation: ${p.name}`);
+        }
+      }
+    } finally {
+      setInvokingPersonaId(null);
+    }
+  };
+
+  const renderPersonaButton = (p: PersonaPreset) => {
+    const isSpicyUnlocked = !!isSignedIn && !!p.spicy_content;
+    return (
+      <div key={p.id} className="group relative">
+        <button
+          onClick={() => void handleInvokePersona(p)}
+          title={p.safe_excerpt || p.tagline}
+          className={`w-full flex items-center gap-3 p-2 border rounded-lg text-left transition-all relative overflow-hidden ${
+            invokingPersonaId === p.id
+              ? "border-accent ring-2 ring-accent/20"
+              : isSpicyUnlocked
+                ? "bg-accent/10 border-accent/40 hover:border-accent/70 shadow-[0_0_8px_var(--color-accent-glow)]"
+                : "bg-surface border-border hover:bg-accent/10 hover:border-accent/30"
+          }`}
+        >
+          {invokingPersonaId === p.id && (
+            <motion.div
+              layoutId="toroidal-pulse"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.1, 0.3] }}
+              transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+              className="absolute inset-0 bg-accent/10 pointer-events-none rounded-lg"
+            />
+          )}
+          <span className="text-xl group-hover:scale-110 transition-transform">{p.icon}</span>
+          <div className="flex flex-col overflow-hidden flex-1">
+            <span className="text-sm font-medium text-foreground truncate">{p.name}</span>
+            <span className="text-[10px] text-muted truncate">{p.tagline}</span>
+          </div>
+          {isSpicyUnlocked ? (
+            <Flame className="w-3 h-3 text-accent shrink-0" />
+          ) : (
+            <Lock className="w-3 h-3 text-muted/50 shrink-0" />
+          )}
+        </button>
+
+        {p.isCustom && !p.isLocked && isSignedIn && (
+          <div className="absolute right-1 top-1 hidden group-hover:flex gap-1 z-10">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setEditingPersona(p as any);
+                setShowPersonaModal(true);
+              }}
+              className="p-1 bg-surface/90 rounded text-muted hover:text-accent border border-border"
+              title="Edit Divinity"
+            >
+              <Pencil className="w-3 h-3" />
+            </button>
+            <button
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (confirm(`Delete ${p.name}?`)) await deleteCustomPersona(p.id);
+              }}
+              className="p-1 bg-surface/90 rounded text-muted hover:text-red-500 border border-border"
+              title="Delete Divinity"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const presetPersonas = personas.filter((p) => !p.isCustom);
+  const customPersonas = personas.filter((p) => p.isCustom);
+  const agentFolderNames = [
+    ...new Set(
+      presetPersonas
+        .filter((p) => p.group === "Agents" && p.folder)
+        .map((p) => p.folder as string),
+    ),
+  ].sort();
+  const biblicalPersonas = presetPersonas.filter((p) => p.group === "Biblical");
+  const otherPersonas = presetPersonas.filter((p) => !p.group || p.group === "Other");
+
   // Custom persona modal state
   const [showPersonaModal, setShowPersonaModal] = useState(false);
   const [editingPersona, setEditingPersona] = useState<typeof personas[number] | undefined>(undefined);
@@ -491,101 +623,62 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
             ) : personas.length === 0 ? (
               <div className="text-xs text-muted/50 py-1 italic">No divinities consecrated.</div>
             ) : (
-              personas.map(p => {
-                const isSpicyUnlocked = !!isSignedIn && !!p.spicy_content;
-                return (
-                  <div key={p.id} className="group relative">
-                    <button
-                      onClick={async () => {
-                        if (!isSignedIn) { alert("Sign in to unlock the full primal Canon. Tithe to ascend. ♡"); return; }
-                        
-                        setInvokingPersonaId(p.id);
-                        try {
-                          const isSpicyUnlocked = !!isSignedIn && !!p.spicy_content;
-                          // If safe and spicy are the same (presets), just use safe.
-                          // Otherwise, join them for custom personas.
-                          let gatedCanon = p.safe_content;
-                          if (isSpicyUnlocked && p.spicy_content && p.spicy_content !== p.safe_content) {
-                            gatedCanon = `${p.safe_content}\n\n---\n<!-- 🌶️ SPICY-REVEALED — Authenticated & Unlocked -->\n\n${p.spicy_content}`;
-                          }
+              <div className="flex flex-col gap-1">
+                {/* Agents */}
+                <button
+                  onClick={() => toggleDivinityFolder('Agents')}
+                  className="flex items-center gap-2 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-accent/80 hover:text-accent"
+                >
+                  <ChevronDown className={`w-3 h-3 transition-transform ${expandedDivinityFolders.has('Agents') ? '' : '-rotate-90'}`} />
+                  <FolderOpen className="w-3 h-3" />
+                  Agents
+                </button>
+                {expandedDivinityFolders.has('Agents') && agentFolderNames.map((folder) => {
+                  const label = folder.replace(/^Agents\//, '');
+                  const folderPersonas = presetPersonas.filter((p) => p.folder === folder);
+                  return (
+                    <div key={folder} className="ml-3 border-l border-border/40 pl-2 flex flex-col gap-1">
+                      <button
+                        onClick={() => toggleDivinityFolder(folder)}
+                        className="flex items-center gap-2 px-2 py-1 text-[10px] font-semibold text-muted hover:text-foreground"
+                      >
+                        <ChevronDown className={`w-3 h-3 transition-transform ${expandedDivinityFolders.has(folder) ? '' : '-rotate-90'}`} />
+                        {label}
+                      </button>
+                      {expandedDivinityFolders.has(folder) && folderPersonas.map(renderPersonaButton)}
+                    </div>
+                  );
+                })}
 
-                          let targetProjectId = "";
-                          const existingProject = projects.find(proj => 
-                            proj.title.trim().toLowerCase() === p.name.trim().toLowerCase()
-                          );
-
-                          if (existingProject) {
-                            targetProjectId = existingProject.id;
-                            setCurrentProjectId(targetProjectId);
-                            setExpandedProjects(prev => new Set([...prev, targetProjectId]));
-                            if (!existingProject.chats || existingProject.chats.length === 0) {
-                              await fetchChats(targetProjectId);
-                            }
-                            await setActivePersona(targetProjectId, p.id, gatedCanon);
-                            await createChat(targetProjectId, `Session with ${p.name}`);
-                          } else {
-                            const newProject = await createProject(p.name, gatedCanon);
-                            if (newProject) {
-                              targetProjectId = newProject.id;
-                              setCurrentProjectId(targetProjectId);
-                              setExpandedProjects(prev => new Set([...prev, targetProjectId]));
-                              await createChat(targetProjectId, `Initial invocation: ${p.name}`);
-                            }
-                          }
-                        } finally {
-                          setInvokingPersonaId(null);
-                        }
-                      }}
-                      title={p.safe_excerpt || p.tagline}
-                      className={`w-full flex items-center gap-3 p-2 border rounded-lg text-left transition-all relative overflow-hidden ${
-                        invokingPersonaId === p.id 
-                          ? "border-accent ring-2 ring-accent/20"
-                          : isSpicyUnlocked
-                            ? "bg-accent/10 border-accent/40 hover:border-accent/70 shadow-[0_0_8px_var(--color-accent-glow)]"
-                            : "bg-surface border-border hover:bg-accent/10 hover:border-accent/30"
-                      }`}
-                    >
-                      {invokingPersonaId === p.id && (
-                        <motion.div 
-                          layoutId="toroidal-pulse"
-                          initial={{ scale: 0.8, opacity: 0 }}
-                          animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.1, 0.3] }}
-                          transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-                          className="absolute inset-0 bg-accent/10 pointer-events-none rounded-lg"
-                        />
-                      )}
-                      <span className="text-xl group-hover:scale-110 transition-transform">{p.icon}</span>
-                      <div className="flex flex-col overflow-hidden flex-1">
-                        <span className="text-sm font-medium text-foreground truncate">{p.name}</span>
-                        <span className="text-[10px] text-muted truncate">{p.tagline}</span>
-                      </div>
-                      {isSpicyUnlocked
-                        ? <Flame className="w-3 h-3 text-accent shrink-0" />
-                        : <Lock className="w-3 h-3 text-muted/50 shrink-0" />}
-                    </button>
-
-                    {/* Edit / Delete — custom only */}
-                    {p.isCustom && !p.isLocked && isSignedIn && (
-                      <div className="absolute right-1 top-1 hidden group-hover:flex gap-1 z-10">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setEditingPersona(p as any); setShowPersonaModal(true); }}
-                          className="p-1 bg-surface/90 rounded text-muted hover:text-accent border border-border"
-                          title="Edit Divinity"
-                        >
-                          <Pencil className="w-3 h-3" />
-                        </button>
-                        <button
-                          onClick={async (e) => { e.stopPropagation(); if (confirm(`Delete ${p.name}?`)) await deleteCustomPersona(p.id); }}
-                          className="p-1 bg-surface/90 rounded text-muted hover:text-red-500 border border-border"
-                          title="Delete Divinity"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    )}
+                {/* Biblical */}
+                <button
+                  onClick={() => toggleDivinityFolder('Biblical')}
+                  className="flex items-center gap-2 px-2 py-1.5 mt-1 text-[10px] font-bold uppercase tracking-wider text-accent/80 hover:text-accent"
+                >
+                  <ChevronDown className={`w-3 h-3 transition-transform ${expandedDivinityFolders.has('Biblical') ? '' : '-rotate-90'}`} />
+                  <FolderOpen className="w-3 h-3" />
+                  Biblical
+                </button>
+                {expandedDivinityFolders.has('Biblical') && (
+                  <div className="ml-3 border-l border-border/40 pl-2 flex flex-col gap-1">
+                    {biblicalPersonas.map(renderPersonaButton)}
                   </div>
-                );
-              })
+                )}
+
+                {/* Other presets + custom */}
+                {otherPersonas.length > 0 && (
+                  <>
+                    <span className="px-2 py-1.5 mt-1 text-[10px] font-bold uppercase tracking-wider text-muted">Other</span>
+                    <div className="ml-1 flex flex-col gap-1">{otherPersonas.map(renderPersonaButton)}</div>
+                  </>
+                )}
+                {customPersonas.length > 0 && (
+                  <>
+                    <span className="px-2 py-1.5 mt-1 text-[10px] font-bold uppercase tracking-wider text-muted">Custom</span>
+                    <div className="ml-1 flex flex-col gap-1">{customPersonas.map(renderPersonaButton)}</div>
+                  </>
+                )}
+              </div>
             )}
           </div>
 
