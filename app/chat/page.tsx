@@ -1027,10 +1027,10 @@ const [globalContext, setGlobalContext] = useState("");
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
-                className="bg-surface border border-border rounded-2xl p-6 w-full max-w-md shadow-2xl"
+                className="bg-surface border border-border rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between p-6 border-b border-border">
                   <div className="flex items-center gap-2">
                     <Key className="w-5 h-5 text-accent" />
                     <h3 className="text-lg font-semibold">BYOK Settings</h3>
@@ -1043,7 +1043,7 @@ const [globalContext, setGlobalContext] = useState("");
                   </button>
                 </div>
 
-                <div className="space-y-4">
+                <div className="p-6 overflow-y-auto space-y-4 flex-1">
                   {/* Provider Selection */}
                   <div>
                     <label className="block text-sm font-medium mb-2">Provider</label>
