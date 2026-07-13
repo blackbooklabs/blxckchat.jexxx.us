@@ -12,16 +12,17 @@ const nextConfig = {
   experimental: {
     // Enable app directory features
     optimizePackageImports: ["framer-motion", "lucide-react"],
-    // Kingdom Agent loads vendored jexxx.us-cli dist via runtime import()
-    outputFileTracingIncludes: {
-      "/api/agent": [
-        "./vendor/jexxxus-cli/package.json",
-        "./vendor/jexxxus-cli/package-lock.json",
-        "./vendor/jexxxus-cli/patches/**/*",
-        "./vendor/jexxxus-cli/dist/**/*",
-        "./vendor/jexxxus-cli/node_modules/**/*",
-      ],
-    },
+  },
+  
+  // Kingdom Agent loads vendored jexxx.us-cli dist via runtime import()
+  outputFileTracingIncludes: {
+    "/api/agent": [
+      "./vendor/jexxxus-cli/package.json",
+      "./vendor/jexxxus-cli/package-lock.json",
+      "./vendor/jexxxus-cli/patches/**/*",
+      "./vendor/jexxxus-cli/dist/**/*",
+      "./vendor/jexxxus-cli/node_modules/**/*",
+    ],
   },
 
   serverExternalPackages: ["chalk", "blessed", "figlet", "gradient-string", "marked"],
