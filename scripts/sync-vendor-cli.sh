@@ -22,3 +22,8 @@ find "$ROOT/vendor/jexxxus-cli" -mindepth 1 -maxdepth 1 ! -name dist ! -name VEN
 REV="$(git -C "$SIBLING" rev-parse HEAD)"
 echo "$REV" > "$ROOT/vendor/jexxxus-cli/VENDOR_REV"
 echo "Synced vendor/jexxxus-cli/dist @ ${REV:0:7}"
+echo ""
+echo "Commit from blxckchat.jexxx.us:"
+echo "  git add vendor/jexxxus-cli"
+echo "  git commit -m \"chore: sync vendored jexxx.us-cli dist\""
+echo "  git push"

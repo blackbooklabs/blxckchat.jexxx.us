@@ -35,6 +35,16 @@ function hasAdminFlag(metadata: ClerkMetadataRecord): boolean {
   return isTruthy(rec.admin) || isTruthy(rec.isAdmin) || isTruthy(rec.superAdmin);
 }
 
+/** Clerk session JWT from cookies — works without clerkMiddleware(). */
+export async function getServerSessionToken(): Promise<string | null> {
+  const cookieStore = await cookies();
+  return (
+    cookieStore.get('__session')?.value ??
+    cookieStore.get('__clerk_db_jwt')?.value ??
+    null
+  );
+}
+
 export async function getServerUserId(): Promise<string | null> {
   const isDev = process.env.NODE_ENV === 'development';
   if (isDev) return 'sovereign_admin';
@@ -46,19 +56,37 @@ export async function getServerUserId(): Promise<string | null> {
   }
 
   try {
-    const cookieStore = await cookies();
-
-    // Clerk stores the active session as __session (production) or __clerk_db_jwt (dev)
-    const sessionToken =
-      cookieStore.get('__session')?.value ??
-      cookieStore.get('__clerk_db_jwt')?.value;
-
+    const sessionToken = await getServerSessionToken();
     if (!sessionToken) return null;
 
     const payload = await verifyToken(sessionToken, { secretKey });
     return payload.sub ?? null; // sub = Clerk user_id
   } catch {
     // Token invalid / expired — treat as unauthenticated
+    return null;
+  }
+}
+
+/** Verified Clerk session for API routes that need user id + JWT (e.g. Supabase RLS). */
+export async function getServerAuthSession(): Promise<{
+  userId: string;
+  sessionToken: string;
+} | null> {
+  const secretKey = process.env.CLERK_SECRET_KEY ?? process.env.CLERK_SECRET_DEFAULT;
+  if (!secretKey) {
+    console.warn('[Auth] CLERK_SECRET_KEY not set — cannot verify session.');
+    return null;
+  }
+
+  const sessionToken = await getServerSessionToken();
+  if (!sessionToken) return null;
+
+  try {
+    const payload = await verifyToken(sessionToken, { secretKey });
+    const userId = payload.sub;
+    if (!userId) return null;
+    return { userId, sessionToken };
+  } catch {
     return null;
   }
 }

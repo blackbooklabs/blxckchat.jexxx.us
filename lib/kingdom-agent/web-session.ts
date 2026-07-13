@@ -1,5 +1,9 @@
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { clerkClient } from "@clerk/nextjs/server";
 import { createClient } from "@supabase/supabase-js";
+import {
+  getServerAuthSession,
+  getServerSessionToken,
+} from "@/lib/serverAuth";
 import { createUserSupabaseClient, loadWebSupabaseEnv } from "@/lib/user-supabase";
 import type {
   AccountSessionResult,
@@ -34,14 +38,16 @@ function createOperatorSchemaClient(
  * Resolve Clerk cookie session → RLS-scoped MAMAbase clients (CLI parity).
  */
 export async function resolveWebAccountSession(): Promise<AccountSessionResult> {
-  const { userId, getToken } = await auth();
-  if (!userId) {
+  const authSession = await getServerAuthSession();
+  if (!authSession) {
     return {
       ok: false,
       reason: "not_signed_in",
       message: "Sign in to BLXCKCHAT to access your vault, playlists, and empire tools.",
     };
   }
+
+  const { userId, sessionToken: accessToken } = authSession;
 
   const env = loadWebSupabaseEnv();
   if (!env) {
@@ -50,15 +56,6 @@ export async function resolveWebAccountSession(): Promise<AccountSessionResult> 
       reason: "missing_user_env",
       message:
         "Supabase anon credentials are not configured on blxckchat.jexxx.us (SUPABASE_URL + SUPABASE_ANON_KEY).",
-    };
-  }
-
-  const accessToken = await getToken();
-  if (!accessToken) {
-    return {
-      ok: false,
-      reason: "token_invalid",
-      message: "Clerk session token unavailable. Sign out and sign in again.",
     };
   }
 
@@ -90,7 +87,8 @@ export async function resolveWebAccountSession(): Promise<AccountSessionResult> 
     };
   }
 
-  const getAccessToken = async () => (await getToken()) ?? accessToken;
+  const getAccessToken = async () =>
+    (await getServerSessionToken()) ?? accessToken;
   const isSuperAdmin = isSuperAdminClerkUser(userId);
   const operatorEnv = isSuperAdmin ? loadOperatorEnv() : null;
 
