@@ -1527,8 +1527,8 @@ const [globalContext, setGlobalContext] = useState("");
                     const isBonsai = activeProvider === 'bonsai';
                     const hasKey = !!providersConfig[activeProvider].apiKey || isBonsai;
                     return (
-                      <div className={`p-3 rounded-xl ${hasKey ? 'bg-green-500/10 border border-green-500/30' : 'bg-yellow-500/10 border border-yellow-500/30'}`}>
-                        <p className={`text-sm ${hasKey ? 'text-green-400' : 'text-yellow-400'}`}>
+                      <div className={`p-3 rounded-xl ${hasKey ? (isBonsai ? 'bg-accent/10 border border-accent/30' : 'bg-green-500/10 border border-green-500/30') : 'bg-yellow-500/10 border border-yellow-500/30'}`}>
+                        <p className={`text-sm ${hasKey ? (isBonsai ? 'text-accent' : 'text-green-400') : 'text-yellow-400'}`}>
                           {isBonsai ? '✓ Sovereign Mode: Metal Inference Active' : (hasKey ? `✓ Key set for ${provider.name}` : '⚠ Add your API key to begin communion')}
                         </p>
                       </div>
