@@ -616,7 +616,11 @@ const [globalContext, setGlobalContext] = useState("");
       }
     } catch (e) {
       console.warn("Could not fetch models", e);
-      alert(`⚠️ Could not refresh model list: ${e instanceof Error ? e.message : String(e)}`);
+      let msg = e instanceof Error ? e.message : String(e);
+      if (providerName === 'ollama' && typeof window !== 'undefined' && window.location.protocol === 'https:') {
+        msg = `${msg}\n\n💡 JEXXXUS Tip: Since you are on HTTPS, your browser blocks direct HTTP requests to local Ollama (localhost). To connect:\n1. Use an HTTPS tunnel (e.g. ngrok or cloudflared) and paste the HTTPS URL in the API Key/URL field.\n2. Or run the app locally using 'npm run dev'.`;
+      }
+      alert(`⚠️ Could not refresh model list:\n\n${msg}`);
     } finally {
       setIsFetchingModels(false);
     }
