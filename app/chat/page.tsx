@@ -39,7 +39,7 @@ const PROVIDERS = {
     defaultModel: 'gpt-4o',
     keyPlaceholder: 'sk-...',
     color: 'from-accent to-pink-600',
-    comingSoon: true,
+    comingSoon: false,
   },
   anthropic: {
     name: 'Anthropic',
@@ -65,7 +65,7 @@ const PROVIDERS = {
     defaultModel: 'grok-3',
     keyPlaceholder: 'xai-...',
     color: 'from-pink-400 to-pink-500',
-    comingSoon: true,
+    comingSoon: false,
   },
   gemini: {
     name: 'Google Gemini',
@@ -79,7 +79,7 @@ const PROVIDERS = {
     defaultModel: 'gemini-2.5-flash',
     keyPlaceholder: 'AIza...',
     color: 'from-fuchsia-500 to-pink-500',
-    comingSoon: true,
+    comingSoon: false,
   },
   kimi: {
     name: 'Kimi (Moonshot)',
@@ -94,7 +94,7 @@ const PROVIDERS = {
     defaultModel: 'kimi-k2-0711',
     keyPlaceholder: 'sk-...',
     color: 'from-purple-500 to-accent',
-    comingSoon: true,
+    comingSoon: false,
   },
   groq: {
     name: 'Groq (Insanely Fast)',
@@ -173,6 +173,7 @@ export default function ChatInterface() {
   const [previewingProjectVoice, setPreviewingProjectVoice] = useState(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [zoomImage, setZoomImage] = useState<{ url: string; name?: string } | null>(null);
+  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
 
   const { 
     projects, 
@@ -500,7 +501,7 @@ const [globalContext, setGlobalContext] = useState("");
   };
 
   const fetchDynamicModels = async (providerName: Provider, key: string) => {
-    if (providerName !== 'ollama' && (!key || key.length < 5)) return;
+    if (providerName !== 'ollama' && providerName !== 'bonsai' && (!key || key.length < 5)) return;
     setIsFetchingModels(true);
     try {
       if (providerName === 'ollama') {
@@ -514,6 +515,19 @@ const [globalContext, setGlobalContext] = useState("");
           updateProviderConfig(providerName, { availableModels: names, model: names[0] });
         } else {
           throw new Error("No Ollama models found");
+        }
+        return;
+      }
+
+      if (providerName === 'bonsai') {
+        const res = await fetch('http://localhost:8080/v1/models');
+        if (!res.ok) throw new Error("Bonsai instance connection failed");
+        const data = await res.json();
+        if (data.data && data.data.length > 0) {
+          const names = data.data.map((m: any) => m.id);
+          updateProviderConfig(providerName, { availableModels: names, model: names[0] });
+        } else {
+          throw new Error("No Bonsai models found");
         }
         return;
       }
@@ -1100,7 +1114,7 @@ const [globalContext, setGlobalContext] = useState("");
                         <button 
                           onClick={() => fetchDynamicModels(activeProvider, providersConfig[activeProvider].apiKey)} 
                           className="text-xs text-accent hover:underline flex items-center gap-1"
-                          disabled={!providersConfig[activeProvider].apiKey || isFetchingModels}
+                          disabled={((activeProvider !== 'ollama' && activeProvider !== 'bonsai') && !providersConfig[activeProvider].apiKey) || isFetchingModels}
                         >
                           Refresh List
                         </button>
@@ -1108,16 +1122,45 @@ const [globalContext, setGlobalContext] = useState("");
                       </div>
                     </label>
                     <div className="relative">
-                      <select
-                        value={providersConfig[activeProvider].model}
-                        onChange={(e) => updateProviderConfig(activeProvider, { model: e.target.value })}
-                        className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent appearance-none font-mono text-sm"
+                      <button
+                        type="button"
+                        onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
+                        className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent text-left font-mono text-sm flex items-center justify-between transition-all duration-300"
                       >
-                        {providersConfig[activeProvider].availableModels.map((m) => (
-                          <option key={m} value={m}>{m}</option>
-                        ))}
-                      </select>
-                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none" />
+                        <span className="truncate">{providersConfig[activeProvider].model}</span>
+                        <ChevronDown className={`w-4 h-4 text-muted transition-transform duration-200 ${isModelDropdownOpen ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      <AnimatePresence>
+                        {isModelDropdownOpen && (
+                          <>
+                            <div className="fixed inset-0 z-10" onClick={() => setIsModelDropdownOpen(false)} />
+                            <motion.div
+                              initial={{ opacity: 0, y: -10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -10 }}
+                              className="absolute left-0 right-0 mt-2 bg-surface border border-border rounded-xl shadow-2xl overflow-y-auto max-h-60 z-20 divide-y divide-border/30 custom-scrollbar"
+                            >
+                              {providersConfig[activeProvider].availableModels.map((m) => (
+                                <button
+                                  key={m}
+                                  type="button"
+                                  onClick={() => {
+                                    updateProviderConfig(activeProvider, { model: m });
+                                    setIsModelDropdownOpen(false);
+                                  }}
+                                  className={`w-full px-4 py-2.5 text-left font-mono text-xs transition-colors hover:bg-accent/10 hover:text-accent flex items-center justify-between ${
+                                    providersConfig[activeProvider].model === m ? 'text-accent bg-accent/5 font-semibold' : 'text-foreground/80'
+                                  }`}
+                                >
+                                  <span>{m}</span>
+                                  {providersConfig[activeProvider].model === m && <Check className="w-3.5 h-3.5 text-accent shrink-0" />}
+                                </button>
+                              ))}
+                            </motion.div>
+                          </>
+                        )}
+                      </AnimatePresence>
                     </div>
                     <p className="text-xs text-muted mt-2">
                       Selected: <span className="text-accent font-mono font-medium">{providersConfig[activeProvider].model}</span>
