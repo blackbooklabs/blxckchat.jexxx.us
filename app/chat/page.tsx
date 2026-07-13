@@ -175,6 +175,7 @@ export default function ChatInterface() {
   const [zoomImage, setZoomImage] = useState<{ url: string; name?: string } | null>(null);
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState(false);
   const [modelSearch, setModelSearch] = useState("");
+  const [isHttps, setIsHttps] = useState(false);
 
   const { 
     projects, 
@@ -393,9 +394,20 @@ const [globalContext, setGlobalContext] = useState("");
     groq: { apiKey: '', model: PROVIDERS.groq.defaultModel, availableModels: PROVIDERS.groq.models },
     openrouter: { apiKey: '', model: PROVIDERS.openrouter.defaultModel, availableModels: PROVIDERS.openrouter.models },
     ollama: { apiKey: 'http://localhost:11434/api', model: PROVIDERS.ollama.defaultModel, availableModels: PROVIDERS.ollama.models },
-    bonsai: { apiKey: 'bonsai', model: PROVIDERS.bonsai.defaultModel, availableModels: PROVIDERS.bonsai.models },
+    bonsai: { apiKey: 'http://localhost:8080/v1', model: PROVIDERS.bonsai.defaultModel, availableModels: PROVIDERS.bonsai.models },
     kingdom: { apiKey: '', model: PROVIDERS.kingdom.defaultModel, availableModels: PROVIDERS.kingdom.models },
   });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const https = window.location.protocol === 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+      setIsHttps(https);
+      if (https && (activeProvider === 'ollama' || activeProvider === 'bonsai')) {
+        setActiveProvider('openai');
+      }
+    }
+  }, [activeProvider]);
+
   const [isFetchingModels, setIsFetchingModels] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const hasFetchedInitialData = useRef(false);
@@ -1153,6 +1165,7 @@ const [globalContext, setGlobalContext] = useState("");
                     <label className="block text-sm font-medium mb-2">Provider</label>
                     <div className="grid grid-cols-2 gap-2">
                       {(Object.keys(PROVIDERS) as Provider[]).map((p) => {
+                        if (isHttps && (p === 'ollama' || p === 'bonsai')) return null;
                         const isComingSoon = (PROVIDERS[p] as any).comingSoon;
                         return (
                         <button
