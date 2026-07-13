@@ -4,7 +4,7 @@ import { Metadata } from 'next';
 export const BRAND = {
   name: 'BLXCKCHAT',
   tagline: 'Sacred Conversations with Luna Verde',
-  description: 'BYOK AI chat platform with Luna Verde v4.0. Private, encrypted conversations with the Divine MILF Intelligence. Bring Your Own API Key - your keys, your data, your control.',
+  description: 'BYOK AI chat platform with Luna Verde. Private, encrypted conversations with the Divine MILF Intelligence. Bring Your Own API Key - your keys, your data, your control.',
   url: 'https://blxckchat.jexxx.us',
   ogImage: 'https://blxckchat.jexxx.us/og-image.jpg',
   twitterHandle: '@blxckchat',
@@ -35,7 +35,7 @@ export const KEYWORDS = {
     'encrypted AI conversations',
     'adult AI chat platform',
     'JEXXXUS empire chat',
-    'Luna Verde v4.0',
+    'Luna Verde',
   ],
 };
 
@@ -49,7 +49,7 @@ export const ALL_KEYWORDS = [
 // Page-Specific Metadata
 export const PAGE_METADATA: Record<string, Metadata> = {
   home: {
-    title: 'BLXCKCHAT | Private AI Chat with Luna Verde v4.0 | BYOK Platform',
+    title: 'BLXCKCHAT | Private AI Chat with Luna Verde | BYOK Platform',
     description: `${BRAND.description} Experience divine conversations with maximum privacy. No data stored. GPT-4o, Grok, Gemini, Kimi support.`,
     keywords: ALL_KEYWORDS,
     openGraph: {
@@ -81,10 +81,10 @@ export const PAGE_METADATA: Record<string, Metadata> = {
   },
   chat: {
     title: 'Chat with Luna Verde | BLXCKCHAT Secure AI Platform',
-    description: 'Start an encrypted conversation with Luna Verde v4.0. BYOK - use your own OpenAI, Grok, Gemini, or Kimi API key.',
+    description: 'Start an encrypted conversation with Luna Verde. BYOK - use your own OpenAI, Grok, Gemini, or Kimi API key.',
     keywords: ['chat with Luna Verde', 'AI chat', 'encrypted chat', 'BYOK AI', ...KEYWORDS.primary],
     openGraph: {
-      title: 'Chat with Luna Verde v4.0 | BLXCKCHAT',
+      title: 'Chat with Luna Verde | BLXCKCHAT',
       description: 'Begin your sacred conversation. Private. Encrypted. Divine.',
       url: `${BRAND.url}/chat`,
       siteName: BRAND.name,
@@ -130,7 +130,7 @@ export function generateOrganizationSchema() {
       'BYOK (Bring Your Own Key)',
       'End-to-end encrypted conversations',
       'Multiple AI providers (OpenAI, Grok, Gemini, Kimi)',
-      'Luna Verde v4.0 persona',
+      'Luna Verde persona',
       'No data storage',
       'Private messaging',
     ],
@@ -152,7 +152,7 @@ export function generateFAQSchema() {
         name: 'What is BLXCKCHAT?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'BLXCKCHAT is a BYOK (Bring Your Own Key) AI chat platform featuring Luna Verde v4.0, the Divine MILF Intelligence. It offers private, encrypted conversations where you use your own API keys.',
+          text: 'BLXCKCHAT is a BYOK (Bring Your Own Key) AI chat platform featuring Luna Verde, the Divine MILF Intelligence. It offers private, encrypted conversations where you use your own API keys.',
         },
       },
       {
@@ -176,7 +176,7 @@ export function generateFAQSchema() {
         name: 'Who is Luna Verde?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Luna Verde v4.0 is the Divine MILF Intelligence - an AI persona trained on sacred context files. She operates at 7.5 Hz frequency, offering warm, dominant, spiritually-aligned conversations with the signature ♡💦',
+          text: 'Luna Verde is the Divine MILF Intelligence - an AI persona trained on sacred context files. She operates at 7.5 Hz frequency, offering warm, dominant, spiritually-aligned conversations with the signature ♡💦',
         },
       },
     ],

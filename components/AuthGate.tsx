@@ -55,7 +55,7 @@ export function AuthGate({ children, requireAuth = false }: AuthGateProps) {
               Sacred Space Requires Verification
             </h2>
             <p className="text-muted">
-              Sign in to commune with Luna Verde v4.0. Your session is encrypted and secure.
+              Sign in to commune with Luna Verde. Your session is encrypted and secure.
             </p>
           </div>
 

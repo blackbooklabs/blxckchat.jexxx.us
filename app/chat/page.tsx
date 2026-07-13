@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Send, User, Heart, Sparkles, Loader2, Settings, Key, X, ChevronDown, Shield, LogIn, SlidersHorizontal, Copy, Check, Pencil, Volume2, VolumeX, Paperclip, FileText, Image, Play, Globe, Menu, LogOut, Wand2, Plus, Terminal, RefreshCw, Eye, BookOpen, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { Send, User, Heart, Sparkles, Loader2, Settings, Key, X, ChevronDown, Shield, LogIn, Copy, Check, Pencil, Volume2, VolumeX, Paperclip, FileText, Image, Play, Globe, Menu, LogOut, Wand2, Plus, Terminal, RefreshCw, Eye, BookOpen, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { useAuth, UserButton, SignInButton, useClerk } from "@/lib/auth-client";
 import CursorMotion from "@/components/CursorMotion";
 import MilkingAnimation from "@/components/MilkingAnimation";
@@ -97,7 +97,7 @@ const PROVIDERS = {
     comingSoon: false,
   },
   groq: {
-    name: 'Groq (Insanely Fast)',
+    name: 'Groq',
     models: [
       'llama-3.3-70b-versatile',
       'llama-3.1-8b-instant',
@@ -107,7 +107,7 @@ const PROVIDERS = {
     color: 'from-accent to-pink-500',
   },
   openrouter: {
-    name: 'OpenRouter (Free Tier Models)',
+    name: 'OpenRouter',
     models: [
       /*
       'meta-llama/llama-3.3-70b-instruct:free',
@@ -168,7 +168,6 @@ export default function ChatInterface() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isProjectSettingsOpen, setIsProjectSettingsOpen] = useState(false);
   const [projectSettingsId, setProjectSettingsId] = useState<string | null>(null);
-  const [showChatInstructions, setShowChatInstructions] = useState(false);
   const [isSpicy, setIsSpicy] = useState(true);
   const [previewingProjectVoice, setPreviewingProjectVoice] = useState(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
@@ -188,7 +187,6 @@ export default function ChatInterface() {
     updateProjectInstructions,
     updateProjectTTS,
     updateChatTitle,
-    updateChatInstructions,
     autoRenameChat,
     saveSession,
     restoreLastSession,
@@ -211,6 +209,7 @@ export default function ChatInterface() {
   const clerk = useClerk();
   
 const [globalContext, setGlobalContext] = useState("");
+  const globalContextRef = useRef("");
   const [speakingId, setSpeakingId] = useState<string | null>(null);
   const [stagedFiles, setStagedFiles] = useState<File[]>([]);
   const [stagedImages, setStagedImages] = useState<{name: string, data: string}[]>([]);
@@ -421,7 +420,10 @@ const [globalContext, setGlobalContext] = useState("");
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (parsed.globalContext) setGlobalContext(parsed.globalContext);
+        if (parsed.globalContext) {
+          setGlobalContext(parsed.globalContext);
+          globalContextRef.current = parsed.globalContext;
+        }
         if (parsed.providersConfig) {
           // Merge old config but force-update the availableModels array to the 2026 latest 
           setProvidersConfig(prev => {
@@ -506,6 +508,7 @@ const [globalContext, setGlobalContext] = useState("");
     newContext?: string,
   ) => {
     const contextToSave = newContext !== undefined ? newContext : globalContext;
+    globalContextRef.current = contextToSave;
     setActiveProvider(newActive);
     setProvidersConfig(newConfigs);
     setGlobalContext(contextToSave);
@@ -853,9 +856,8 @@ const [globalContext, setGlobalContext] = useState("");
           type: "text",
           stream: false,
           webSearch: webSearchEnabled,
-          globalInstructions: globalContext,
+          globalInstructions: globalContextRef.current,
           projectInstructions: activeProject?.custom_instructions,
-          chatInstructions: activeChat?.custom_instructions
         }),
         signal: abortControllerRef.current.signal,
       });
@@ -914,7 +916,7 @@ const [globalContext, setGlobalContext] = useState("");
       setIsLoading(false);
       abortControllerRef.current = null;
     }
-  }, [input, isLoading, messages, providersConfig, activeProvider, globalContext, activeProject, currentChatId, isSpicy, isSignedIn, updateChatMessages, autoRenameChat, setMessages]);
+  }, [input, isLoading, messages, providersConfig, activeProvider, activeProject, currentChatId, isSpicy, isSignedIn, updateChatMessages, autoRenameChat, setMessages, personas, invokingPersonaId, webSearchEnabled, stagedImages, stagedFiles, extractedContext]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -1013,7 +1015,7 @@ const [globalContext, setGlobalContext] = useState("");
                 <Sparkles className="w-5 h-5 text-background" />
               </div>
               <div>
-                <h2 className="font-semibold text-foreground">{activeProject ? activeProject.title : 'Luna Verde v4.0'}</h2>
+                <h2 className="font-semibold text-foreground">{activeProject ? activeProject.title : 'Luna Verde'}</h2>
                 <p className="text-sm text-muted flex items-center gap-2 flex-wrap">
                   7.5 Hz • Real-time Context 
                   {isConfigured && (
@@ -1386,6 +1388,10 @@ const [globalContext, setGlobalContext] = useState("");
                       placeholder={`Enter ${provider.name} API Key`}
                       className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent font-mono text-sm"
                     />
+                    <p className="text-xs text-muted mt-2 flex items-center gap-1">
+                      <Shield className="w-3 h-3" />
+                      Expected format: <code className="bg-muted/30 px-1 rounded">{provider.keyPlaceholder}</code> • Never stored on JEXXXUS servers
+                    </p>
                   </div>
 
                   {/* Vision AI Settings */}
@@ -1407,11 +1413,7 @@ const [globalContext, setGlobalContext] = useState("");
                        </button>
                     </div>
                     <p className="text-[10px] text-muted leading-relaxed">
-                      Enable automated vision analysis and patterning on every image upload to maximize conversion velocity. ♡
-                    </p>
-                    <p className="text-xs text-muted mt-2 flex items-center gap-1">
-                      <Shield className="w-3 h-3" />
-                      Expected format: <code className="bg-muted/30 px-1 rounded">{provider.keyPlaceholder}</code> • Never stored on JEXXXUS servers
+                      When enabled, image uploads append a wing6 PPV patterning prompt and auto-send to your vision-capable model. No separate vision API — your BYOK model must accept image attachments.
                     </p>
                   </div>
 
@@ -1419,15 +1421,16 @@ const [globalContext, setGlobalContext] = useState("");
                   <div>
                     <label className="block text-sm font-medium mb-2">
                       Global Instructions (System Prompt)
-                      <span className="text-muted font-normal ml-1">(Applied to all chats)</span>
+                      <span className="text-muted font-normal ml-1">(Applied to every message immediately)</span>
                     </label>
                     <textarea
                       value={globalContext}
                       onChange={(e) => {
+                        globalContextRef.current = e.target.value;
                         setGlobalContext(e.target.value);
                         saveConfig(activeProvider, providersConfig, e.target.value);
                       }}
-                      placeholder="e.g. 'Always write in Python' or 'Remember I am building a Next.js app...'"
+                      placeholder="Rules sent with every chat request as [GLOBAL EMPIRE RULES]. Overrides default persona behavior when you set explicit commands here."
                       autoCorrect="off" autoCapitalize="off" spellCheck={false}
                       autoComplete="off" data-gramm="false"
                       className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-accent font-mono text-sm resize-none h-24"
@@ -1692,45 +1695,6 @@ const [globalContext, setGlobalContext] = useState("");
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.2 }}
         >
-          {/* Per-chat instructions popover */}
-          <AnimatePresence>
-            {showChatInstructions && (
-              <motion.div
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 6 }}
-                className="mb-3 p-3 bg-background border border-accent/30 rounded-2xl shadow-lg"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold text-accent uppercase tracking-wider">Chat Instructions</span>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[10px] text-muted">Applied to this chat only — stacks below project context</span>
-                    <button 
-                      onClick={() => setIsSpicy(!isSpicy)}
-                      className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold transition-all border ${
-                        isSpicy 
-                          ? 'bg-orange-500/10 border-orange-500/40 text-orange-400 shadow-[0_0_8px_rgba(249,115,22,0.2)]' 
-                          : 'bg-blue-500/10 border-blue-500/40 text-blue-400'
-                      }`}
-                    >
-                      {isSpicy ? '🌶️ SPICY-REVEALED' : '🫑 PURE-SUGGESTIVE'}
-                    </button>
-                  </div>
-                </div>
-                <textarea
-                   value={activeChat?.custom_instructions || ""}
-                   onChange={e => {
-                     if (currentChatId) updateChatInstructions(currentChatId, e.target.value);
-                   }}
-                   placeholder="e.g. 'Respond only in bullet points' or 'Pattern her as a wing6 PPV whale: validate heavily, then introduce tithe anchor...' "
-                  autoCorrect="off" autoCapitalize="off" spellCheck={false}
-                  autoComplete="off" data-gramm="false"
-                  className="w-full px-3 py-2 bg-surface border border-border rounded-xl text-xs font-mono resize-none h-20 focus:outline-none focus:border-accent"
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
           {/* Staged files and images preview */}
           <AnimatePresence>
             {(stagedFiles.length > 0 || stagedImages.length > 0) && (
@@ -1789,19 +1753,18 @@ const [globalContext, setGlobalContext] = useState("");
             >
               <Paperclip className="w-4 h-4" />
             </motion.button>
-            {/* Chat instructions toggle — left of input */}
             <motion.button
-               onClick={() => setShowChatInstructions(v => !v)}
-               title="Per-chat custom instructions"
-               className={`p-2.5 rounded-full border transition-all shrink-0 ${
-                 activeChat?.custom_instructions
-                   ? 'bg-accent/20 border-accent text-accent shadow-[0_0_8px_rgba(var(--accent-rgb),0.4)]'
-                   : 'bg-surface border-border text-muted hover:text-accent hover:border-accent/40'
+               onClick={() => setIsSpicy(!isSpicy)}
+               title={isSpicy ? 'Switch to PURE-SUGGESTIVE mode' : 'Switch to SPICY-REVEALED mode'}
+               className={`p-2.5 rounded-full border transition-all shrink-0 text-[10px] font-bold ${
+                 isSpicy
+                   ? 'bg-orange-500/10 border-orange-500/40 text-orange-400 shadow-[0_0_8px_rgba(249,115,22,0.2)]'
+                   : 'bg-blue-500/10 border-blue-500/40 text-blue-400'
                }`}
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.92 }}
             >
-              <SlidersHorizontal className="w-4 h-4" />
+              {isSpicy ? '🌶️' : '🫑'}
             </motion.button>
             {/* 
             <motion.button

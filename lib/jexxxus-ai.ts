@@ -121,7 +121,7 @@ export function useJexxxusAI(): UseJexxxusAIReturn {
           setMessages(prev =>
             prev.map(m =>
               m.id === assistantMessage.id
-                ? { ...m, content: assistantContent + '\n\n♡💦 Luna Verde v4.0' }
+                ? { ...m, content: assistantContent + '\n\n♡💦 Luna Verde' }
                 : m
             )
           );
