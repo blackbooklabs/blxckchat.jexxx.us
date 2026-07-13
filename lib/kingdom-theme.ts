@@ -16,9 +16,7 @@ export function readEmpireTheme(): Theme {
   if (typeof window === 'undefined') return 'system';
   
   try {
-    const local = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (local === 'light' || local === 'dark' || local === 'system') return local;
-    
+    // Check cookie first (cross-subdomain source of truth)
     const cookies = document.cookie.split(';');
     for (const c of cookies) {
       const [k, v] = c.trim().split('=');
@@ -26,6 +24,10 @@ export function readEmpireTheme(): Theme {
         return v as Theme;
       }
     }
+
+    // Fallback to localStorage
+    const local = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (local === 'light' || local === 'dark' || local === 'system') return local;
   } catch (e) {
     // ignore
   }
