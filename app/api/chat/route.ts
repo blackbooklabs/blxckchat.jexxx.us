@@ -13,6 +13,7 @@ import { createGroq } from '@ai-sdk/groq';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { loadLunaContext } from '@/lib/luna-context';
+import { HF_INFERENCE_ROUTER_BASE } from '@/lib/provider-models';
 
 export const runtime = 'edge';
 export const maxDuration = 60; // Extend Vercel timeout for slow Web Search requests
@@ -161,11 +162,11 @@ const PROVIDERS: Record<string, ProviderConfig> = {
     keyHeader: 'x-kingdom-key',
     createProvider: (apiKey: string) => createOpenAI({
       apiKey: apiKey || process.env.HF_TOKEN || '',
-      baseURL: 'https://kcx3mijtq0pfkvtc.us-east-1.aws.endpoints.huggingface.cloud/v1',
+      baseURL: HF_INFERENCE_ROUTER_BASE,
       compatibility: 'compatible',
     } as any),
-    defaultModel: 'gemma-4-26b',
-    models: ['gemma-4-26b'],
+    defaultModel: 'google/gemma-4-26B-A4B-it',
+    models: ['google/gemma-4-26B-A4B-it'],
   },
 };
 

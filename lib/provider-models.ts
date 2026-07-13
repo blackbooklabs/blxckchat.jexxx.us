@@ -16,7 +16,11 @@ export type ModelsProvider =
 
 const FETCH_TIMEOUT_MS = 12_000;
 
-const HF_KINGDOM_ENDPOINT =
+/** HF Inference Providers — OpenAI-compatible router (canonical BYOK surface). */
+export const HF_INFERENCE_ROUTER_BASE = 'https://router.huggingface.co/v1';
+
+/** Legacy JEXXXUS dedicated Inference Endpoint — merge if deployed models exist. */
+const HF_KINGDOM_DEDICATED_ENDPOINT =
   'https://kcx3mijtq0pfkvtc.us-east-1.aws.endpoints.huggingface.cloud/v1';
 
 const STATIC_FALLBACKS: Partial<Record<ModelsProvider, string[]>> = {
@@ -259,40 +263,65 @@ async function fetchOllamaModels(url: string): Promise<string[]> {
   return uniqueSorted(names);
 }
 
+async function fetchHubWarmInferenceModels(
+  key?: string,
+): Promise<string[]> {
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (key && key.length > 5) {
+    headers.Authorization = `Bearer ${key}`;
+  }
+
+  const hub = (await fetchJson(
+    'https://huggingface.co/api/models?inference_provider=all&limit=500',
+    { headers },
+  )) as Array<{ id?: string; modelId?: string }>;
+
+  if (!Array.isArray(hub) || hub.length === 0) return [];
+
+  return uniqueSorted(
+    hub.map((m) => m.id ?? m.modelId).filter((id): id is string => Boolean(id)),
+  );
+}
+
 async function fetchKingdomModels(key?: string): Promise<string[]> {
+  const collected: string[] = [];
+  let routerError: string | null = null;
+
+  // Primary: HF Inference Providers router (models that actually route to live providers)
+  try {
+    const routerModels = await fetchOpenAiCompatibleModels(
+      HF_INFERENCE_ROUTER_BASE,
+      key,
+    );
+    collected.push(...routerModels);
+  } catch (err) {
+    routerError = err instanceof Error ? err.message : String(err);
+  }
+
+  // Secondary: JEXXXUS dedicated endpoint deployments (if any)
   if (key && key.length > 5) {
     try {
       const endpointModels = await fetchOpenAiCompatibleModels(
-        HF_KINGDOM_ENDPOINT,
+        HF_KINGDOM_DEDICATED_ENDPOINT,
         key,
       );
-      if (endpointModels.length > 0) return uniqueSorted(endpointModels);
+      collected.push(...endpointModels);
     } catch {
-      /* try Hub with token */
-    }
-
-    const hub = (await fetchJson(
-      'https://huggingface.co/api/models?pipeline_tag=text-generation&sort=downloads&direction=-1&limit=80',
-      { headers: { Authorization: `Bearer ${key}` } },
-    )) as Array<{ modelId?: string; id?: string }>;
-
-    if (Array.isArray(hub) && hub.length > 0) {
-      return uniqueSorted(
-        hub.map((m) => m.modelId ?? m.id).filter((id): id is string => Boolean(id)),
-      );
+      /* optional custom endpoint */
     }
   }
 
-  const publicHub = (await fetchJson(
-    'https://huggingface.co/api/models?filter=text-generation&sort=downloads&direction=-1&limit=80',
-  )) as Array<{ modelId?: string }>;
-
-  if (!Array.isArray(publicHub) || publicHub.length === 0) {
-    throw new Error('Hugging Face Hub connection failed');
+  if (collected.length > 0) {
+    return uniqueSorted(collected);
   }
 
-  return uniqueSorted(
-    publicHub.map((m) => m.modelId).filter((id): id is string => Boolean(id)),
+  // Fallback: Hub warm inference catalog (broader than router list)
+  const hubModels = await fetchHubWarmInferenceModels(key);
+  if (hubModels.length > 0) return hubModels;
+
+  throw new Error(
+    routerError ||
+      'Hugging Face inference router unreachable — check network or HF token',
   );
 }
 

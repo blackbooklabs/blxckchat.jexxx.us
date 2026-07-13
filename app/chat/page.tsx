@@ -141,9 +141,9 @@ const PROVIDERS = {
   },
   kingdom: {
     name: 'Hugging Face',
-    models: ['gemma-4-26b'],
-    defaultModel: 'gemma-4-26b',
-    keyPlaceholder: 'HF Token...',
+    models: ['google/gemma-4-26B-A4B-it'],
+    defaultModel: 'google/gemma-4-26B-A4B-it',
+    keyPlaceholder: 'hf_...',
     color: 'from-pink-600 to-pink-700',
   },
 };
