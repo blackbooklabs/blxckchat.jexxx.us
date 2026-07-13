@@ -401,7 +401,7 @@ const [globalContext, setGlobalContext] = useState("");
       }, 500);
     }
   };
-  const [activeProvider, setActiveProvider] = useState<Provider>('bonsai');
+  const [activeProvider, setActiveProvider] = useState<Provider>('openai');
   const [providersConfig, setProvidersConfig] = useState<Record<Provider, ProviderState>>({
     openai: { apiKey: '', model: PROVIDERS.openai.defaultModel, availableModels: PROVIDERS.openai.models },
     anthropic: { apiKey: '', model: PROVIDERS.anthropic.defaultModel, availableModels: PROVIDERS.anthropic.models },
@@ -484,7 +484,14 @@ const [globalContext, setGlobalContext] = useState("");
         setProvidersConfig(mergeProviderConfigs(settings.providersConfig as Record<string, ProviderState>));
       }
       if (settings.activeProvider && Object.keys(PROVIDERS).includes(settings.activeProvider)) {
-        setActiveProvider(settings.activeProvider as Provider);
+        let provider = settings.activeProvider as Provider;
+        if (typeof window !== 'undefined') {
+          const https = window.location.protocol === 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+          if (https && (provider === 'ollama' || provider === 'bonsai')) {
+            provider = 'openai';
+          }
+        }
+        setActiveProvider(provider);
       }
       if (typeof settings.autoPatternVisions === 'boolean') {
         setAutoPatternVisions(settings.autoPatternVisions);
