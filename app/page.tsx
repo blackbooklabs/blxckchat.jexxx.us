@@ -53,7 +53,6 @@ export default function Home() {
     <>
       <SEOContent />
       <CursorMotion color="rgba(255, 182, 193, 0.6)" size={10} />
-      <MilkingAnimation intensity="passionate">
       <main className="flex-1 flex flex-col items-center justify-center min-h-[100svh] p-4 relative overflow-hidden">
         {/* Top Right Header Controls */}
         <div className="absolute top-4 right-4 z-50 flex items-center gap-3">
