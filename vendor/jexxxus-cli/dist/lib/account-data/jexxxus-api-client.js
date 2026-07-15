@@ -77,4 +77,15 @@ export async function executeAccountQueryViaApi(session, args) {
     }
     return JSON.stringify(payload, null, 2);
 }
+export async function fetchAccountExportViaApi(session, options) {
+    const params = new URLSearchParams();
+    params.set("target", options.target);
+    if (options.includeTv) {
+        params.set("includeTv", "true");
+    }
+    if (options.asUserId?.trim()) {
+        params.set("asUserId", options.asUserId.trim());
+    }
+    return accountApiFetch(session, `/api/v1/account/export?${params.toString()}`);
+}
 //# sourceMappingURL=jexxxus-api-client.js.map

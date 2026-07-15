@@ -1,13 +1,11 @@
 import blessed from "blessed";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { createModalLineInput, insertModalLinePaste, isPasteKey, } from "../editor/modal-line-input.js";
 import { releaseOverlayFocus, takeOverlayFocus } from "../editor/overlay-focus.js";
-import { readClipboard } from "../session/tui-snapshot.js";
+import { normalizeSecretClipboardPaste, readClipboardRobust, } from "../session/tui-snapshot.js";
+import { isSecretPromptPasteKey } from "../secret-prompt-input.js";
 import { isSlashPopupMouseEnabled } from "../tty.js";
 import { dismissSlashMenuBeforeOverlay } from "../menu-mutex.js";
 import { THEME } from "../theme.js";
-const execFileAsync = promisify(execFile);
 /**
  * Bracketed paste mode sequences.
  * Modern terminals wrap pasted text in \x1b[200~...\x1b[201~ markers.
@@ -17,22 +15,6 @@ const BRACKETED_PASTE_START = "\x1b[200~";
 const BRACKETED_PASTE_END = "\x1b[201~";
 function programOf(screen) {
     return screen.program;
-}
-/** macOS pasteboard — explicit path; spawn('pbpaste') can fail in some PATH contexts. */
-async function readClipboardRobust() {
-    if (process.platform === "darwin") {
-        try {
-            const { stdout } = await execFileAsync("/usr/bin/pbpaste", [], {
-                encoding: "utf8",
-                maxBuffer: 2 * 1024 * 1024,
-            });
-            return stdout;
-        }
-        catch {
-            return readClipboard();
-        }
-    }
-    return readClipboard();
 }
 /**
  * Modal prompt — captures keys at the program level while open so paste/typing
@@ -68,7 +50,7 @@ export function createPromptOverlay(screen) {
         try {
             render("Reading clipboard…");
             const clip = await readClipboardRobust();
-            const normalized = clip.replace(/\r?\n/g, "").replace(/\t/g, "").trim();
+            const normalized = normalizeSecretClipboardPaste(clip);
             if (!normalized) {
                 render("Clipboard empty — copy text first, then ⌘V");
                 return;
@@ -160,9 +142,9 @@ export function createPromptOverlay(screen) {
             finish(null);
             return;
         }
-        // In secret mode, treat standalone "p" (no ctrl/meta) as a paste trigger
-        // since most terminals intercept Cmd+V on macOS and it never reaches blessed.
-        if (secretMode && !key.ctrl && !key.meta && key.shift && key.name === "p") {
+        // In secret mode, treat "p" (no ctrl/meta) as a paste trigger since most
+        // terminals intercept Cmd+V on macOS and it never reaches blessed.
+        if (secretMode && isSecretPromptPasteKey(ch, key)) {
             void pasteFromClipboard();
             return;
         }

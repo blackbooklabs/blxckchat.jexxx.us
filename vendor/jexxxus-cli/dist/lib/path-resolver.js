@@ -36,10 +36,19 @@ export function resolveBibleVaultPath() {
 }
 /**
  * Resolve VEIL repo path (for local article parsing).
- * Priority: JEXXXUS_VEIL_REPO_PATH env var → web-only if not set
+ * Priority: JEXXXUS_VEIL_REPO_PATH → VEIL_CONTENT_PATH → web-only if not set
  */
 export function resolveVeilRepoPath() {
-    return resolvePath("JEXXXUS_VEIL_REPO_PATH", "VEIL repo");
+    return (resolvePath("JEXXXUS_VEIL_REPO_PATH", "VEIL repo") ??
+        resolvePath("VEIL_CONTENT_PATH", "VEIL content"));
+}
+/**
+ * Resolve local VEIL article mirror (public posts only — not internal Obsidian ops docs).
+ * Priority: JEXXXUS_VEIL_ARTICLES_PATH → VEIL_ARTICLES_PATH → web-only if not set
+ */
+export function resolveVeilArticlesPath() {
+    return (resolvePath("JEXXXUS_VEIL_ARTICLES_PATH", "VEIL articles") ??
+        resolvePath("VEIL_ARTICLES_PATH", "VEIL articles"));
 }
 /**
  * Resolve TradingView repo path (for local chart scraping).

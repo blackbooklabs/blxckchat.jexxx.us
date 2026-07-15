@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { assertAllowedVeilPublicBaseUrl, assertSafeArticlePostsDir, readPublicMarkdownFile, } from "./veil-security.js";
+import { resolveVeilArticlesPath, resolveVeilRepoPath } from "./path-resolver.js";
 /**
  * Read-only access to **public** VEIL articles — the same content published on
  * veil.jexxx.us. Never reads internal Obsidian VEIL docs (architecture, AEO
@@ -9,16 +10,12 @@ import { assertAllowedVeilPublicBaseUrl, assertSafeArticlePostsDir, readPublicMa
  */
 export const VEIL_DEFAULT_BASE_URL = "https://veil.jexxx.us";
 function getRepoRootPaths() {
-    return [
-        process.env.VEIL_CONTENT_PATH || "",
-        "/Users/dylanroberts/Documents/non-music/Dev/GitHub/JEXXXUS/veil.jexxx.us",
-    ].filter(Boolean);
+    const repo = resolveVeilRepoPath();
+    return repo ? [repo] : [];
 }
 function getObsidianArticlePaths() {
-    return [
-        process.env.VEIL_ARTICLES_PATH || "",
-        "/Users/dylanroberts/Documents/non-music/Dev/GitHub/JEXXXUS/jexxx.us-obsidian/VEIL/articles",
-    ].filter(Boolean);
+    const articles = resolveVeilArticlesPath();
+    return articles ? [articles] : [];
 }
 let rssCache = null;
 const RSS_CACHE_MS = 5 * 60 * 1000;

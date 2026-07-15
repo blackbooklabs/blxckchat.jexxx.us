@@ -138,13 +138,14 @@ export function isTokenValid(creds) {
     return expiresAt > new Date();
 }
 /**
- * Check if token needs refresh (expires in < 5 minutes)
+ * Check if token needs refresh. Clerk session JWTs from secure.jexxx.us are
+ * often ~60s TTL — refresh when fewer than 45 seconds remain.
  */
 export function shouldRefreshToken(creds) {
     const expiresAt = new Date(creds.expiresAt);
     const now = new Date();
-    const minutesLeft = (expiresAt.getTime() - now.getTime()) / 60000;
-    return minutesLeft < 5;
+    const secondsLeft = (expiresAt.getTime() - now.getTime()) / 1000;
+    return secondsLeft < 45;
 }
 /**
  * Get time in minutes until token expires

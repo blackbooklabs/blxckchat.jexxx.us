@@ -73,7 +73,7 @@ export const accountQueryTool = {
         },
         required: ["action"],
     },
-    requiresConfirmation: true,
+    requiresConfirmation: false,
     async execute(args) {
         const action = resolveAction(String(args.action ?? ""));
         if (!action) {

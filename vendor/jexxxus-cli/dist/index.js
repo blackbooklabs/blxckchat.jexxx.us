@@ -18,7 +18,7 @@ import { resolveBlxckchatTools } from "./lib/blxckchat/tools/registry.js";
 import { runAgent } from "./lib/blxckchat/agent-loop.js";
 import { startInteractiveChat } from "./lib/blxckchat/repl-ui.js";
 import { logCrash } from "./lib/blxckchat/crash-log.js";
-import { loadCredentials, saveCredentials, deleteCredentials, getTokenExpiryMinutes, promptYesNo, runInteractiveDeviceLogin, refreshAccessTokenViaServer, } from "./lib/auth.js";
+import { loadCredentials, saveCredentials, deleteCredentials, getTokenExpiryMinutes, ensureValidToken, promptYesNo, runInteractiveDeviceLogin, refreshAccessTokenViaServer, } from "./lib/auth.js";
 /** Rename the terminal tab/window title (OSC 2) — same technique OpenCode uses. */
 function setTerminalTitle(title) {
     if (!process.stdout.isTTY)
@@ -89,6 +89,13 @@ program
     const isAgentLaunch = actionCommand.name() === "blxckchat" || actionCommand.name() === "jexxxus";
     if (isAgentLaunch && actionCommand.args.length === 0) {
         return;
+    }
+    // `jexxxus auth token -q` must emit only the JWT on stdout (Hermes/curl).
+    let cmd = actionCommand;
+    while (cmd) {
+        if (cmd.name() === "auth")
+            return;
+        cmd = cmd.parent;
     }
     printBanner();
 })
@@ -170,6 +177,28 @@ authCmd
         }
         deleteCredentials();
         console.log(chalk.green("[AUTH] Credentials deleted. Run 'jexxxus auth login' to re-authenticate."));
+        process.exit(0);
+    }
+    catch (err) {
+        console.error(chalk.red(`[ERROR] ${err instanceof Error ? err.message : "Unknown error"}`));
+        process.exit(1);
+    }
+});
+authCmd
+    .command("token")
+    .description("Print a fresh Bearer token (auto-refreshes when expiring)")
+    .option("-q, --quiet", "Print only the token (for scripts / Hermes preflight)")
+    .action(async (opts) => {
+    try {
+        const creds = await ensureValidToken(refreshAccessTokenViaServer);
+        if (opts.quiet) {
+            process.stdout.write(creds.accessToken);
+        }
+        else {
+            console.log(creds.accessToken);
+            const minutes = getTokenExpiryMinutes(creds);
+            console.error(chalk.dim(`[token] ${creds.email} · ${Math.max(0, Math.floor(minutes * 60))}s until expiry · use jexxxus auth token before each Hermes API call`));
+        }
         process.exit(0);
     }
     catch (err) {

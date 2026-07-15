@@ -805,6 +805,7 @@ export async function startTerminalChat(provider, tools, options) {
         onOpenExternalEditor: async (initial) => openExternalEditor(initial),
         onOpenModelPicker: () => void openModelPicker(),
         onOpenProviderPicker: () => void openProviderPicker(),
+        onSetupProvider: (catalogId) => void openProviderPicker(catalogId),
         onOpenDivinityPicker: () => void openDivinityPicker(),
         onOpenAuthPicker: () => void openAuthPicker(),
     };

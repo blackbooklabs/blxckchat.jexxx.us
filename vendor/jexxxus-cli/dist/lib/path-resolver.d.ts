@@ -5,9 +5,14 @@
 export declare function resolveBibleVaultPath(): string | null;
 /**
  * Resolve VEIL repo path (for local article parsing).
- * Priority: JEXXXUS_VEIL_REPO_PATH env var → web-only if not set
+ * Priority: JEXXXUS_VEIL_REPO_PATH → VEIL_CONTENT_PATH → web-only if not set
  */
 export declare function resolveVeilRepoPath(): string | null;
+/**
+ * Resolve local VEIL article mirror (public posts only — not internal Obsidian ops docs).
+ * Priority: JEXXXUS_VEIL_ARTICLES_PATH → VEIL_ARTICLES_PATH → web-only if not set
+ */
+export declare function resolveVeilArticlesPath(): string | null;
 /**
  * Resolve TradingView repo path (for local chart scraping).
  * Priority: JEXXXUS_TV_REPO_PATH env var → web-only if not set

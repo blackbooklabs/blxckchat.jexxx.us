@@ -16,8 +16,10 @@ import { DeviceLoginOverlay } from "./DeviceLoginOverlay.js";
 import { detectSlashInputMode, getCommandSuggestions, } from "../slash/autocomplete.js";
 import { SlashPopup } from "./SlashPopup.js";
 import { lineScrollStep, pageScrollDelta, halfPageScrollDelta, } from "../components/scroll-state.js";
-import { readClipboard } from "../session/tui-snapshot.js";
+import { normalizeSecretClipboardPaste, readClipboardRobust, } from "../session/tui-snapshot.js";
+import { isSecretPromptPasteKey } from "../secret-prompt-input.js";
 import { useMouseScroll } from "./use-mouse-scroll.js";
+import { filterPickerItems, resolvePickerSelection, } from "./picker-filter.js";
 export const DyeApp = ({ store, callbacks, initialInputValue = "", overlayRef, }) => {
     const { columns: termWidth, rows: termHeight } = useWindowSize();
     const [inputValue, setInputValue] = React.useState(initialInputValue);
@@ -154,7 +156,7 @@ export const DyeApp = ({ store, callbacks, initialInputValue = "", overlayRef, }
     // to useInput while a usePaste handler is active). Bracketed paste mode
     // is managed automatically by the hook.
     usePaste((text) => {
-        const normalized = text.replace(/\r?\n/g, "").replace(/\t/g, "");
+        const normalized = normalizeSecretClipboardPaste(text);
         if (!normalized)
             return;
         if (promptState) {
@@ -246,6 +248,10 @@ export const DyeApp = ({ store, callbacks, initialInputValue = "", overlayRef, }
         }
         if (pickerState) {
             const resolve = pickerResolveRef.current;
+            const pickerFilterQuery = typedQuery;
+            const resetPickerSelection = () => {
+                setPickerState((s) => (s ? { ...s, selectedIndex: 0 } : s));
+            };
             if (key.escape) {
                 resolve?.(null);
                 pickerResolveRef.current = null;
@@ -260,7 +266,7 @@ export const DyeApp = ({ store, callbacks, initialInputValue = "", overlayRef, }
                 setPickerState((s) => {
                     if (!s)
                         return s;
-                    const len = pickerItemsFiltered(s).length;
+                    const len = filterPickerItems(s.items, pickerFilterQuery).length;
                     if (len === 0)
                         return s;
                     const next = ((s.selectedIndex - 1 + len) % len);
@@ -272,7 +278,7 @@ export const DyeApp = ({ store, callbacks, initialInputValue = "", overlayRef, }
                 setPickerState((s) => {
                     if (!s)
                         return s;
-                    const len = pickerItemsFiltered(s).length;
+                    const len = filterPickerItems(s.items, pickerFilterQuery).length;
                     if (len === 0)
                         return s;
                     const next = ((s.selectedIndex + 1) % len);
@@ -282,11 +288,11 @@ export const DyeApp = ({ store, callbacks, initialInputValue = "", overlayRef, }
             }
             if (key.return) {
                 if (pickerResolveRef.current) {
-                    const filtered = pickerItemsFiltered(pickerState);
-                    const picked = filtered[pickerState.selectedIndex];
+                    const picked = resolvePickerSelection(pickerState.items, pickerFilterQuery, pickerState.selectedIndex);
                     resolve?.(picked ?? null);
                     pickerResolveRef.current = null;
                     setPickerState(null);
+                    setTypedQuery("");
                     return;
                 }
             }
@@ -358,10 +364,12 @@ export const DyeApp = ({ store, callbacks, initialInputValue = "", overlayRef, }
                     setTypedQuery("");
                     setFilterCursorPos(0);
                     setFilterSelectionStart(null);
+                    resetPickerSelection();
                     return;
                 }
                 if (key.ctrl && input === "k") {
                     setTypedQuery((prev) => prev.slice(0, filterCursorPos));
+                    resetPickerSelection();
                     return;
                 }
                 if (key.ctrl && input === "w") {
@@ -372,6 +380,7 @@ export const DyeApp = ({ store, callbacks, initialInputValue = "", overlayRef, }
                         setFilterSelectionStart(null);
                         return prev.slice(0, start) + prev.slice(cp);
                     });
+                    resetPickerSelection();
                     return;
                 }
                 if (key.meta && input === "d") {
@@ -380,6 +389,7 @@ export const DyeApp = ({ store, callbacks, initialInputValue = "", overlayRef, }
                         const end = wordBoundaryRight(prev, cp);
                         return prev.slice(0, cp) + prev.slice(end);
                     });
+                    resetPickerSelection();
                     return;
                 }
                 if ((key.meta || key.ctrl) && key.backspace) {
@@ -390,6 +400,7 @@ export const DyeApp = ({ store, callbacks, initialInputValue = "", overlayRef, }
                         setFilterSelectionStart(null);
                         return prev.slice(0, start) + prev.slice(cp);
                     });
+                    resetPickerSelection();
                     return;
                 }
                 if (key.backspace && !key.ctrl && !key.meta) {
@@ -408,6 +419,7 @@ export const DyeApp = ({ store, callbacks, initialInputValue = "", overlayRef, }
                         }
                         return prev;
                     });
+                    resetPickerSelection();
                     return;
                 }
                 if (key.delete) {
@@ -425,6 +437,7 @@ export const DyeApp = ({ store, callbacks, initialInputValue = "", overlayRef, }
                         }
                         return prev;
                     });
+                    resetPickerSelection();
                     return;
                 }
                 if (!key.ctrl && !key.meta && input && input.length === 1) {
@@ -440,6 +453,7 @@ export const DyeApp = ({ store, callbacks, initialInputValue = "", overlayRef, }
                     });
                     setFilterCursorPos((sel != null && sel !== cp ? Math.min(sel, cp) : cp) + 1);
                     setFilterSelectionStart(null);
+                    resetPickerSelection();
                     return;
                 }
             }
@@ -447,18 +461,59 @@ export const DyeApp = ({ store, callbacks, initialInputValue = "", overlayRef, }
                 // Items-focused: typing always appends, backspace removes last char
                 if (input && input.length === 1 && !key.ctrl && !key.meta) {
                     setTypedQuery((q) => q + input);
+                    resetPickerSelection();
                     return;
                 }
                 if (key.backspace && !key.ctrl && !key.meta) {
                     setTypedQuery((q) => q.slice(0, -1));
+                    resetPickerSelection();
                     return;
                 }
             }
             return;
         }
-        // ---- Prompt overlay editor shortcuts ----
-        // Secret mode is handled by usePaste + Shift+P fallback (below)
-        // Non-secret prompts get full editor support
+        // ---- Secret prompt overlay (API keys) ----
+        if (promptState?.options.secret) {
+            const resolve = promptResolveRef.current;
+            const pasteSecretFromClipboard = () => {
+                void readClipboardRobust().then((clip) => {
+                    const normalized = normalizeSecretClipboardPaste(clip);
+                    if (!normalized)
+                        return;
+                    setPromptState((s) => (s ? { ...s, input: normalized } : s));
+                });
+            };
+            if (key.escape) {
+                resolve?.(null);
+                promptResolveRef.current = null;
+                setPromptState(null);
+                setPromptCursorPos(0);
+                setPromptSelectionStart(null);
+                return;
+            }
+            if (key.return) {
+                resolve?.(promptState.input.trim());
+                promptResolveRef.current = null;
+                setPromptState(null);
+                setPromptCursorPos(0);
+                setPromptSelectionStart(null);
+                return;
+            }
+            if (isSecretPromptPasteKey(input, key)) {
+                pasteSecretFromClipboard();
+                return;
+            }
+            if (key.backspace && !key.ctrl && !key.meta) {
+                setPromptState((s) => (s ? { ...s, input: s.input.slice(0, -1) } : s));
+                return;
+            }
+            if (!key.ctrl && !key.meta && input && input.length === 1) {
+                setPromptState((s) => (s ? { ...s, input: s.input + input } : s));
+                return;
+            }
+            return;
+        }
+        // ---- Prompt overlay editor shortcuts (non-secret) ----
         if (promptState && !promptState.options.secret) {
             const resolve = promptResolveRef.current;
             const cp = promptCursorPos;
@@ -652,26 +707,6 @@ export const DyeApp = ({ store, callbacks, initialInputValue = "", overlayRef, }
                 });
                 setPromptCursorPos((sel != null && sel !== cp ? Math.min(sel, cp) : cp) + 1);
                 setPromptSelectionStart(null);
-                return;
-            }
-            // Secret-mode: pass through to legacy handler
-            if (promptState.options.secret && key.shift && !key.ctrl && !key.meta && input.toLowerCase() === "p") {
-                void readClipboard().then((clip) => {
-                    const normalized = clip.replace(/\r?\n/g, "").replace(/\t/g, "");
-                    if (!normalized)
-                        return;
-                    setPromptState((s) => (s ? { ...s, input: normalized } : s));
-                });
-                return;
-            }
-            // Legacy backspace for secret mode (appends to end)
-            if (key.backspace) {
-                setPromptState((s) => (s ? { ...s, input: s.input.slice(0, -1) } : s));
-                return;
-            }
-            // Legacy character append for secret mode
-            if (!key.ctrl && !key.meta && input && input.length === 1) {
-                setPromptState((s) => (s ? { ...s, input: s.input + input } : s));
                 return;
             }
         }
@@ -882,6 +917,14 @@ export const DyeApp = ({ store, callbacks, initialInputValue = "", overlayRef, }
             if (key.return || key.tab) {
                 const s = slashSuggestions[slashSelectedIndex];
                 if (s) {
+                    if (s.connectProvider && callbacks.onSetupProvider) {
+                        setSlashSuggestions([]);
+                        setSlashSelectedIndex(0);
+                        setInputValue("");
+                        store.inputValue = "";
+                        void callbacks.onSetupProvider(s.connectProvider);
+                        return;
+                    }
                     const cmdName = s.label.replace(/^\//, "");
                     const newValue = `/${cmdName} `;
                     store.inputValue = newValue;
@@ -1085,7 +1128,7 @@ export const DyeApp = ({ store, callbacks, initialInputValue = "", overlayRef, }
     }, [store]);
     return (_jsx(AlternateScreen, { mouseTracking: true, children: _jsxs(Box, { width: termWidth, height: termHeight, flexDirection: "column", backgroundColor: THEME.bg, children: [_jsx(TopBar, { subtitle: store.subtitle, glitchSeed: store.glitchSeed }), _jsx(Box, { ref: messageAreaRef, flexGrow: 1, flexDirection: "column", backgroundColor: THEME.bgInset, children: _jsx(MessageView, { store: store, scrollOffset: store.scrollOffset, onScroll: (offset) => store.setScrollOffset(offset), terminalWidth: termWidth, terminalHeight: termHeight, viewportHeight: messageAreaHeight }) }), _jsx(StatusBar, { message: store.statusMessage, messageFocus: messageFocus }), _jsx(SlashPopup, { suggestions: slashSuggestions, selectedIndex: slashSelectedIndex, visible: slashSuggestions.length > 0 }), _jsx(InputView, { value: inputValue, onChange: handleInputChange, onSubmit: handleSubmit, onEscape: () => { }, disabled: overlayActive, slashVisible: slashSuggestions.length > 0, messageFocus: messageFocus }), _jsx(PickerOverlay, { state: pickerState
                         ? (() => {
-                            const filtered = pickerItemsFiltered(pickerState);
+                            const filtered = filterPickerItems(pickerState.items, typedQuery);
                             const len = Math.max(filtered.length, 0);
                             const si = len === 0
                                 ? 0
@@ -1094,12 +1137,4 @@ export const DyeApp = ({ store, callbacks, initialInputValue = "", overlayRef, }
                         })()
                         : null, filterFocused: pickerFilterFocused }), _jsx(PromptOverlay, { state: promptState ? { ...promptState, cursorPos: promptCursorPos, selectionStart: promptSelectionStart ?? undefined } : null }), deviceLoginText ? (_jsx(DeviceLoginOverlay, { state: { status: deviceLoginText } })) : null, _jsx(ConfirmModal, { dialog: store.confirmDialog }), store.searchVisible ? _jsx(SearchOverlay, { query: typedQuery, cursorPos: searchCursorPos, selectionStart: searchSelectionStart ?? undefined }) : null, store.hotkeysVisible ? _jsx(HotkeysOverlay, {}) : null, _jsx(ToastView, { message: store.toast?.message ?? null, variant: store.toast?.variant ?? "info", onDismiss: () => store.dismissToast() })] }) }));
 };
-function pickerItemsFiltered(state) {
-    const q = state.filterQuery.trim().toLowerCase();
-    if (!q)
-        return state.items;
-    return state.items.filter((item) => item.label.toLowerCase().includes(q) ||
-        item.id.toLowerCase().includes(q) ||
-        (item.description?.toLowerCase().includes(q) ?? false));
-}
 //# sourceMappingURL=DyeApp.js.map

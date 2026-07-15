@@ -59,7 +59,8 @@ export declare function generateCodeChallenge(verifier: string): string;
  */
 export declare function isTokenValid(creds: Credentials | null): boolean;
 /**
- * Check if token needs refresh (expires in < 5 minutes)
+ * Check if token needs refresh. Clerk session JWTs from secure.jexxx.us are
+ * often ~60s TTL — refresh when fewer than 45 seconds remain.
  */
 export declare function shouldRefreshToken(creds: Credentials): boolean;
 /**
