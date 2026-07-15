@@ -49,6 +49,7 @@ export async function resolveAuthenticatedAccountSession() {
             nxt: createUserSupabaseClient(env, getAccessToken, "nxt"),
             tv: createUserSupabaseClient(env, getAccessToken, "blxckbook"),
             isSuperAdmin,
+            resolveAccessToken: getAccessToken,
         };
         if (isSuperAdmin && operatorEnv) {
             session.operator = {

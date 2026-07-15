@@ -94,6 +94,7 @@ export async function resolveWebAccountSession(): Promise<AccountSessionResult> 
 
   const session: AuthenticatedAccountSession = {
     creds,
+    resolveAccessToken: getAccessToken,
     blxckbook: createUserSupabaseClient(
       env.supabaseUrl,
       env.supabaseAnonKey,

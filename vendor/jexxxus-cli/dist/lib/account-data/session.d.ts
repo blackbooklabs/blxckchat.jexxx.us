@@ -16,6 +16,8 @@ export interface AuthenticatedAccountSession {
     isSuperAdmin: boolean;
     /** Service-role clients — only when super-admin + SUPABASE_KEY in .env */
     operator?: OperatorClients;
+    /** Fresh Clerk JWT for JEXXXUS | API Bearer auth (web cookie / CLI refresh). */
+    resolveAccessToken?: () => Promise<string | null>;
 }
 export type AccountSessionFailure = "not_signed_in" | "missing_user_env" | "token_invalid";
 export type AccountSessionResult = {

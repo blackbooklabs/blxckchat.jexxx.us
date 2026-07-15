@@ -21,6 +21,7 @@ export interface AuthenticatedAccountSession {
     nxt: SupabaseClient;
     tv: SupabaseClient;
   };
+  resolveAccessToken?: () => Promise<string | null>;
 }
 
 export type AccountSessionResult =
