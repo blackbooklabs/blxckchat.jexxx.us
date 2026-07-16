@@ -123,15 +123,19 @@ export async function runKingdomAgent(
  * small chunks for a typewriter effect. ToolLoopAgent.stream() often yields an
  * empty textStream after tool steps — generate is authoritative.
  */
+/** Emit incremental deltas — clients append chunks (consumeTextStream). */
 export function buildKingdomAgentTypewriterStream(text: string): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
   const body = text.trim() || "♡ Task complete.";
 
   return new ReadableStream({
     async start(controller) {
-      for (let end = TYPEWRITER_CHUNK; end <= body.length + TYPEWRITER_CHUNK; end += TYPEWRITER_CHUNK) {
-        controller.enqueue(encoder.encode(body.slice(0, Math.min(end, body.length))));
-        if (end < body.length) {
+      let cursor = 0;
+      while (cursor < body.length) {
+        const next = Math.min(cursor + TYPEWRITER_CHUNK, body.length);
+        controller.enqueue(encoder.encode(body.slice(cursor, next)));
+        cursor = next;
+        if (cursor < body.length) {
           await new Promise((resolve) => setTimeout(resolve, TYPEWRITER_DELAY_MS));
         }
       }
