@@ -1,4 +1,10 @@
 import type { Message } from '@/store/useChatStore';
+import {
+  estimateJsonBytes,
+  MAX_API_PAYLOAD_BYTES,
+  sanitizeMessageTextForApi,
+  trimMessagesForApi,
+} from '@/lib/chat-payload-limits';
 
 export interface ApiChatMessage {
   role: 'user' | 'assistant';
@@ -27,25 +33,34 @@ export function buildApiMessagesFromHistory(
   history: Message[],
   pendingUser?: { text: string; images: { name: string; data: string; mimeType?: string }[] },
 ): ApiChatMessage[] {
-  const apiMessages: ApiChatMessage[] = history.map((m) => ({
+  const trimmedHistory = trimMessagesForApi(history);
+  const apiMessages: ApiChatMessage[] = trimmedHistory.map((m) => ({
     role: m.sender === 'user' ? 'user' : 'assistant',
     content: messageToApiContent(m),
   }));
 
   if (pendingUser) {
+    const safeText = sanitizeMessageTextForApi(pendingUser.text);
     const content =
       pendingUser.images.length > 0
         ? [
-            { type: 'text' as const, text: pendingUser.text },
+            { type: 'text' as const, text: safeText },
             ...pendingUser.images.map((img) => ({
               type: 'image' as const,
               image: img.data,
               mimeType: img.mimeType || 'image/jpeg',
             })),
           ]
-        : pendingUser.text;
+        : safeText;
 
     apiMessages.push({ role: 'user', content });
+  }
+
+  while (
+    apiMessages.length > 2 &&
+    estimateJsonBytes(apiMessages) > MAX_API_PAYLOAD_BYTES
+  ) {
+    apiMessages.shift();
   }
 
   return apiMessages;

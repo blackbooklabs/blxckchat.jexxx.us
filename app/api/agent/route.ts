@@ -12,6 +12,12 @@ import {
   runKingdomAgentStreamResponse,
 } from "@/lib/kingdom-agent/run-kingdom-agent";
 import { resolveWebAccountSession } from "@/lib/kingdom-agent/web-session";
+import {
+  estimateJsonBytes,
+  MAX_API_PAYLOAD_BYTES,
+  trimProjectInstructionsForApi,
+} from "@/lib/chat-payload-limits";
+import { normalizeMessagesForApiPayload } from "@/lib/normalize-agent-payload";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -38,7 +44,19 @@ export async function POST(req: Request) {
       );
     }
 
-    const body = await req.json();
+    const rawBody = await req.json();
+    if (estimateJsonBytes(rawBody) > MAX_API_PAYLOAD_BYTES) {
+      return new Response(
+        JSON.stringify({
+          error: "Payload Too Large",
+          message:
+            "This chat history is too large to send. Start a new chat in the sidebar (+) or delete oversized messages from a prior streaming glitch.",
+          signature: "♡ BLXCKCHAT Kingdom Agent",
+        }),
+        { status: 413, headers: { "Content-Type": "application/json", ...corsHeaders } },
+      );
+    }
+
     const {
       messages = [],
       provider = "openai",
@@ -47,7 +65,7 @@ export async function POST(req: Request) {
       projectInstructions = "",
       globalInstructions = "",
       stream = true,
-    } = body;
+    } = rawBody;
 
     const providerKey = provider as AgentProvider;
     const providerConfig = KINGDOM_PROVIDERS[providerKey];
@@ -71,13 +89,13 @@ export async function POST(req: Request) {
 
     const agentInput = {
       session: sessionResult.session,
-      messages: messages as IncomingChatMessage[],
+      messages: normalizeMessagesForApiPayload(messages as IncomingChatMessage[]),
       provider: providerKey,
       apiKey: apiKey ?? "",
       model: model || providerConfig.defaultModel,
       mode,
-      projectInstructions,
-      globalInstructions,
+      projectInstructions: trimProjectInstructionsForApi(projectInstructions),
+      globalInstructions: trimProjectInstructionsForApi(globalInstructions),
     };
 
     if (stream) {

@@ -13,6 +13,12 @@ import {
 } from '@/lib/kingdom-agent/run-kingdom-agent';
 import type { IncomingChatMessage } from '@/lib/chat-message-normalizer';
 import type { AgentProvider } from '@/lib/kingdom-agent/providers';
+import {
+  estimateJsonBytes,
+  MAX_API_PAYLOAD_BYTES,
+  trimProjectInstructionsForApi,
+} from '@/lib/chat-payload-limits';
+import { normalizeMessagesForApiPayload } from '@/lib/normalize-agent-payload';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -66,10 +72,23 @@ export async function POST(req: Request) {
     );
   }
 
-  const incomingMessages: IncomingChatMessage[] = (body.messages ?? []).map((m) => ({
-    role: m.role,
-    content: m.content,
-  }));
+  if (estimateJsonBytes(body) > MAX_API_PAYLOAD_BYTES) {
+    return NextResponse.json(
+      {
+        error: 'Payload Too Large',
+        message:
+          'This conversation is too large. Start a new conversation (+) or delete the oversized chat.',
+      },
+      { status: 413, headers: cors },
+    );
+  }
+
+  const incomingMessages: IncomingChatMessage[] = normalizeMessagesForApiPayload(
+    (body.messages ?? []).map((m) => ({
+      role: m.role,
+      content: m.content,
+    })),
+  );
 
   try {
     const agentBase = {
@@ -78,7 +97,7 @@ export async function POST(req: Request) {
       apiKey: byok.apiKey,
       model: byok.model,
       mode: body.mode ?? 'venus',
-      projectInstructions: body.systemPrompt?.trim() ?? '',
+      projectInstructions: trimProjectInstructionsForApi(body.systemPrompt?.trim() ?? ''),
     };
 
     const wantStream = body.stream !== false;

@@ -1066,7 +1066,11 @@ const [globalContext, setGlobalContext] = useState("");
           m.id === aiMessageId
             ? {
                 ...m,
-                text: `💕 Oops: ${String(error)}\n\nPlease try again. ♡💦`,
+                text: `💕 Oops: ${String(error)}\n\n${
+                  String(error).includes('Payload Too Large') || String(error).includes('413')
+                    ? 'Start a **new chat** (+ in the sidebar) — this thread has oversized messages from an earlier streaming glitch.'
+                    : 'Please try again.'
+                } ♡💦`,
                 isStreaming: false,
               }
             : m

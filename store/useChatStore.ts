@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { pickCanonicalDivinityProject } from '@/lib/divinity-projects';
+import { repairTypewriterCorruptedText, sanitizeMessageTextForApi } from '@/lib/chat-payload-limits';
 export interface TTSVoice {
   pitch: number;
   rate: number;
@@ -376,18 +377,27 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   updateChatMessages: async (chatId: string, messages: Message[]) => {
     try {
+      const sanitized = messages.map((m) => {
+        let text = m.text || "";
+        if (text.length > 24_000) {
+          text = repairTypewriterCorruptedText(text);
+          text = sanitizeMessageTextForApi(text);
+        }
+        return text === m.text ? m : { ...m, text };
+      });
+
       // Optimistic update
       set((state) => ({
         projects: state.projects.map(p => ({
           ...p,
-          chats: p.chats?.map(c => c.id === chatId ? { ...c, messages, updated_at: new Date().toISOString() } : c)
+          chats: p.chats?.map(c => c.id === chatId ? { ...c, messages: sanitized, updated_at: new Date().toISOString() } : c)
         }))
       }));
       
       const res = await fetch('/api/chats', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: chatId, messages })
+        body: JSON.stringify({ id: chatId, messages: sanitized })
       });
       if (!res.ok) console.error('Failed to sync chat messages to DB');
     } catch (e) {
@@ -691,12 +701,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
 }));
 
 function hydrateMessages(messages: any[]): Message[] {
-  return (messages || []).map((m) => ({
-    ...m,
-    text: m.text || m.content || "",
-    timestamp: m.timestamp instanceof Date ? m.timestamp : new Date(m.timestamp),
-    attachments: Array.isArray(m.attachments) ? m.attachments : undefined,
-    modelUsed: m.modelUsed,
-    providerUsed: m.providerUsed,
-  }));
+  return (messages || []).map((m) => {
+    let text = m.text || m.content || "";
+    if (text.length > 24_000) {
+      text = repairTypewriterCorruptedText(text);
+      text = sanitizeMessageTextForApi(text);
+    }
+    return {
+      ...m,
+      text,
+      timestamp: m.timestamp instanceof Date ? m.timestamp : new Date(m.timestamp),
+      attachments: Array.isArray(m.attachments) ? m.attachments : undefined,
+      modelUsed: m.modelUsed,
+      providerUsed: m.providerUsed,
+    };
+  });
 }
