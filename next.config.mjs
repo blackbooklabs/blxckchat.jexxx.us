@@ -36,32 +36,26 @@ const nextConfig = {
   // Trailing slashes for consistent URLs
   trailingSlash: true,
 
-  // Allow BLXCKCHAT Mini (and other jexxx.us subdomains) to fetch user-settings
-  // cross-origin with credentials so BYOK syncs automatically.
+  // API routes must not 308-redirect on preflight OPTIONS (breaks cross-origin CORS).
+  skipTrailingSlashRedirect: true,
+
+  // CORS for Mini / BLXCKBOOK satellite widgets calling BLXCKCHAT APIs with Bearer auth.
   async headers() {
-    return [
-      {
-        source: '/api/user-settings',
-        headers: [
-          {
-            key: 'Access-Control-Allow-Origin',
-            value: 'https://mini.blxckchat.jexxx.us',
-          },
-          {
-            key: 'Access-Control-Allow-Methods',
-            value: 'GET, PUT, OPTIONS',
-          },
-          {
-            key: 'Access-Control-Allow-Headers',
-            value: 'Content-Type, Authorization',
-          },
-          {
-            key: 'Access-Control-Allow-Credentials',
-            value: 'true',
-          },
-        ],
-      },
+    const miniCors = [
+      { key: 'Access-Control-Allow-Origin', value: 'https://mini.blxckchat.jexxx.us' },
+      { key: 'Access-Control-Allow-Methods', value: 'GET, POST, PUT, DELETE, OPTIONS' },
+      { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization' },
+      { key: 'Access-Control-Allow-Credentials', value: 'true' },
+      { key: 'Vary', value: 'Origin' },
     ];
+    const miniApiPaths = [
+      '/api/user-settings',
+      '/api/mini/status',
+      '/api/mini/agent',
+      '/api/projects',
+      '/api/chats',
+    ];
+    return miniApiPaths.map((source) => ({ source, headers: miniCors }));
   },
 };
 
