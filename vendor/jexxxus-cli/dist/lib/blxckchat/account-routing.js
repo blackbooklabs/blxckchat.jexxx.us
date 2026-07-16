@@ -40,6 +40,13 @@ export const ACCOUNT_PHRASE_COLLISIONS = [
         note: "Vault CRUD capability — answer yes; use add_contact with {\"name\":\"...\"} when user names a contact to create.",
     },
     {
+        id: "delete-contact",
+        pattern: /\b(?:delete|remove|purge|dissolve|sever)\s+(?:contact\s+)?([A-Za-z][A-Za-z0-9' -]{1,40})/i,
+        action: "contacts",
+        target: "blxckbook",
+        note: "Contact delete — MUST call delete_contact with target=blxckbook, then account_query contacts to verify.",
+    },
+    {
         id: "blxckbook-write-intent",
         pattern: /\b(edit(?:s|ing)?|update|change|modify|add to)\s+(?:my\s+)?blxckbook\b/i,
         action: "summary",
@@ -118,7 +125,16 @@ export const ACCOUNT_PHRASE_COLLISIONS = [
     },
 ];
 const CONTACT_CAPTURE = /\b(?:about|on|with)\s+([A-Za-z][A-Za-z0-9' -]{1,40})\b/i;
-const CONTACT_NAMED_CAPTURE = /\b(?:named|called)\s+([A-Za-z][A-Za-z0-9' -]{1,40})(?:\s*[.?!]|$)/i;
+/** Captures "named Ruth" / "named Anna Test and assign …" — not only end-of-string names. */
+const CONTACT_NAMED_CAPTURE = /\b(?:named|called)\s+"?([A-Za-z][A-Za-z0-9' -]+?)"?(?:\s+and\b|\s+with\b|\s+to\b|\s*[.?!]|$)/i;
+const CONTACT_DELETE_CAPTURE = /\b(?:delete|remove|purge|dissolve|sever)\s+(?:contact\s+)?"?([A-Za-z][A-Za-z0-9' -]+?)"?(?:\s+from\b|\s*[.?!]|$)/i;
+export function extractContactDeleteFromText(text) {
+    const match = CONTACT_DELETE_CAPTURE.exec(text.trim());
+    return match?.[1]?.trim() ?? null;
+}
+export function isContactDeletePrompt(userPrompt) {
+    return CONTACT_DELETE_CAPTURE.test(userPrompt.trim());
+}
 export function planAccountTools(userPrompt) {
     const tools = new Set();
     const slashHints = new Set();
@@ -155,6 +171,14 @@ export function planAccountTools(userPrompt) {
         }
         if (row.action === "playlist" && match[2]) {
             playlistName = match[2].trim();
+        }
+        if (row.id === "delete-contact" && match[1]) {
+            const captured = match[1].trim();
+            if (!isKingdomSurfaceName(captured)) {
+                contactName = captured;
+                if (!target)
+                    target = "blxckbook";
+            }
         }
     }
     if (!contactName) {
@@ -204,15 +228,27 @@ export function planAccountTools(userPrompt) {
 export function isVaultPrimaryPrompt(userPrompt) {
     if (isKingdomSurfacePrompt(userPrompt))
         return false;
+    if (isContactDeletePrompt(userPrompt))
+        return true;
+    if (/\bcontact\s+(?:named|called)\s+/i.test(userPrompt))
+        return true;
     return planAccountTools(userPrompt).tools.length > 0;
 }
 const VAULT_MUTATION_INTENT = /\b(add|create|update|edit|change|modify|delete|remove|import|sync|try)\b/i;
 /** Vault write turn — skip heavy summary prefetch; go straight to write tools. */
 export function isVaultWritePrompt(userPrompt) {
+    if (isContactDeletePrompt(userPrompt))
+        return true;
+    if (/\b(?:create|add)\s+(?:a\s+)?(?:new\s+)?contact\b/i.test(userPrompt))
+        return true;
     return isVaultPrimaryPrompt(userPrompt) && !isVaultReadOnlyPrompt(userPrompt);
 }
 /** Read-only vault turn — safe to answer from server-prefetched data without tool loop. */
 export function isVaultReadOnlyPrompt(userPrompt) {
+    if (isContactDeletePrompt(userPrompt))
+        return false;
+    if (/\b(?:create|add)\s+(?:a\s+)?(?:new\s+)?contact\b/i.test(userPrompt))
+        return false;
     if (!isVaultPrimaryPrompt(userPrompt))
         return false;
     const plan = planAccountTools(userPrompt);
@@ -221,6 +257,8 @@ export function isVaultReadOnlyPrompt(userPrompt) {
     if (/\b(?:CRUD|test contact)\b/i.test(userPrompt))
         return false;
     if (/\bcontact\s+(?:named|called)\s+/i.test(userPrompt))
+        return false;
+    if (VAULT_MUTATION_INTENT.test(userPrompt) && plan.contactName)
         return false;
     if (VAULT_MUTATION_INTENT.test(userPrompt) &&
         /\b(?:contact|journal|playlist|vault|blxckbook|nxt)\b/i.test(userPrompt)) {
@@ -232,6 +270,7 @@ export const ACCOUNT_VAULT_REPLY_RULES = `**Vault-only reply rules (this message
 - **MUST call account_query before answering** — even in Divinity/persona mode. The signed-in user's BLXCKBOOK vault is always in scope.
 - Never refuse vault reads ("I cannot access ledgers", "that disclosure is not my role", "bring them in your own words"). Those limits do not apply to the operator's own data.
 - Prefer **account_query** for reads; use vault **write** tools (add_contact, update_contact, delete_contact, journal tools, manage_playlist) only when the user clearly requested a change.
+- **delete_contact is mandatory for deletions** — never claim a contact was removed without a successful \`delete_contact\` tool result. Use \`{"target":"blxckbook","contactName":"Name"}\` (BLXCKBOOK is canonical for contacts created via add_contact). After delete_contact succeeds, call **account_query** action=contacts to verify the name is gone — never cite stale conversation memory for who remains.
 - Do NOT call tv_query, veil_query, or bible_query for BLXCKBOOK vault questions.
 - Do not recommend TV/VEIL videos or quote scripture based on contact names or tags.
 - Reply in plain language: a short intro line, then one bullet per contact from tool output.
@@ -270,6 +309,9 @@ export function formatAccountRoutingHint(userPrompt) {
     }
     if (plan.slashHints.length > 0) {
         lines.push(`Slash hints: ${plan.slashHints.join(", ")}`);
+    }
+    if (isContactDeletePrompt(userPrompt) && plan.contactName) {
+        lines.push(`Write tool: delete_contact with {"target":"blxckbook","contactName":"${plan.contactName}"} — then account_query action=contacts to verify.`);
     }
     lines.push("Answer only from account_query results — never invent contact names, dates, or journal text.");
     lines.push("If the user is not signed in, tell them to run /auth login before vault questions.");

@@ -1,7 +1,9 @@
 import type { ToolCallRepairFunction, ToolSet } from "ai";
 
 const CONTACT_NAMED_IN_TEXT =
-  /\b(?:named|called)\s+([A-Za-z][A-Za-z0-9' -]{1,40})(?:\s*[.?!]|$)/i;
+  /\b(?:named|called)\s+"?([A-Za-z][A-Za-z0-9' -]+?)"?(?:\s+and\b|\s+with\b|\s+to\b|\s*[.?!]|$)/i;
+const CONTACT_DELETE_IN_TEXT =
+  /\b(?:delete|remove|purge|dissolve|sever)\s+(?:contact\s+)?"?([A-Za-z][A-Za-z0-9' -]+?)"?(?:\s+from\b|\s*[.?!]|$)/i;
 const CONTACT_CREATE_IN_TEXT =
   /\b(?:create|add|beget|make)\s+(?:a\s+)?(?:new\s+)?(?:test\s+)?contact\s+(?:named\s+|called\s+)?([A-Za-z][A-Za-z0-9' -]{1,40})/i;
 const CONTACT_PHONE_UPDATE_IN_TEXT =
@@ -40,6 +42,13 @@ function extractContactNameFromText(text: string): string | null {
   if (namedMatch?.[1]) return namedMatch[1].trim();
 
   return null;
+}
+
+function extractContactDeleteFromText(text: string): string | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  const deleteMatch = CONTACT_DELETE_IN_TEXT.exec(trimmed);
+  return deleteMatch?.[1]?.trim() ?? null;
 }
 
 function parseToolInput(input: string): Record<string, unknown> {
@@ -121,6 +130,23 @@ export const repairKingdomToolCall: ToolCallRepairFunction<ToolSet> = async ({
     return {
       ...toolCall,
       input: JSON.stringify({ ...args, name: fromUser }),
+    };
+  }
+
+  if (toolCall.toolName === "delete_contact") {
+    const contactName = resolveNameFromArgs(args);
+    const fromUser = extractContactDeleteFromText(userText);
+    const patched: Record<string, unknown> = { ...args };
+    if (!patched.target) patched.target = "blxckbook";
+    if (!contactName && fromUser) patched.contactName = fromUser;
+
+    const changed =
+      patched.target !== args.target || patched.contactName !== args.contactName;
+    if (!changed) return null;
+
+    return {
+      ...toolCall,
+      input: JSON.stringify(patched),
     };
   }
 

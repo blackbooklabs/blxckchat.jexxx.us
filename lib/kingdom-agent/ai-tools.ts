@@ -60,7 +60,9 @@ export async function buildKingdomAiTools(): Promise<ToolSet> {
 
   for (const t of registry) {
     const inputSchema =
-      t.name === "add_contact" || t.name === "update_contact"
+      t.name === "add_contact" ||
+      t.name === "update_contact" ||
+      t.name === "delete_contact"
         ? permissiveObjectSchema(t.parameters)
         : jsonSchema(t.parameters as never);
 
