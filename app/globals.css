@@ -197,3 +197,12 @@
     transition-timing-function: ease;
   }
 }
+
+.chat-message-body .chat-message-link {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.chat-message-body .chat-message-link:hover {
+  opacity: 0.85;
+}

@@ -13,6 +13,7 @@ import { ZoomModal } from "@/components/ZoomModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthButton } from "@/components/AuthButton";
 import { useChatStore, Message, MessageAttachment } from "@/store/useChatStore";
+import { formatChatMessageHtml } from "@/lib/chat-message-html";
 import type { UserByokSettings } from "@/lib/byok-settings-types";
 import {
   fetchRemoteByokSettings,
@@ -1697,11 +1698,12 @@ const [globalContext, setGlobalContext] = useState("");
                           </div>
                         )}
                         <div 
-                          className="font-doc-body text-sm leading-relaxed whitespace-pre-wrap mt-1"
+                          className="font-doc-body text-sm leading-relaxed whitespace-pre-wrap mt-1 chat-message-body"
                           dangerouslySetInnerHTML={{ 
-                            __html: (message.text || "")
-                              .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                              .replace(/\n/g, '<br />')
+                            __html: formatChatMessageHtml(
+                              message.text || "",
+                              typeof window !== "undefined" ? window.location.hostname : undefined,
+                            ),
                           }}
                         />
                         {message.attachments && message.attachments.length > 0 && (

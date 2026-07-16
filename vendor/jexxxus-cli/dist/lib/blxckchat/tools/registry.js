@@ -3,6 +3,7 @@ import { bibleTool } from "./bible-tools.js";
 import { veilTool } from "./veil-tools.js";
 import { tvTool } from "./tv-tools.js";
 import { lawTool } from "./law-tools.js";
+import { musicTool } from "./music-tools.js";
 import { docsTool } from "./docs-tools.js";
 import { doctorTool, notifyTool, importContactsTool } from "./dashboard-tools.js";
 import { accountQueryTool } from "./account-tools.js";
@@ -19,6 +20,7 @@ export function buildToolRegistry(allowShellOrOptions = false) {
         veilTool,
         tvTool,
         lawTool,
+        musicTool,
         docsTool,
         doctorTool,
         notifyTool,

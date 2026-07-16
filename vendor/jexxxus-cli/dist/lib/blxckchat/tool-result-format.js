@@ -18,8 +18,10 @@ export function formatToolResultForFallback(toolName, raw) {
         }
         return trimmed;
     }
-    if (toolName === "tv_query" || toolName === "veil_query") {
-        if (trimmed.includes("JEXXXUS | TV videos") || trimmed.includes("VEIL")) {
+    if (toolName === "tv_query" || toolName === "veil_query" || toolName === "music_query") {
+        if (trimmed.includes("JEXXXUS | TV videos") ||
+            trimmed.includes("VEIL") ||
+            trimmed.includes("JEXXXUS Music")) {
             return trimmed;
         }
     }
