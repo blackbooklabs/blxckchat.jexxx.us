@@ -81,7 +81,7 @@ export async function POST(req: Request) {
     };
 
     if (stream) {
-      return runKingdomAgentStreamResponse(agentInput, corsHeaders);
+      return await runKingdomAgentStreamResponse(agentInput, corsHeaders);
     }
 
     const result = await runKingdomAgent(agentInput);

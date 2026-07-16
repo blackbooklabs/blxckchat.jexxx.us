@@ -84,14 +84,14 @@ export async function POST(req: Request) {
     const wantStream = body.stream !== false;
 
     if (wantStream) {
-      return runWithAccountSessionResolver(
+      return await runWithAccountSessionResolver(
         () => resolveWebAccountSessionFromRequest(req),
         async () => {
           const sessionResult = await resolveWebAccountSession();
           if (!sessionResult.ok) {
             throw new Error(sessionResult.message);
           }
-          return runKingdomAgentStreamResponse(
+          return await runKingdomAgentStreamResponse(
             {
               ...agentBase,
               session: sessionResult.session,
