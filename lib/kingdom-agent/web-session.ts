@@ -165,9 +165,9 @@ export async function resolveWebAccountSessionFromRequest(
         clockSkewInMs: 60_000,
       });
       if (verified && verified.sub) return storedToken;
-      return null;
+      return '';
     } catch {
-      return null;
+      return '';
     }
   };
 
