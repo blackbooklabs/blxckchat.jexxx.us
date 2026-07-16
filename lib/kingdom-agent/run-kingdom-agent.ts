@@ -1,4 +1,4 @@
-import { ToolLoopAgent, stepCountIs } from "ai";
+import { generateText, ToolLoopAgent, stepCountIs } from "ai";
 import {
   normalizeMessagesForAiSdk,
   type IncomingChatMessage,
@@ -8,6 +8,8 @@ import {
   buildKingdomSystemPrompt,
   extractHistoryContext,
 } from "@/lib/kingdom-agent/build-prompt";
+import { formatKingdomAgentError } from "@/lib/kingdom-agent/format-agent-error";
+import { loadCliModule } from "@/lib/kingdom-agent/cli-loader";
 import { createKingdomModel, type AgentProvider } from "@/lib/kingdom-agent/providers";
 import type { AuthenticatedAccountSession } from "@/lib/kingdom-agent/types";
 import { stripSpicyCanon } from "@/lib/spicy-mode";
@@ -75,6 +77,12 @@ async function createKingdomToolLoopAgent(input: RunKingdomAgentInput) {
   }
 
   const userPrompt = lastUserText(messages);
+  const accountRouting = await loadCliModule<{
+    isVaultReadOnlyPrompt: (p: string) => boolean;
+  }>("lib/blxckchat/account-routing.js");
+
+  const useTextOnlyVault = accountRouting.isVaultReadOnlyPrompt(userPrompt);
+
   const systemPrompt = await buildKingdomSystemPrompt({
     userPrompt,
     personaSystemPrompt: personaPrompt || undefined,
@@ -83,16 +91,28 @@ async function createKingdomToolLoopAgent(input: RunKingdomAgentInput) {
   });
 
   const aiMessages = normalizeMessagesForAiSdk(messages, provider, selectedModel);
-  const tools = await buildKingdomAiTools();
+  const tools = useTextOnlyVault ? undefined : await buildKingdomAiTools();
+
+  if (useTextOnlyVault) {
+    return {
+      mode: "text-only" as const,
+      aiModel,
+      aiMessages,
+      systemPrompt,
+      providerName,
+      selectedModel,
+    };
+  }
 
   const agent = new ToolLoopAgent({
     model: aiModel,
-    tools,
+    tools: tools ?? {},
     instructions: systemPrompt,
     stopWhen: stepCountIs(8),
   });
 
   return {
+    mode: "tool-loop" as const,
     agent,
     aiMessages,
     providerName,
@@ -103,19 +123,37 @@ async function createKingdomToolLoopAgent(input: RunKingdomAgentInput) {
 export async function runKingdomAgent(
   input: RunKingdomAgentInput,
 ): Promise<RunKingdomAgentResult> {
-  const { agent, aiMessages, providerName, selectedModel } =
-    await createKingdomToolLoopAgent(input);
+  const prepared = await createKingdomToolLoopAgent(input);
+  const { providerName, selectedModel } = prepared;
 
-  const result = await agent.generate({
-    messages: aiMessages as never,
-  });
+  try {
+    if (prepared.mode === "text-only") {
+      const result = await generateText({
+        model: prepared.aiModel,
+        system: prepared.systemPrompt,
+        messages: prepared.aiMessages as never,
+      });
+      return {
+        text: result.text || "♡ Task complete.",
+        provider: providerName,
+        model: selectedModel,
+        steps: 1,
+      };
+    }
 
-  return {
-    text: result.text || "♡ Task complete.",
-    provider: providerName,
-    model: selectedModel,
-    steps: result.steps?.length ?? 0,
-  };
+    const result = await prepared.agent.generate({
+      messages: prepared.aiMessages as never,
+    });
+
+    return {
+      text: result.text || "♡ Task complete.",
+      provider: providerName,
+      model: selectedModel,
+      steps: result.steps?.length ?? 0,
+    };
+  } catch (err) {
+    throw new Error(formatKingdomAgentError(err, providerName, selectedModel));
+  }
 }
 
 /**

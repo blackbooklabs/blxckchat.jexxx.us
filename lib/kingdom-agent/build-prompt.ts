@@ -57,7 +57,10 @@ export async function buildKingdomSystemPrompt(
       ) => string | null;
     }>("lib/blxckchat/kingdom-routing.js"),
     loadCliModule<{
-      prefetchAccountContext: (p: string) => Promise<string | null>;
+      prefetchAccountContext: (
+        p: string,
+        session?: AuthenticatedAccountSession | null,
+      ) => Promise<{ text: string; liveQuery: boolean } | null>;
     }>("lib/blxckchat/account-prefetch.js"),
     loadCliModule<{
       prefetchGardenContext: (
@@ -92,12 +95,16 @@ export async function buildKingdomSystemPrompt(
     : await gardenPrefetchMod.prefetchGardenContext(userPrompt, routingOptions);
   if (gardenPrefetchText) prompt = `${prompt}\n\n${gardenPrefetchText}`;
 
-  const accountPrefetchText = await accountPrefetchMod.prefetchAccountContext(userPrompt);
-  if (accountPrefetchText) prompt = `${prompt}\n\n${accountPrefetchText}`;
+  const accountPrefetch = await accountPrefetchMod.prefetchAccountContext(
+    userPrompt,
+    session,
+  );
+  if (accountPrefetch?.text) prompt = `${prompt}\n\n${accountPrefetch.text}`;
 
   const operatorContext = await buildOperatorIdentityContextWeb(session);
   prompt = `${prompt}\n\n${operatorContext}`;
 
+  if (vaultPrimary) return prompt;
   return appendDocContext(prompt, userPrompt);
 }
 

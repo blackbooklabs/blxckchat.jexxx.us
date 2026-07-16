@@ -157,8 +157,8 @@ async function buildSystemPrompt(userPrompt, persona, routingOptions) {
         prompt = `${prompt}\n\n${prefetch}`;
     }
     const accountPrefetch = await prefetchAccountContext(userPrompt);
-    if (accountPrefetch) {
-        prompt = `${prompt}\n\n${accountPrefetch}`;
+    if (accountPrefetch?.text) {
+        prompt = `${prompt}\n\n${accountPrefetch.text}`;
     }
     const operatorContext = await buildSignedInOperatorContext();
     if (operatorContext) {
