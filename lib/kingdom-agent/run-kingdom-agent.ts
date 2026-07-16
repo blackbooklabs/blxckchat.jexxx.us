@@ -24,6 +24,8 @@ export interface RunKingdomAgentInput {
   mode?: "venus" | "innocent";
   projectInstructions?: string;
   globalInstructions?: string;
+  /** Mini embed — tighter step budget and instant response stream. */
+  surface?: "web" | "mini";
 }
 
 export interface RunKingdomAgentResult {
@@ -61,7 +63,9 @@ async function createKingdomToolLoopAgent(input: RunKingdomAgentInput) {
     mode = "venus",
     projectInstructions = "",
     globalInstructions = "",
+    surface = "web",
   } = input;
+  const isMini = surface === "mini";
 
   const { model: aiModel, providerName, selectedModel } = createKingdomModel(
     provider,
@@ -87,8 +91,9 @@ async function createKingdomToolLoopAgent(input: RunKingdomAgentInput) {
   const systemPrompt = await buildKingdomSystemPrompt({
     userPrompt,
     personaSystemPrompt: personaPrompt || undefined,
-    conversationHistory: await extractHistoryContext(messages),
+    conversationHistory: isMini ? "" : await extractHistoryContext(messages),
     session,
+    surface,
   });
 
   const aiMessages = normalizeMessagesForAiSdk(messages, provider, selectedModel);
@@ -109,7 +114,7 @@ async function createKingdomToolLoopAgent(input: RunKingdomAgentInput) {
     model: aiModel,
     tools: tools ?? {},
     instructions: systemPrompt,
-    stopWhen: stepCountIs(8),
+    stopWhen: stepCountIs(isMini ? 4 : 8),
     experimental_repairToolCall: repairKingdomToolCall,
   });
 
@@ -163,6 +168,18 @@ export async function runKingdomAgent(
  * small chunks for a typewriter effect. ToolLoopAgent.stream() often yields an
  * empty textStream after tool steps — generate is authoritative.
  */
+/** Single-chunk stream — no artificial typewriter delay (Mini / fast path). */
+export function buildKingdomAgentInstantStream(text: string): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  const body = text.trim() || "♡ Task complete.";
+  return new ReadableStream({
+    start(controller) {
+      controller.enqueue(encoder.encode(body));
+      controller.close();
+    },
+  });
+}
+
 /** Emit incremental deltas — clients append chunks (consumeTextStream). */
 export function buildKingdomAgentTypewriterStream(text: string): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
@@ -189,8 +206,12 @@ export async function runKingdomAgentStreamResponse(
   headers: Record<string, string> = {},
 ): Promise<Response> {
   const result = await runKingdomAgent(input);
+  const streamBody =
+    input.surface === "mini"
+      ? buildKingdomAgentInstantStream(result.text)
+      : buildKingdomAgentTypewriterStream(result.text);
 
-  return new Response(buildKingdomAgentTypewriterStream(result.text), {
+  return new Response(streamBody, {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
       "X-Provider": result.provider,

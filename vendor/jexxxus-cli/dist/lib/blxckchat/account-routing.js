@@ -207,6 +207,10 @@ export function isVaultPrimaryPrompt(userPrompt) {
     return planAccountTools(userPrompt).tools.length > 0;
 }
 const VAULT_MUTATION_INTENT = /\b(add|create|update|edit|change|modify|delete|remove|import|sync|try)\b/i;
+/** Vault write turn — skip heavy summary prefetch; go straight to write tools. */
+export function isVaultWritePrompt(userPrompt) {
+    return isVaultPrimaryPrompt(userPrompt) && !isVaultReadOnlyPrompt(userPrompt);
+}
 /** Read-only vault turn — safe to answer from server-prefetched data without tool loop. */
 export function isVaultReadOnlyPrompt(userPrompt) {
     if (!isVaultPrimaryPrompt(userPrompt))

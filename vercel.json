@@ -1,3 +1,11 @@
 {
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "functions": {
+    "app/api/mini/agent/route.ts": {
+      "maxDuration": 120
+    },
+    "app/api/agent/route.ts": {
+      "maxDuration": 120
+    }
+  }
 }

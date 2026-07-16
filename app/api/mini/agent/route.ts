@@ -98,6 +98,7 @@ export async function POST(req: Request) {
       model: byok.model,
       mode: body.mode ?? 'venus',
       projectInstructions: trimProjectInstructionsForApi(body.systemPrompt?.trim() ?? ''),
+      surface: 'mini' as const,
     };
 
     const wantStream = body.stream !== false;

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { formatAccountRoutingHint, isVaultPrimaryPrompt, isVaultReadOnlyPrompt, planAccountTools, } from "../lib/blxckchat/account-routing.js";
+import { formatAccountRoutingHint, isVaultPrimaryPrompt, isVaultReadOnlyPrompt, isVaultWritePrompt, planAccountTools, } from "../lib/blxckchat/account-routing.js";
 test("list my contacts routes to account_query contacts", () => {
     const plan = planAccountTools("list my contacts");
     assert.ok(plan.tools.includes("account_query"));
@@ -92,5 +92,8 @@ test("contact named Ruth captures contactName and enables write tools", () => {
 test("CRUD capability question enables write tools", () => {
     const prompt = "Do you have CRUD access, such as the ability to create a new test contact?";
     assert.equal(isVaultReadOnlyPrompt(prompt), false);
+});
+test("create contact named Ruth is a vault write prompt", () => {
+    assert.equal(isVaultWritePrompt("Create a test contact named Ruth."), true);
 });
 //# sourceMappingURL=account-routing.test.js.map

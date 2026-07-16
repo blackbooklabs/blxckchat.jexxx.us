@@ -1,7 +1,7 @@
 import { executeAccountQuery, fetchAccountSummary, } from "../account-data/account-query.js";
 import { resolveAuthenticatedAccountSession } from "../account-data/session.js";
 import { formatCredentialsDisplayName } from "../operator-identity.js";
-import { isVaultReadOnlyPrompt, planAccountTools } from "./account-routing.js";
+import { isVaultReadOnlyPrompt, isVaultWritePrompt, planAccountTools, } from "./account-routing.js";
 /**
  * Pre-load vault data when the user is signed in and the prompt matches account routing.
  * For read-only vault turns, runs account_query server-side so Divinity personas can answer
@@ -19,6 +19,9 @@ export async function prefetchAccountContext(userPrompt, session) {
             return null;
         }
         resolvedSession = resolved.session;
+    }
+    if (isVaultWritePrompt(userPrompt)) {
+        return null;
     }
     const readOnly = isVaultReadOnlyPrompt(userPrompt);
     if (readOnly && plan.action) {

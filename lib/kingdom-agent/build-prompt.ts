@@ -7,6 +7,8 @@ export interface KingdomPromptOptions {
   personaSystemPrompt?: string;
   conversationHistory?: string;
   session: AuthenticatedAccountSession;
+  /** Mini widget — skip heavy RAG/garden prefetch to stay within Vercel limits. */
+  surface?: "web" | "mini";
 }
 
 const WEB_SURFACE_BRIDGE = `## BLXCKCHAT web surface (blxckchat.jexxx.us)
@@ -33,7 +35,9 @@ Stay in character when presenting tool results — not when declining vault acce
 export async function buildKingdomSystemPrompt(
   options: KingdomPromptOptions,
 ): Promise<string> {
-  const { userPrompt, personaSystemPrompt, conversationHistory, session } = options;
+  const { userPrompt, personaSystemPrompt, conversationHistory, session, surface = "web" } =
+    options;
+  const isMini = surface === "mini";
 
   const [
     agentLoop,
@@ -90,10 +94,12 @@ export async function buildKingdomSystemPrompt(
     prompt = `${prompt}\n\n${accountRouting.ACCOUNT_VAULT_PERSONA_OVERRIDE}`;
   }
 
-  const gardenPrefetchText = vaultPrimary
-    ? null
-    : await gardenPrefetchMod.prefetchGardenContext(userPrompt, routingOptions);
-  if (gardenPrefetchText) prompt = `${prompt}\n\n${gardenPrefetchText}`;
+  if (!isMini) {
+    const gardenPrefetchText = vaultPrimary
+      ? null
+      : await gardenPrefetchMod.prefetchGardenContext(userPrompt, routingOptions);
+    if (gardenPrefetchText) prompt = `${prompt}\n\n${gardenPrefetchText}`;
+  }
 
   const accountPrefetch = await accountPrefetchMod.prefetchAccountContext(
     userPrompt,
@@ -104,7 +110,7 @@ export async function buildKingdomSystemPrompt(
   const operatorContext = await buildOperatorIdentityContextWeb(session);
   prompt = `${prompt}\n\n${operatorContext}`;
 
-  if (vaultPrimary) return prompt;
+  if (vaultPrimary || isMini) return prompt;
   return appendDocContext(prompt, userPrompt);
 }
 
