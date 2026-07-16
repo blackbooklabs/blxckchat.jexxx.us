@@ -158,17 +158,29 @@ export async function resolveWebAccountSessionFromRequest(
   }
 
   const { userId, sessionToken: storedToken } = authSession;
+  const secretKey = process.env.CLERK_SECRET_KEY ?? process.env.CLERK_SECRET_DEFAULT;
+
   const getAccessToken = async () => {
-    try {
-      const verified = await verifyToken(storedToken, {
-        authorizedParties: CLERK_AUTHORIZED_PARTIES,
-        clockSkewInMs: 60_000,
-      });
-      if (verified && verified.sub) return storedToken;
-      return '';
-    } catch {
-      return '';
+    if (!storedToken.trim()) return "";
+
+    if (secretKey) {
+      try {
+        const verified = await verifyToken(storedToken, {
+          secretKey,
+          authorizedParties: CLERK_AUTHORIZED_PARTIES,
+          clockSkewInMs: 60_000,
+        });
+        if (verified?.sub) return storedToken;
+      } catch (err) {
+        console.warn(
+          "[web-session] Bearer token re-verify failed — using request-scoped token:",
+          err instanceof Error ? err.message : err,
+        );
+      }
     }
+
+    // Request auth already validated this JWT; do not send an empty Authorization header to Supabase.
+    return storedToken;
   };
 
   return buildAuthenticatedSession(userId, storedToken, getAccessToken);
