@@ -7,7 +7,10 @@ export const maxDuration = 120;
 
 import type { IncomingChatMessage } from "@/lib/chat-message-normalizer";
 import { KINGDOM_PROVIDERS, type AgentProvider } from "@/lib/kingdom-agent/providers";
-import { runKingdomAgent } from "@/lib/kingdom-agent/run-kingdom-agent";
+import {
+  runKingdomAgent,
+  streamKingdomAgent,
+} from "@/lib/kingdom-agent/run-kingdom-agent";
 import { resolveWebAccountSession } from "@/lib/kingdom-agent/web-session";
 
 const corsHeaders = {
@@ -43,6 +46,7 @@ export async function POST(req: Request) {
       mode = "venus",
       projectInstructions = "",
       globalInstructions = "",
+      stream = true,
     } = body;
 
     const providerKey = provider as AgentProvider;
@@ -65,7 +69,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const result = await runKingdomAgent({
+    const agentInput = {
       session: sessionResult.session,
       messages: messages as IncomingChatMessage[],
       provider: providerKey,
@@ -74,7 +78,23 @@ export async function POST(req: Request) {
       mode,
       projectInstructions,
       globalInstructions,
-    });
+    };
+
+    if (stream) {
+      const { stream: textStream, provider: providerName, model: selectedModel } =
+        await streamKingdomAgent(agentInput);
+
+      return textStream.toTextStreamResponse({
+        headers: {
+          ...corsHeaders,
+          "X-BLXCKCHAT-Agent": "kingdom",
+          "X-Provider": providerName,
+          "X-Model": selectedModel,
+        },
+      });
+    }
+
+    const result = await runKingdomAgent(agentInput);
 
     return new Response(
       JSON.stringify({

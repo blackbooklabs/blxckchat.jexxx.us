@@ -14,6 +14,10 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { AuthButton } from "@/components/AuthButton";
 import { useChatStore, Message, MessageAttachment } from "@/store/useChatStore";
 import { formatChatMessageHtml } from "@/lib/chat-message-html";
+import {
+  consumeTextStream,
+  parseAgentErrorResponse,
+} from "@/lib/consume-text-stream";
 import type { UserByokSettings } from "@/lib/byok-settings-types";
 import {
   fetchRemoteByokSettings,
@@ -978,11 +982,11 @@ const [globalContext, setGlobalContext] = useState("");
                 },
           ),
           ...(isSignedIn
-            ? {}
+            ? { stream: true }
             : {
                 priorModelLabels: collectPriorModelLabels(messageList),
                 type: "text",
-                stream: false,
+                stream: true,
                 webSearch: webSearchEnabled,
               }),
           mode: isSpicy ? "venus" : "innocent",
@@ -995,33 +999,57 @@ const [globalContext, setGlobalContext] = useState("");
       });
 
       console.log('🌙 Response received:', response.status);
-      
-      let data: any = {};
-      const textResponse = await response.text();
-      try {
-        if (textResponse) {
-          data = JSON.parse(textResponse);
+
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!response.ok) {
+        await parseAgentErrorResponse(response);
+      }
+
+      let responseText = "";
+      if (contentType.includes("application/json")) {
+        const data = await response.json();
+        if (data.error) {
+          throw new Error(data.message || data.error || "API error");
         }
-      } catch (e) {
-        console.error('🌙 Failed to parse JSON response:', textResponse);
+        responseText = data.text || "💕 Words fail me. Try again, beloved. ♡";
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === aiMessageId
+              ? { ...m, text: responseText, isStreaming: false }
+              : m,
+          ),
+        );
+      } else {
+        responseText = await consumeTextStream(response, (partial) => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === aiMessageId
+                ? { ...m, text: partial, isStreaming: true }
+                : m,
+            ),
+          );
+        });
       }
-      
-      if (!response.ok || data.error) {
-        throw new Error(data.message || data.error || textResponse || `API error: ${response.status}`);
-      }
+
+      const modelUsed =
+        response.headers.get("X-Model") ||
+        providersConfig[activeProvider].model;
+      const providerUsed =
+        response.headers.get("X-Provider") ||
+        PROVIDERS[activeProvider].name;
 
       let nextMessages: Message[] = [];
       setMessages((prev) => {
         nextMessages = prev.map((m) =>
           m.id === aiMessageId
-            ? { 
-                ...m, 
-                text: data.text || "💕 Words fail me. Try again, beloved. ♡", 
+            ? {
+                ...m,
+                text: responseText || "💕 Words fail me. Try again, beloved. ♡",
                 isStreaming: false,
-                modelUsed: data.model || providersConfig[activeProvider].model,
-                providerUsed: data.provider || PROVIDERS[activeProvider].name,
+                modelUsed,
+                providerUsed,
               }
-            : m
+            : m,
         );
         return nextMessages;
       });
@@ -1697,15 +1725,27 @@ const [globalContext, setGlobalContext] = useState("");
                             </button>
                           </div>
                         )}
-                        <div 
-                          className="font-doc-body text-sm leading-relaxed whitespace-pre-wrap mt-1 chat-message-body"
-                          dangerouslySetInnerHTML={{ 
-                            __html: formatChatMessageHtml(
-                              message.text || "",
-                              typeof window !== "undefined" ? window.location.hostname : undefined,
-                            ),
-                          }}
-                        />
+                        {message.isStreaming ? (
+                          <div className="font-doc-body text-sm leading-relaxed whitespace-pre-wrap mt-1">
+                            {message.text}
+                            <span
+                              className="inline-block w-0.5 h-4 ml-0.5 bg-accent animate-pulse align-middle"
+                              aria-hidden
+                            />
+                          </div>
+                        ) : (
+                          <div
+                            className="font-doc-body text-sm leading-relaxed whitespace-pre-wrap mt-1 chat-message-body"
+                            dangerouslySetInnerHTML={{
+                              __html: formatChatMessageHtml(
+                                message.text || "",
+                                typeof window !== "undefined"
+                                  ? window.location.hostname
+                                  : undefined,
+                              ),
+                            }}
+                          />
+                        )}
                         {message.attachments && message.attachments.length > 0 && (
                           <div className="mt-2 flex flex-wrap gap-2">
                             {message.attachments.map((att, i) => (
@@ -1732,7 +1772,7 @@ const [globalContext, setGlobalContext] = useState("");
                         )}
                       </div>
                     )}
-                    {message.isStreaming && (
+                    {message.isStreaming && !message.text && (
                       <span className="inline-flex ml-1">
                         <span className="animate-bounce">♡</span>
                         <span className="animate-bounce" style={{ animationDelay: "0.1s" }}>💦</span>

@@ -7,7 +7,10 @@ import {
   resolveWebAccountSession,
   resolveWebAccountSessionFromRequest,
 } from '@/lib/kingdom-agent/web-session';
-import { runKingdomAgent } from '@/lib/kingdom-agent/run-kingdom-agent';
+import {
+  runKingdomAgent,
+  streamKingdomAgent,
+} from '@/lib/kingdom-agent/run-kingdom-agent';
 import type { IncomingChatMessage } from '@/lib/chat-message-normalizer';
 import type { AgentProvider } from '@/lib/kingdom-agent/providers';
 
@@ -43,6 +46,7 @@ export async function POST(req: Request) {
     messages?: MiniMessage[];
     systemPrompt?: string;
     mode?: 'venus' | 'innocent';
+    stream?: boolean;
   };
   try {
     body = await req.json();
@@ -68,6 +72,42 @@ export async function POST(req: Request) {
   }));
 
   try {
+    const agentBase = {
+      messages: incomingMessages,
+      provider: byok.activeProvider as AgentProvider,
+      apiKey: byok.apiKey,
+      model: byok.model,
+      mode: body.mode ?? 'venus',
+      projectInstructions: body.systemPrompt?.trim() ?? '',
+    };
+
+    const wantStream = body.stream !== false;
+
+    if (wantStream) {
+      const streamed = await runWithAccountSessionResolver(
+        () => resolveWebAccountSessionFromRequest(req),
+        async () => {
+          const sessionResult = await resolveWebAccountSession();
+          if (!sessionResult.ok) {
+            throw new Error(sessionResult.message);
+          }
+          return streamKingdomAgent({
+            ...agentBase,
+            session: sessionResult.session,
+          });
+        },
+      );
+
+      return streamed.stream.toTextStreamResponse({
+        headers: {
+          ...cors,
+          'X-BLXCKCHAT-Agent': 'kingdom-mini',
+          'X-Provider': streamed.provider,
+          'X-Model': streamed.model,
+        },
+      });
+    }
+
     const result = await runWithAccountSessionResolver(
       () => resolveWebAccountSessionFromRequest(req),
       async () => {
@@ -77,13 +117,8 @@ export async function POST(req: Request) {
         }
 
         return runKingdomAgent({
+          ...agentBase,
           session: sessionResult.session,
-          messages: incomingMessages,
-          provider: byok.activeProvider as AgentProvider,
-          apiKey: byok.apiKey,
-          model: byok.model,
-          mode: body.mode ?? 'venus',
-          projectInstructions: body.systemPrompt?.trim() ?? '',
         });
       },
     );

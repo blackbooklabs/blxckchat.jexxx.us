@@ -1,4 +1,4 @@
-import { ToolLoopAgent, stepCountIs } from "ai";
+import { ToolLoopAgent, stepCountIs, type StreamTextResult, type ToolSet } from "ai";
 import {
   normalizeMessagesForAiSdk,
   type IncomingChatMessage,
@@ -30,6 +30,12 @@ export interface RunKingdomAgentResult {
   steps: number;
 }
 
+export interface StreamKingdomAgentResult {
+  stream: StreamTextResult<ToolSet, never>;
+  provider: string;
+  model: string;
+}
+
 function lastUserText(messages: IncomingChatMessage[]): string {
   for (let i = messages.length - 1; i >= 0; i--) {
     if (messages[i].role !== "user") continue;
@@ -45,9 +51,7 @@ function lastUserText(messages: IncomingChatMessage[]): string {
   return "";
 }
 
-export async function runKingdomAgent(
-  input: RunKingdomAgentInput,
-): Promise<RunKingdomAgentResult> {
+async function createKingdomToolLoopAgent(input: RunKingdomAgentInput) {
   const {
     session,
     messages,
@@ -91,6 +95,20 @@ export async function runKingdomAgent(
     stopWhen: stepCountIs(8),
   });
 
+  return {
+    agent,
+    aiMessages,
+    providerName,
+    selectedModel,
+  };
+}
+
+export async function runKingdomAgent(
+  input: RunKingdomAgentInput,
+): Promise<RunKingdomAgentResult> {
+  const { agent, aiMessages, providerName, selectedModel } =
+    await createKingdomToolLoopAgent(input);
+
   const result = await agent.generate({
     messages: aiMessages as never,
   });
@@ -100,5 +118,23 @@ export async function runKingdomAgent(
     provider: providerName,
     model: selectedModel,
     steps: result.steps?.length ?? 0,
+  };
+}
+
+/** Stream the kingdom agent's final answer tokens (tools run before text streams). */
+export async function streamKingdomAgent(
+  input: RunKingdomAgentInput,
+): Promise<StreamKingdomAgentResult> {
+  const { agent, aiMessages, providerName, selectedModel } =
+    await createKingdomToolLoopAgent(input);
+
+  const stream = await agent.stream({
+    messages: aiMessages as never,
+  });
+
+  return {
+    stream,
+    provider: providerName,
+    model: selectedModel,
   };
 }
