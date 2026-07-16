@@ -67,6 +67,36 @@ export async function getServerUserId(): Promise<string | null> {
   }
 }
 
+/**
+ * Like getServerUserId() but also accepts a Bearer token from the
+ * Authorization header. Used for cross-domain API calls (e.g. Mini → BLXCKCHAT)
+ * where the Clerk session cookie is unavailable.
+ */
+export async function getServerUserIdFromRequest(req: Request): Promise<string | null> {
+  const secretKey = process.env.CLERK_SECRET_KEY ?? process.env.CLERK_SECRET_DEFAULT;
+  if (!secretKey) {
+    console.warn('[Auth] CLERK_SECRET_KEY not set — cannot verify session.');
+    return null;
+  }
+
+  // 1) Try Authorization: Bearer <token> from request header
+  const authHeader = req.headers.get('Authorization') ?? req.headers.get('authorization');
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+  // 2) Fall back to cookies (same-domain requests)
+  const cookieToken = await getServerSessionToken().catch(() => null);
+
+  const token = bearerToken ?? cookieToken;
+  if (!token) return null;
+
+  try {
+    const payload = await verifyToken(token, { secretKey });
+    return payload.sub ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Verified Clerk session for API routes that need user id + JWT (e.g. Supabase RLS). */
 export async function getServerAuthSession(): Promise<{
   userId: string;
