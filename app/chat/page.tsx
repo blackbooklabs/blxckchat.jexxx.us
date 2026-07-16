@@ -239,6 +239,7 @@ const [globalContext, setGlobalContext] = useState("");
   const [extractedContext, setExtractedContext] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // Real-time TTS tracking
   const lastCharIndexRef = useRef(0);
@@ -824,6 +825,11 @@ const [globalContext, setGlobalContext] = useState("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeProvider, mounted]);
+
+  // Auto-scroll to latest message (parity with BLXCKCHAT Mini)
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading, currentChatId]);
 
   const sendMessage = useCallback(async (overrideMessages?: Message[], aiMessageIdToRegenerate?: string) => {
     const messageList = overrideMessages || messages;
@@ -1817,6 +1823,7 @@ const [globalContext, setGlobalContext] = useState("");
               </div>
             </motion.div>
           )}
+          <div ref={messagesEndRef} aria-hidden className="h-0 w-full shrink-0" />
         </div>
 
         {/* Input */}
