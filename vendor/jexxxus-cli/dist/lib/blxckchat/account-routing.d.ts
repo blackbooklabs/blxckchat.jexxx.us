@@ -26,6 +26,8 @@ export interface AccountToolPlan {
  * pattern for TV/VEIL — deterministic, testable, appended to the system prompt.
  */
 export declare const ACCOUNT_PHRASE_COLLISIONS: readonly AccountPhraseCollision[];
+/** Trim trailing prose accidentally captured after a contact display name. */
+export declare function normalizeCapturedContactName(raw: string): string;
 export declare function extractContactDeleteFromText(text: string): string | null;
 export declare function isContactDeletePrompt(userPrompt: string): boolean;
 export declare function planAccountTools(userPrompt: string): AccountToolPlan;

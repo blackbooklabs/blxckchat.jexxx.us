@@ -109,6 +109,18 @@ export async function buildKingdomSystemPrompt(
   );
   if (accountPrefetch?.text) prompt = `${prompt}\n\n${accountPrefetch.text}`;
 
+  const vaultWriteMod = await loadCliModule<{
+    executeDeterministicContactDeleteIfRequested: (
+      p: string,
+      s: AuthenticatedAccountSession,
+    ) => Promise<{ text: string; executed: boolean } | null>;
+  }>("lib/blxckchat/vault-deterministic-write.js");
+  const deterministicDelete = await vaultWriteMod.executeDeterministicContactDeleteIfRequested(
+    userPrompt,
+    session,
+  );
+  if (deterministicDelete?.text) prompt = `${prompt}\n\n${deterministicDelete.text}`;
+
   const operatorContext = await buildOperatorIdentityContextWeb(session);
   prompt = `${prompt}\n\n${operatorContext}`;
 

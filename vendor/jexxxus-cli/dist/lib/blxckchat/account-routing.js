@@ -41,7 +41,7 @@ export const ACCOUNT_PHRASE_COLLISIONS = [
     },
     {
         id: "delete-contact",
-        pattern: /\b(?:delete|remove|purge|dissolve|sever)\s+(?:contact\s+)?([A-Za-z][A-Za-z0-9' -]{1,40})/i,
+        pattern: /\b(?:delete|remove|purge|dissolve|sever)\s+(?:contact\s+)?([A-Za-z][A-Za-z0-9' -]+?)(?=\s*(?:because|and|from|please|now|again|who|that|[.?!]|$))/i,
         action: "contacts",
         target: "blxckbook",
         note: "Contact delete — MUST call delete_contact with target=blxckbook, then account_query contacts to verify.",
@@ -127,10 +127,19 @@ export const ACCOUNT_PHRASE_COLLISIONS = [
 const CONTACT_CAPTURE = /\b(?:about|on|with)\s+([A-Za-z][A-Za-z0-9' -]{1,40})\b/i;
 /** Captures "named Ruth" / "named Anna Test and assign …" — not only end-of-string names. */
 const CONTACT_NAMED_CAPTURE = /\b(?:named|called)\s+"?([A-Za-z][A-Za-z0-9' -]+?)"?(?:\s+and\b|\s+with\b|\s+to\b|\s*[.?!]|$)/i;
-const CONTACT_DELETE_CAPTURE = /\b(?:delete|remove|purge|dissolve|sever)\s+(?:contact\s+)?"?([A-Za-z][A-Za-z0-9' -]+?)"?(?:\s+from\b|\s*[.?!]|$)/i;
+const CONTACT_DELETE_CAPTURE = /\b(?:delete|remove|purge|dissolve|sever)\s+(?:contact\s+)?"?([A-Za-z][A-Za-z0-9' -]+?)"?(?=\s*(?:because|and|from|please|now|again|who|that|[.?!]|$))/i;
+/** Trim trailing prose accidentally captured after a contact display name. */
+export function normalizeCapturedContactName(raw) {
+    let name = raw.trim();
+    const stop = name.search(/\s+(because|and|from|please|now|again|has|was|who|that)\b/i);
+    if (stop > 0)
+        name = name.slice(0, stop);
+    return name.trim();
+}
 export function extractContactDeleteFromText(text) {
     const match = CONTACT_DELETE_CAPTURE.exec(text.trim());
-    return match?.[1]?.trim() ?? null;
+    const captured = match?.[1]?.trim();
+    return captured ? normalizeCapturedContactName(captured) : null;
 }
 export function isContactDeletePrompt(userPrompt) {
     return CONTACT_DELETE_CAPTURE.test(userPrompt.trim());
@@ -173,7 +182,7 @@ export function planAccountTools(userPrompt) {
             playlistName = match[2].trim();
         }
         if (row.id === "delete-contact" && match[1]) {
-            const captured = match[1].trim();
+            const captured = normalizeCapturedContactName(match[1]);
             if (!isKingdomSurfaceName(captured)) {
                 contactName = captured;
                 if (!target)

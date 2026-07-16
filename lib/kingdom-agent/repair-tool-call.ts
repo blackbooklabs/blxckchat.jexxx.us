@@ -3,7 +3,7 @@ import type { ToolCallRepairFunction, ToolSet } from "ai";
 const CONTACT_NAMED_IN_TEXT =
   /\b(?:named|called)\s+"?([A-Za-z][A-Za-z0-9' -]+?)"?(?:\s+and\b|\s+with\b|\s+to\b|\s*[.?!]|$)/i;
 const CONTACT_DELETE_IN_TEXT =
-  /\b(?:delete|remove|purge|dissolve|sever)\s+(?:contact\s+)?"?([A-Za-z][A-Za-z0-9' -]+?)"?(?:\s+from\b|\s*[.?!]|$)/i;
+  /\b(?:delete|remove|purge|dissolve|sever)\s+(?:contact\s+)?"?([A-Za-z][A-Za-z0-9' -]+?)"?(?=\s*(?:because|and|from|please|now|again|who|that|[.?!]|$))/i;
 const CONTACT_CREATE_IN_TEXT =
   /\b(?:create|add|beget|make)\s+(?:a\s+)?(?:new\s+)?(?:test\s+)?contact\s+(?:named\s+|called\s+)?([A-Za-z][A-Za-z0-9' -]{1,40})/i;
 const CONTACT_PHONE_UPDATE_IN_TEXT =
