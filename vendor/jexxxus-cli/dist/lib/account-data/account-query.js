@@ -1,3 +1,4 @@
+import { mapContactRow, } from "./blxckbook-export.js";
 import { fetchBlxckbookExport } from "./blxckbook-export.js";
 import { fetchNxtExport } from "./nxt-export.js";
 import { fetchPlaylistDetail, fetchTvPlaylistSummary, fetchUserPlaylists, } from "./tv-playlists.js";
@@ -85,19 +86,7 @@ async function fetchBlxckbookContacts(client, userId, opts) {
     if (error) {
         throw new Error(`Failed to fetch contacts: ${error.message}`);
     }
-    return (data ?? []).map((c) => ({
-        id: c.id,
-        name: c.name,
-        photo: c.photo || "",
-        lastActive: c.last_active || "Just now",
-        createdAt: c.created_at || new Date().toISOString(),
-        tags: c.tags || [],
-        notes: c.notes || "",
-        isDiscoverable: c.is_discoverable || false,
-        linkedEcosystemId: c.linked_ecosystem_id || null,
-        visibility: c.visibility || "private",
-        relationshipStatus: c.relationship_status || null,
-    }));
+    return (data ?? []).map((c) => mapContactRow(c));
 }
 async function fetchBlxckbookJournal(client, userId, contactName, limit) {
     const exportData = await fetchBlxckbookExport(client, userId, "");
@@ -209,6 +198,8 @@ export async function executeAccountQuery(session, args) {
             return [
                 `Contact: ${contact.name}`,
                 `Status: ${contact.relationshipStatus ?? "unset"}`,
+                `Phone: ${contact.phone ?? "(none)"}`,
+                `Email: ${contact.email ?? "(none)"}`,
                 `Tags: ${contact.tags.length ? contact.tags.join(", ") : "(none)"}`,
                 `Notes: ${truncateNotes(contact.notes) || "(empty)"}`,
                 `Last active: ${contact.lastActive}`,

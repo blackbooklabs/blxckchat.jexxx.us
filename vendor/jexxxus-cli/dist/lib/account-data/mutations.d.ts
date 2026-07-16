@@ -10,8 +10,11 @@ import type { DashboardTarget } from "../supabase.js";
  * `.eq("user_id", userId)` alongside RLS, same defense-in-depth rationale
  * as the export fetchers.
  */
-declare const CONTACT_UPDATABLE_FIELDS: readonly ["name", "notes", "tags", "relationship_status", "visibility", "is_discoverable"];
+/** Matches dxsh.blxckbook.jexxx.us + dxsh.nxt.jexxx.us editable contact/vessel columns. */
+export declare const CONTACT_UPDATABLE_FIELDS: readonly ["name", "photo", "notes", "tags", "phone", "email", "social_links", "relationship_status", "visibility", "is_discoverable", "linked_ecosystem_id", "priority_level", "primary_platform", "personality_traits", "urls", "vibe", "engagement_style", "chemistry_notes", "last_interaction_date", "metadata"];
 type ContactUpdatableField = (typeof CONTACT_UPDATABLE_FIELDS)[number];
+/** Map camelCase / model aliases to live Postgres column names. */
+export declare function normalizeContactUpdates(updates: Record<string, unknown>): Record<string, unknown>;
 export interface UpdateContactResult {
     ok: boolean;
     message: string;
@@ -38,6 +41,13 @@ export declare function addContact(session: AuthenticatedAccountSession, name: s
     tags?: string[];
     relationshipStatus?: string;
     visibility?: string;
+    phone?: string;
+    email?: string;
+    photo?: string;
+    socialLinks?: Array<{
+        platform: string;
+        url: string;
+    }>;
 }): Promise<AddContactResult>;
 /**
  * Update one BLXCKBOOK contact or NXT vessel by fuzzy name match.
@@ -142,6 +152,5 @@ export declare function syncBlxckbookExport(session: AuthenticatedAccountSession
     journal_entries?: SyncableJournalEntry[];
 }): Promise<string>;
 export type { SupabaseClient };
-export { CONTACT_UPDATABLE_FIELDS };
 export type { ContactUpdatableField };
 //# sourceMappingURL=mutations.d.ts.map

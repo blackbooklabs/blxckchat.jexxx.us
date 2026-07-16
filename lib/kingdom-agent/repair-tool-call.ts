@@ -4,6 +4,10 @@ const CONTACT_NAMED_IN_TEXT =
   /\b(?:named|called)\s+([A-Za-z][A-Za-z0-9' -]{1,40})(?:\s*[.?!]|$)/i;
 const CONTACT_CREATE_IN_TEXT =
   /\b(?:create|add|beget|make)\s+(?:a\s+)?(?:new\s+)?(?:test\s+)?contact\s+(?:named\s+|called\s+)?([A-Za-z][A-Za-z0-9' -]{1,40})/i;
+const CONTACT_PHONE_UPDATE_IN_TEXT =
+  /\b(?:set|update)\s+([A-Za-z][A-Za-z0-9' -]{1,40})'?s?\s+phone(?:\s+number)?\s+to\s+([+\d][\d\s().-]{6,})/i;
+const PHONE_NUMBER_TO_IN_TEXT =
+  /\bphone(?:\s+number)?\s+to\s+([+\d][\d\s().-]{6,})/i;
 
 type RepairMessage = {
   role: string;
@@ -59,6 +63,43 @@ function resolveNameFromArgs(args: Record<string, unknown>): string {
   return "";
 }
 
+function extractPhoneUpdateFromText(
+  text: string,
+): { contactName: string; phone: string } | { phone: string } | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+
+  const namedMatch = CONTACT_PHONE_UPDATE_IN_TEXT.exec(trimmed);
+  if (namedMatch?.[1] && namedMatch[2]) {
+    return { contactName: namedMatch[1].trim(), phone: namedMatch[2].trim() };
+  }
+
+  const phoneOnly = PHONE_NUMBER_TO_IN_TEXT.exec(trimmed);
+  if (phoneOnly?.[1]) return { phone: phoneOnly[1].trim() };
+
+  return null;
+}
+
+function resolveUpdatesFromArgs(args: Record<string, unknown>): Record<string, unknown> {
+  const updates =
+    typeof args.updates === "object" && args.updates !== null
+      ? { ...(args.updates as Record<string, unknown>) }
+      : {};
+  if (typeof args.phone === "string" && updates.phone === undefined) {
+    updates.phone = args.phone;
+  }
+  if (typeof args.phoneNumber === "string" && updates.phone === undefined) {
+    updates.phone = args.phoneNumber;
+  }
+  if (typeof args.email === "string" && updates.email === undefined) {
+    updates.email = args.email;
+  }
+  if (typeof args.notes === "string" && updates.notes === undefined) {
+    updates.notes = args.notes;
+  }
+  return updates;
+}
+
 /**
  * Repair flaky provider tool calls — especially add_contact missing `name`
  * (common with HuggingFace-routed MiniMax and similar models).
@@ -67,17 +108,56 @@ export const repairKingdomToolCall: ToolCallRepairFunction<ToolSet> = async ({
   toolCall,
   messages,
 }) => {
-  if (toolCall.toolName !== "add_contact") return null;
-
+  const userText = lastUserText(messages as RepairMessage[]);
   const args = parseToolInput(toolCall.input);
-  const existing = resolveNameFromArgs(args);
-  if (existing) return null;
 
-  const fromUser = extractContactNameFromText(lastUserText(messages as RepairMessage[]));
-  if (!fromUser) return null;
+  if (toolCall.toolName === "add_contact") {
+    const existing = resolveNameFromArgs(args);
+    if (existing) return null;
 
-  return {
-    ...toolCall,
-    input: JSON.stringify({ ...args, name: fromUser }),
-  };
+    const fromUser = extractContactNameFromText(userText);
+    if (!fromUser) return null;
+
+    return {
+      ...toolCall,
+      input: JSON.stringify({ ...args, name: fromUser }),
+    };
+  }
+
+  if (toolCall.toolName === "update_contact") {
+    const updates = resolveUpdatesFromArgs(args);
+    const hasPhone =
+      typeof updates.phone === "string" && String(updates.phone).trim().length > 0;
+    const contactName = resolveNameFromArgs(args);
+    const phoneHint = extractPhoneUpdateFromText(userText);
+
+    const patched: Record<string, unknown> = { ...args };
+    if (!patched.target) patched.target = "blxckbook";
+    if (!contactName && phoneHint && "contactName" in phoneHint) {
+      patched.contactName = phoneHint.contactName;
+    }
+    if (!hasPhone && phoneHint) {
+      updates.phone = phoneHint.phone;
+    }
+
+    const nextUpdates = Object.keys(updates).length > 0 ? updates : undefined;
+    if (nextUpdates) patched.updates = nextUpdates;
+    if (typeof patched.phone === "string" && nextUpdates?.phone) {
+      delete patched.phone;
+      delete patched.phoneNumber;
+    }
+
+    const changed =
+      patched.target !== args.target ||
+      patched.contactName !== args.contactName ||
+      JSON.stringify(patched.updates ?? {}) !== JSON.stringify(args.updates ?? {});
+    if (!changed) return null;
+
+    return {
+      ...toolCall,
+      input: JSON.stringify(patched),
+    };
+  }
+
+  return null;
 };

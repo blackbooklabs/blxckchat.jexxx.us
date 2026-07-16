@@ -14,6 +14,12 @@ export interface BlxckbookContact {
     createdAt: string;
     tags: string[];
     notes: string;
+    phone?: string;
+    email?: string;
+    socialLinks: Array<{
+        platform: string;
+        url: string;
+    }>;
     isDiscoverable: boolean;
     linkedEcosystemId: string | null;
     visibility: "private" | "shared" | "ecosystem";
@@ -57,6 +63,7 @@ export interface BlxckbookExport {
         relationship_status_distribution: Record<string, number>;
     };
 }
+export declare function mapContactRow(c: any): BlxckbookContact;
 /**
  * Fetches and assembles a BLXCKBOOK vault export for the given user,
  * schema-identical to dxsh.blxckbook.jexxx.us's SettingsView.tsx

@@ -1,5 +1,5 @@
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapContactRow(c) {
+export function mapContactRow(c) {
     return {
         id: c.id,
         name: c.name,
@@ -8,6 +8,9 @@ function mapContactRow(c) {
         createdAt: c.created_at || new Date().toISOString(),
         tags: c.tags || [],
         notes: c.notes || "",
+        phone: c.phone || undefined,
+        email: c.email || undefined,
+        socialLinks: (c.social_links || []),
         isDiscoverable: c.is_discoverable || false,
         linkedEcosystemId: c.linked_ecosystem_id || null,
         visibility: c.visibility || "private",
