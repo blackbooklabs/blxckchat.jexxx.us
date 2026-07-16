@@ -16,7 +16,8 @@ Doctrine: *your keys, your vault, your communion.*
 
 | Area | Capability |
 |------|------------|
-| **Kingdom Agent** | Clerk-scoped `/api/agent` with JEXXXUS CLI tool registry for signed-in users |
+| **Kingdom Agent** | Clerk-scoped `/api/agent` + `/api/mini/agent` with JEXXXUS CLI tool registry (full vault CRUD including `phone`/`email` columns) |
+| **BLXCKCHAT Mini backend** | Mini iframe at `mini.blxckchat.jexxx.us/embed` calls `/api/mini/agent` with Bearer Clerk JWT |
 | **BYOK chat** | Multi-provider streaming via `/api/chat`; keys stored client-side per session |
 | **Divinities** | Persona picker backed by Obsidian vault extracts |
 | **Projects & history** | Supabase-backed chats, projects, and encrypted BYOK settings per Clerk user |
@@ -104,6 +105,7 @@ Pushes to `main` deploy to Vercel ([blxckchat.jexxx.us](https://blxckchat.jexxx.
 | Surface | Location |
 |---------|----------|
 | BLXCKCHAT TUI | `jexxx.us-cli` → `jexxxus blxckchat` |
+| BLXCKCHAT Mini embed | `mini.blxckchat.jexxx.us` — host `BlxckchatMiniEmbed` on empire properties |
 | JEXXXUS Desktop shell | `jexxx.us-desktop` (webview embed) |
 | Divinity personas | `jexxx.us-obsidian/Divinities/Personas/` |
 | Empire style | `jexxx.us-obsidian/JEXXXUS/08-branding/` |

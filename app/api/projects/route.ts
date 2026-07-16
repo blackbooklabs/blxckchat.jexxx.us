@@ -1,18 +1,33 @@
 import { NextResponse } from 'next/server';
 import { getServerUserIdFromRequest } from '@/lib/serverAuth';
 import { getSupabaseAdmin } from '@/lib/supabase';
-import { miniCorsHeaders, miniOptionsResponse } from '@/lib/mini-cors';
-import { isManualProjectTitle, pickCanonicalDivinityProject } from '@/lib/divinity-projects';
+
+const ALLOWED_ORIGINS = new Set([
+  'https://mini.blxckchat.jexxx.us',
+  'https://blxckchat.jexxx.us',
+]);
+
+function corsHeaders(origin: string | null) {
+  const allowedOrigin = origin && ALLOWED_ORIGINS.has(origin) ? origin : 'https://blxckchat.jexxx.us';
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
+    'Vary': 'Origin',
+  };
+}
 
 export async function OPTIONS(req: Request) {
-  return miniOptionsResponse(req);
+  const origin = req.headers.get('origin');
+  return new NextResponse(null, { status: 204, headers: corsHeaders(origin) });
 }
 
 export async function GET(req: Request) {
   const origin = req.headers.get('origin');
   const userId = await getServerUserIdFromRequest(req);
   if (!userId) {
-    return new NextResponse('Unauthorized', { status: 401, headers: miniCorsHeaders(origin) });
+    return new NextResponse('Unauthorized', { status: 401, headers: corsHeaders(origin) });
   }
 
   const supabase = getSupabaseAdmin();
@@ -22,37 +37,21 @@ export async function GET(req: Request) {
       .select('*, chats:blxckchat_chats(*)')
       .eq('user_id', userId)
       .order('updated_at', { ascending: false });
-
+      
     if (error) {
       if (process.env.NODE_ENV === 'development') {
-        const mockProject = {
-          id: 'mock_project_0',
-          user_id: userId,
-          title: 'Sovereign Lab',
-          custom_instructions: '',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          chats: [],
-        };
-        return NextResponse.json([mockProject], { headers: miniCorsHeaders(origin) });
+        const mockProject = { id: 'mock_project_0', user_id: userId, title: 'Sovereign Lab', custom_instructions: '', created_at: new Date().toISOString(), updated_at: new Date().toISOString(), chats: [] };
+        return NextResponse.json([mockProject], { headers: corsHeaders(origin) });
       }
-      return NextResponse.json({ error: error.message }, { status: 500, headers: miniCorsHeaders(origin) });
+      return NextResponse.json({ error: error.message }, { status: 500, headers: corsHeaders(origin) });
     }
-    return NextResponse.json(data, { headers: miniCorsHeaders(origin) });
+    return NextResponse.json(data, { headers: corsHeaders(origin) });
   } catch (e) {
     if (process.env.NODE_ENV === 'development') {
-      const mockProject = {
-        id: 'mock_project_0',
-        user_id: userId,
-        title: 'Sovereign Lab',
-        custom_instructions: '',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        chats: [],
-      };
-      return NextResponse.json([mockProject], { headers: miniCorsHeaders(origin) });
+       const mockProject = { id: 'mock_project_0', user_id: userId, title: 'Sovereign Lab', custom_instructions: '', created_at: new Date().toISOString(), updated_at: new Date().toISOString(), chats: [] };
+       return NextResponse.json([mockProject], { headers: corsHeaders(origin) });
     }
-    return NextResponse.json({ error: String(e) }, { status: 500, headers: miniCorsHeaders(origin) });
+    return NextResponse.json({ error: String(e) }, { status: 500, headers: corsHeaders(origin) });
   }
 }
 
@@ -60,29 +59,14 @@ export async function POST(req: Request) {
   const origin = req.headers.get('origin');
   const userId = await getServerUserIdFromRequest(req);
   if (!userId) {
-    return new NextResponse('Unauthorized', { status: 401, headers: miniCorsHeaders(origin) });
+    return new NextResponse('Unauthorized', { status: 401, headers: corsHeaders(origin) });
   }
-
+  
   const body = await req.json();
   const { title = 'New Project', custom_instructions = '' } = body;
 
   const supabase = getSupabaseAdmin();
   try {
-    // One BLXCKCHAT project per Divinity title; manual "New Project" may repeat.
-    if (!isManualProjectTitle(title)) {
-      const { data: existingRows, error: existingError } = await supabase
-        .from('blxckchat_projects')
-        .select('*')
-        .eq('user_id', userId);
-
-      if (!existingError && existingRows?.length) {
-        const canonical = pickCanonicalDivinityProject(existingRows, title);
-        if (canonical) {
-          return NextResponse.json(canonical, { headers: miniCorsHeaders(origin) });
-        }
-      }
-    }
-
     const { data, error } = await supabase
       .from('blxckchat_projects')
       .insert([{ user_id: userId, title, custom_instructions }])
@@ -91,32 +75,18 @@ export async function POST(req: Request) {
 
     if (error) {
       if (process.env.NODE_ENV === 'development') {
-        const mockProject = {
-          id: `mock_${Date.now()}`,
-          user_id: userId,
-          title,
-          custom_instructions,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-        return NextResponse.json(mockProject, { headers: miniCorsHeaders(origin) });
+        const mockProject = { id: `mock_${Date.now()}`, user_id: userId, title, custom_instructions, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+        return NextResponse.json(mockProject, { headers: corsHeaders(origin) });
       }
-      return NextResponse.json({ error: error.message }, { status: 500, headers: miniCorsHeaders(origin) });
+      return NextResponse.json({ error: error.message }, { status: 500, headers: corsHeaders(origin) });
     }
-    return NextResponse.json(data, { headers: miniCorsHeaders(origin) });
+    return NextResponse.json(data, { headers: corsHeaders(origin) });
   } catch (e) {
     if (process.env.NODE_ENV === 'development') {
-      const mockProject = {
-        id: `mock_${Date.now()}`,
-        user_id: userId,
-        title,
-        custom_instructions,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      return NextResponse.json(mockProject, { headers: miniCorsHeaders(origin) });
+       const mockProject = { id: `mock_${Date.now()}`, user_id: userId, title, custom_instructions, created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
+       return NextResponse.json(mockProject, { headers: corsHeaders(origin) });
     }
-    return NextResponse.json({ error: String(e) }, { status: 500, headers: miniCorsHeaders(origin) });
+    return NextResponse.json({ error: String(e) }, { status: 500, headers: corsHeaders(origin) });
   }
 }
 
@@ -124,15 +94,13 @@ export async function PUT(req: Request) {
   const origin = req.headers.get('origin');
   const userId = await getServerUserIdFromRequest(req);
   if (!userId) {
-    return new NextResponse('Unauthorized', { status: 401, headers: miniCorsHeaders(origin) });
+    return new NextResponse('Unauthorized', { status: 401, headers: corsHeaders(origin) });
   }
-
+  
   const body = await req.json();
   const { id, title, custom_instructions, context_json } = body;
-
-  if (!id) {
-    return new NextResponse('Missing project ID', { status: 400, headers: miniCorsHeaders(origin) });
-  }
+  
+  if (!id) return new NextResponse('Missing project ID', { status: 400, headers: corsHeaders(origin) });
 
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (title !== undefined) updates.title = title;
@@ -148,25 +116,21 @@ export async function PUT(req: Request) {
     .select()
     .single();
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500, headers: miniCorsHeaders(origin) });
-  }
-  return NextResponse.json(data, { headers: miniCorsHeaders(origin) });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500, headers: corsHeaders(origin) });
+  return NextResponse.json(data, { headers: corsHeaders(origin) });
 }
 
 export async function DELETE(req: Request) {
   const origin = req.headers.get('origin');
   const userId = await getServerUserIdFromRequest(req);
   if (!userId) {
-    return new NextResponse('Unauthorized', { status: 401, headers: miniCorsHeaders(origin) });
+    return new NextResponse('Unauthorized', { status: 401, headers: corsHeaders(origin) });
   }
-
+  
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
-
-  if (!id) {
-    return new NextResponse('Missing project ID', { status: 400, headers: miniCorsHeaders(origin) });
-  }
+  
+  if (!id) return new NextResponse('Missing project ID', { status: 400, headers: corsHeaders(origin) });
 
   const supabase = getSupabaseAdmin();
   const { error } = await supabase
@@ -175,8 +139,6 @@ export async function DELETE(req: Request) {
     .eq('id', id)
     .eq('user_id', userId);
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500, headers: miniCorsHeaders(origin) });
-  }
-  return NextResponse.json({ success: true }, { headers: miniCorsHeaders(origin) });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500, headers: corsHeaders(origin) });
+  return NextResponse.json({ success: true }, { headers: corsHeaders(origin) });
 }
