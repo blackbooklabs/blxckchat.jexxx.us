@@ -9,7 +9,7 @@ import type { IncomingChatMessage } from "@/lib/chat-message-normalizer";
 import { KINGDOM_PROVIDERS, type AgentProvider } from "@/lib/kingdom-agent/providers";
 import {
   runKingdomAgent,
-  streamKingdomAgent,
+  runKingdomAgentStreamResponse,
 } from "@/lib/kingdom-agent/run-kingdom-agent";
 import { resolveWebAccountSession } from "@/lib/kingdom-agent/web-session";
 
@@ -81,17 +81,7 @@ export async function POST(req: Request) {
     };
 
     if (stream) {
-      const { stream: textStream, provider: providerName, model: selectedModel } =
-        await streamKingdomAgent(agentInput);
-
-      return textStream.toTextStreamResponse({
-        headers: {
-          ...corsHeaders,
-          "X-BLXCKCHAT-Agent": "kingdom",
-          "X-Provider": providerName,
-          "X-Model": selectedModel,
-        },
-      });
+      return runKingdomAgentStreamResponse(agentInput, corsHeaders);
     }
 
     const result = await runKingdomAgent(agentInput);

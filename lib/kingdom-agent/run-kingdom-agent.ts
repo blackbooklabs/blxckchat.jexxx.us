@@ -1,4 +1,4 @@
-import { ToolLoopAgent, stepCountIs, type StreamTextResult, type ToolSet } from "ai";
+import { ToolLoopAgent, stepCountIs } from "ai";
 import {
   normalizeMessagesForAiSdk,
   type IncomingChatMessage,
@@ -30,11 +30,8 @@ export interface RunKingdomAgentResult {
   steps: number;
 }
 
-export interface StreamKingdomAgentResult {
-  stream: StreamTextResult<ToolSet, never>;
-  provider: string;
-  model: string;
-}
+const TYPEWRITER_CHUNK = 4;
+const TYPEWRITER_DELAY_MS = 6;
 
 function lastUserText(messages: IncomingChatMessage[]): string {
   for (let i = messages.length - 1; i >= 0; i--) {
@@ -121,20 +118,41 @@ export async function runKingdomAgent(
   };
 }
 
-/** Stream the kingdom agent's final answer tokens (tools run before text streams). */
-export async function streamKingdomAgent(
-  input: RunKingdomAgentInput,
-): Promise<StreamKingdomAgentResult> {
-  const { agent, aiMessages, providerName, selectedModel } =
-    await createKingdomToolLoopAgent(input);
+/**
+ * Run the full tool loop (generate), then stream the answer to the client in
+ * small chunks for a typewriter effect. ToolLoopAgent.stream() often yields an
+ * empty textStream after tool steps — generate is authoritative.
+ */
+export function buildKingdomAgentTypewriterStream(text: string): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  const body = text.trim() || "♡ Task complete.";
 
-  const stream = await agent.stream({
-    messages: aiMessages as never,
+  return new ReadableStream({
+    async start(controller) {
+      for (let end = TYPEWRITER_CHUNK; end <= body.length + TYPEWRITER_CHUNK; end += TYPEWRITER_CHUNK) {
+        controller.enqueue(encoder.encode(body.slice(0, Math.min(end, body.length))));
+        if (end < body.length) {
+          await new Promise((resolve) => setTimeout(resolve, TYPEWRITER_DELAY_MS));
+        }
+      }
+      controller.close();
+    },
   });
+}
 
-  return {
-    stream,
-    provider: providerName,
-    model: selectedModel,
-  };
+export async function runKingdomAgentStreamResponse(
+  input: RunKingdomAgentInput,
+  headers: Record<string, string> = {},
+): Promise<Response> {
+  const result = await runKingdomAgent(input);
+
+  return new Response(buildKingdomAgentTypewriterStream(result.text), {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "X-Provider": result.provider,
+      "X-Model": result.model,
+      "X-BLXCKCHAT-Agent": "kingdom",
+      ...headers,
+    },
+  });
 }

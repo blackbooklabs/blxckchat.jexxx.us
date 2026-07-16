@@ -5,7 +5,9 @@ import { formatBibleVerseForChat } from "./bible-format.js";
 import { isVaultPrimaryPrompt } from "./account-routing.js";
 import { listLawPolicies } from "../law.js";
 import { inferTvSearchQuery, inferVeilSearchQuery, planKingdomTools, } from "./kingdom-routing.js";
+import { listMusicCatalog } from "../music.js";
 import { formatLawPolicyList } from "./tools/law-format.js";
+import { formatMusicCatalogList } from "./tools/music-format.js";
 import { formatTvVideoList } from "./tools/tv-format.js";
 import { formatVeilArticleList } from "./tools/veil-format.js";
 const PREFETCH_TV_LIMIT = 8;
@@ -29,7 +31,8 @@ export async function prefetchGardenContext(userPrompt, options) {
     const verses = plan.companionVerses.slice(0, PREFETCH_VERSE_LIMIT);
     const needsLaw = Boolean(plan.lawQuery);
     const needsDocs = plan.docsHint;
-    if (!tvSearch && !veilSearch && verses.length === 0 && !needsLaw && !needsDocs) {
+    const needsMusic = plan.tools.includes("music_query");
+    if (!tvSearch && !veilSearch && verses.length === 0 && !needsLaw && !needsDocs && !needsMusic) {
         return null;
     }
     const blocks = [
@@ -95,6 +98,10 @@ export async function prefetchGardenContext(userPrompt, options) {
         catch {
             blocks.push(`\n### JEXXXUS | TV — ${tvSearch}\n(Catalog unavailable — use tv_query action=search.)`);
         }
+    }
+    if (needsMusic) {
+        const catalog = listMusicCatalog(8);
+        blocks.push(`\n### JEXXXUS Music (music.jexxx.us)\n${formatMusicCatalogList(catalog, catalog.length)}`);
     }
     return blocks.join("\n");
 }

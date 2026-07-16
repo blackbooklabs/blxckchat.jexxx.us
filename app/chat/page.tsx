@@ -1044,7 +1044,7 @@ const [globalContext, setGlobalContext] = useState("");
           m.id === aiMessageId
             ? {
                 ...m,
-                text: responseText || "💕 Words fail me. Try again, beloved. ♡",
+                text: responseText.trim() || "💕 The agent returned an empty reply. Try again, beloved. ♡",
                 isStreaming: false,
                 modelUsed,
                 providerUsed,

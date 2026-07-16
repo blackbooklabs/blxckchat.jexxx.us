@@ -9,7 +9,7 @@ import {
 } from '@/lib/kingdom-agent/web-session';
 import {
   runKingdomAgent,
-  streamKingdomAgent,
+  runKingdomAgentStreamResponse,
 } from '@/lib/kingdom-agent/run-kingdom-agent';
 import type { IncomingChatMessage } from '@/lib/chat-message-normalizer';
 import type { AgentProvider } from '@/lib/kingdom-agent/providers';
@@ -84,28 +84,22 @@ export async function POST(req: Request) {
     const wantStream = body.stream !== false;
 
     if (wantStream) {
-      const streamed = await runWithAccountSessionResolver(
+      return runWithAccountSessionResolver(
         () => resolveWebAccountSessionFromRequest(req),
         async () => {
           const sessionResult = await resolveWebAccountSession();
           if (!sessionResult.ok) {
             throw new Error(sessionResult.message);
           }
-          return streamKingdomAgent({
-            ...agentBase,
-            session: sessionResult.session,
-          });
+          return runKingdomAgentStreamResponse(
+            {
+              ...agentBase,
+              session: sessionResult.session,
+            },
+            { ...cors, 'X-BLXCKCHAT-Agent': 'kingdom-mini' },
+          );
         },
       );
-
-      return streamed.stream.toTextStreamResponse({
-        headers: {
-          ...cors,
-          'X-BLXCKCHAT-Agent': 'kingdom-mini',
-          'X-Provider': streamed.provider,
-          'X-Model': streamed.model,
-        },
-      });
     }
 
     const result = await runWithAccountSessionResolver(
