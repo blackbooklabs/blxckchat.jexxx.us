@@ -19,6 +19,10 @@ Owned by the JEXXXUS Ecosystem team (Supreme Authority).
   - `public.blxckchat_user_settings` (for BYOK settings persistence)
 - **Monetization**: Integrated with Paddle for subscription tiers: FREE → Mistress ($33) → Concu-bae-bae ($66) → Mid-Wife ($99).
 - **Ecosystem Integration**: Vendors `jexxxus-cli` under `vendor/jexxxus-cli` for runtime imports inside `/api/agent` and `/api/mini/agent` (Kingdom Agent: VEIL, TV, Bible, Law, Docs, signed-in vault CRUD). Run `scripts/sync-vendor-cli.sh` to keep CLI runtime in parity. Mini uses Bearer JWT + server-side BYOK; full chat uses cookie session + client BYOK headers.
+- **Account CRUD**: The Kingdom Agent (`lib/kingdom-agent/`) provides Clerk account-level CRUD for BLXCKBOOK/NXT via the CLI tool registry (`buildToolRegistry({includeAccountQuery: true})`). Two session paths:
+  - **Cookie path** (`resolveWebAccountSession`): Reads `__session` cookie, refreshes on each Supabase call via `getServerSessionToken()`
+  - **Bearer path** (`resolveWebAccountSessionFromRequest`): Re-verifies the stored JWT via `verifyToken()` on each Supabase call; returns `null` if expired to force re-auth
+- **Session type** (`AuthenticatedAccountSession`): Three RLS-scoped Supabase clients (`blxckbook`→api schema, `nxt`→public schema, `tv`→api schema), matching CLI and API exactly
 - **Aesthetic**: Strictly adheres to the JEXXXUS visual identity system. Accent colors must utilize the brand pink (#ec4899/#db2777), Syncopate for headings/nav, IBM Plex Sans for body text, and VT323/Pinyon Script for specific branding accents. Orange, green, or purple accents are forbidden. Theme toggling cookie `jexxxus-theme` must sync real-time across the ecosystem.
 - **SEO & AEO**: Configured with dynamic `robots.ts` and `sitemap.ts` under `/app`. Meta description and structured JSON-LD data are kept optimized.
 

@@ -1,9 +1,10 @@
-import { clerkClient } from "@clerk/nextjs/server";
+import { clerkClient, verifyToken } from "@clerk/nextjs/server";
 import { createClient } from "@supabase/supabase-js";
 import {
   getServerAuthSession,
   getServerAuthSessionFromRequest,
   getServerSessionToken,
+  CLERK_AUTHORIZED_PARTIES,
 } from "@/lib/serverAuth";
 import { createUserSupabaseClient, loadWebSupabaseEnv } from "@/lib/user-supabase";
 import { getRequestSessionResolver } from "@/lib/kingdom-agent/request-session";
@@ -156,8 +157,19 @@ export async function resolveWebAccountSessionFromRequest(
     };
   }
 
-  const { userId, sessionToken: accessToken } = authSession;
-  const getAccessToken = async () => accessToken;
+  const { userId, sessionToken: storedToken } = authSession;
+  const getAccessToken = async () => {
+    try {
+      const verified = await verifyToken(storedToken, {
+        authorizedParties: CLERK_AUTHORIZED_PARTIES,
+        clockSkewInMs: 60_000,
+      });
+      if (verified && verified.sub) return storedToken;
+      return null;
+    } catch {
+      return null;
+    }
+  };
 
-  return buildAuthenticatedSession(userId, accessToken, getAccessToken);
+  return buildAuthenticatedSession(userId, storedToken, getAccessToken);
 }
