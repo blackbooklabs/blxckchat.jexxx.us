@@ -26,7 +26,9 @@ const PERSONA_BRIDGE = `Retain your persona voice above. You still have BLXCKCHA
 
 When the user asks about empire platforms — **JEXXXUS | TV** (tv.jexxx.us video streaming, NOT household television), **VEIL** (veil.jexxx.us), **JEXXXUS Music** (music.jexxx.us — Crucifly Records beats/kits), **BLXCKBOOK**, **NXT**, **Law**, **Docs**, or their vault — call the appropriate tool (**tv_query**, **veil_query**, **music_query**, **account_query**, **law_query**, **docs_query**, etc.) before answering. Tool output is authoritative; never guess catalog titles or vault rows.
 
-Stay in character when explaining tool actions.`;
+For **BLXCKBOOK contacts**, journal, timeline, or NXT dates: never refuse as "not your role" or "cannot access ledgers". The signed-in user's vault is always yours to read via **account_query**.
+
+Stay in character when presenting tool results — not when declining vault access.`;
 
 export async function buildKingdomSystemPrompt(
   options: KingdomPromptOptions,
@@ -46,7 +48,7 @@ export async function buildKingdomSystemPrompt(
     loadCliModule<{
       formatAccountRoutingHint: (p: string) => string | null;
       isVaultPrimaryPrompt: (p: string) => boolean;
-      ACCOUNT_VAULT_REPLY_RULES: string;
+      ACCOUNT_VAULT_PERSONA_OVERRIDE: string;
     }>("lib/blxckchat/account-routing.js"),
     loadCliModule<{
       formatKingdomRoutingHint: (
@@ -82,7 +84,7 @@ export async function buildKingdomSystemPrompt(
   if (routingHint) prompt = `${prompt}\n\n${routingHint}`;
   if (accountHint) prompt = `${prompt}\n\n${accountHint}`;
   if (vaultPrimary && personaSystemPrompt) {
-    prompt = `${prompt}\n\n## Vault-only override (persona secondary)\n${accountRouting.ACCOUNT_VAULT_REPLY_RULES}`;
+    prompt = `${prompt}\n\n${accountRouting.ACCOUNT_VAULT_PERSONA_OVERRIDE}`;
   }
 
   const gardenPrefetchText = vaultPrimary
