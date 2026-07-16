@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerUserIdFromRequest } from '@/lib/serverAuth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { miniCorsHeaders, miniOptionsResponse } from '@/lib/mini-cors';
+import { isManualProjectTitle, pickCanonicalDivinityProject } from '@/lib/divinity-projects';
 
 export async function OPTIONS(req: Request) {
   return miniOptionsResponse(req);
@@ -67,6 +68,21 @@ export async function POST(req: Request) {
 
   const supabase = getSupabaseAdmin();
   try {
+    // One BLXCKCHAT project per Divinity title; manual "New Project" may repeat.
+    if (!isManualProjectTitle(title)) {
+      const { data: existingRows, error: existingError } = await supabase
+        .from('blxckchat_projects')
+        .select('*')
+        .eq('user_id', userId);
+
+      if (!existingError && existingRows?.length) {
+        const canonical = pickCanonicalDivinityProject(existingRows, title);
+        if (canonical) {
+          return NextResponse.json(canonical, { headers: miniCorsHeaders(origin) });
+        }
+      }
+    }
+
     const { data, error } = await supabase
       .from('blxckchat_projects')
       .insert([{ user_id: userId, title, custom_instructions }])

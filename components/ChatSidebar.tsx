@@ -252,6 +252,8 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
     setCurrentChatId,
     setMessages,
     createProject,
+    ensureDivinityProject,
+    findDivinityProject,
     createChat,
     deleteProject,
     deleteChat,
@@ -364,28 +366,30 @@ export default function ChatSidebar({ isOpen, setIsOpen, onOpenProjectSettings }
 
     setInvokingPersonaId(p.id);
 
-    let targetProjectId = "";
-    const existingProject = projects.find(
-      (proj) => proj.title.trim().toLowerCase() === p.name.trim().toLowerCase(),
-    );
+    try {
+      const existingProject = findDivinityProject(p.name);
 
-    if (existingProject) {
-      targetProjectId = existingProject.id;
-      setCurrentProjectId(targetProjectId);
-      setExpandedProjects((prev) => new Set([...prev, targetProjectId]));
-      if (!existingProject.chats || existingProject.chats.length === 0) {
-        await fetchChats(targetProjectId);
-      }
-      await setActivePersona(targetProjectId, p.id, p.safe_content);
-      await createChat(targetProjectId, `Session with ${p.name}`);
-    } else {
-      const newProject = await createProject(p.name, p.safe_content);
-      if (newProject) {
-        targetProjectId = newProject.id;
+      if (existingProject) {
+        const targetProjectId = existingProject.id;
         setCurrentProjectId(targetProjectId);
         setExpandedProjects((prev) => new Set([...prev, targetProjectId]));
-        await createChat(targetProjectId, `Initial invocation: ${p.name}`);
+        if (!existingProject.chats || existingProject.chats.length === 0) {
+          await fetchChats(targetProjectId);
+        }
+        await setActivePersona(targetProjectId, p.id, p.safe_content);
+        await createChat(targetProjectId, `Session with ${p.name}`);
+        return;
       }
+
+      const newProject = await ensureDivinityProject(p.name, p.safe_content);
+      if (!newProject) return;
+
+      setCurrentProjectId(newProject.id);
+      setExpandedProjects((prev) => new Set([...prev, newProject.id]));
+      await setActivePersona(newProject.id, p.id, p.safe_content);
+      await createChat(newProject.id, `Initial invocation: ${p.name}`);
+    } finally {
+      setInvokingPersonaId(null);
     }
   };
 

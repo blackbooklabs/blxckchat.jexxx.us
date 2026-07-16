@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { pickCanonicalDivinityProject } from '@/lib/divinity-projects';
 export interface TTSVoice {
   pitch: number;
   rate: number;
@@ -112,6 +113,9 @@ interface ChatState {
   fetchProjects: () => Promise<void>;
   fetchPersonas: () => Promise<void>;
   createProject: (title: string, custom_instructions?: string) => Promise<Project | null>;
+  /** Find-or-create a Divinity-named project (never duplicates manual "New Project"). */
+  ensureDivinityProject: (title: string, custom_instructions?: string) => Promise<Project | null>;
+  findDivinityProject: (title: string) => Project | undefined;
   fetchChats: (projectId: string) => Promise<void>;
   createChat: (projectId: string, title?: string, initialMessages?: Message[], custom_instructions?: string) => Promise<Chat | null>;
   updateChatMessages: (chatId: string, messages: Message[]) => Promise<void>;
@@ -275,6 +279,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }).catch(() => {}); // silent fail — empire must not stall for tracking
   },
 
+  findDivinityProject: (title: string) => {
+    return pickCanonicalDivinityProject(get().projects, title);
+  },
+
+  ensureDivinityProject: async (title: string, custom_instructions: string = '') => {
+    const local = pickCanonicalDivinityProject(get().projects, title);
+    if (local) return local;
+    return get().createProject(title, custom_instructions);
+  },
+
   createProject: async (title: string, custom_instructions: string = '') => {
     try {
       const res = await fetch('/api/projects', {
@@ -286,7 +300,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
         const text = await res.text();
         const newProject = text ? JSON.parse(text) : null;
         if (newProject) {
-          set((state) => ({ projects: [newProject, ...state.projects] }));
+          set((state) => ({
+            projects: [
+              newProject,
+              ...state.projects.filter((p) => p.id !== newProject.id),
+            ],
+          }));
           return newProject;
         }
       } else {
