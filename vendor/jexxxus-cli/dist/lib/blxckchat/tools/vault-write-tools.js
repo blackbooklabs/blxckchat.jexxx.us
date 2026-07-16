@@ -2,16 +2,33 @@ import * as fs from "fs";
 import { resolveAuthenticatedAccountSession } from "../../account-data/session.js";
 import { addContact, updateContact, deleteContact, addJournalEntry, updateJournalEntry, deleteJournalEntry, addContactEvent, updateContactEvent, deleteContactEvent, managePlaylist, syncBlxckbookExport, } from "../../account-data/mutations.js";
 import { exportVaultToDisk } from "../../account-data/export-to-disk.js";
+/** Accept common model aliases (contactName, displayName, etc.) for add_contact. */
+export function resolveAddContactName(args) {
+    for (const key of ["name", "contactName", "displayName", "fullName", "contact_name"]) {
+        const value = args[key];
+        if (typeof value === "string" && value.trim())
+            return value.trim();
+    }
+    return "";
+}
 export const addContactTool = {
     name: "add_contact",
     description: "Create a brand-new contact. Automatically synced to both BLXCKBOOK and NXT — a single " +
         "Postgres trigger mirrors the row into both, so this never needs a separate call per " +
         "dashboard. Refuses (with a suggestion to use update_contact instead) if a contact matching " +
-        "that name already exists, to avoid creating a duplicate. Requires /auth login.",
+        "that name already exists, to avoid creating a duplicate. Requires /auth login. " +
+        "IMPORTANT: always pass the contact name in tool arguments as JSON, e.g. {\"name\": \"Ruth\"}.",
     parameters: {
         type: "object",
         properties: {
-            name: { type: "string", description: "Contact's name — REQUIRED when creating a new contact" },
+            name: {
+                type: "string",
+                description: "Contact display name (required). Example: Ruth",
+            },
+            contactName: {
+                type: "string",
+                description: "Alias for name — prefer the name field when possible",
+            },
             notes: { type: "string", description: "Optional notes" },
             tags: { type: "array", items: { type: "string" }, description: "Optional tags" },
             relationshipStatus: { type: "string", description: "Optional relationship status" },
@@ -25,9 +42,10 @@ export const addContactTool = {
     },
     requiresConfirmation: true,
     async execute(args) {
-        const name = String(args.name ?? "").trim();
+        const name = resolveAddContactName(args);
         if (!name) {
-            return "Error: add_contact requires the 'name' parameter. Please call add_contact again with name set to the contact's name, e.g. name: \"Ruth\".";
+            return ("Error: add_contact requires a contact name in tool arguments. " +
+                'Call add_contact again with JSON args like {"name": "Ruth"}.');
         }
         const resolved = await resolveAuthenticatedAccountSession();
         if (!resolved.ok)

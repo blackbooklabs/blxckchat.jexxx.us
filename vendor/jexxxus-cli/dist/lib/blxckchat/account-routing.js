@@ -33,6 +33,13 @@ export const ACCOUNT_PHRASE_COLLISIONS = [
         note: "BLXCKBOOK write capability — vault write tools (add/update/delete contact, journal, playlists).",
     },
     {
+        id: "vault-crud-capability",
+        pattern: /\b(?:CRUD|create a (?:new )?test contact|ability to create(?: a)?(?: new)? contact|delete that test contact)\b/i,
+        action: "summary",
+        target: "blxckbook",
+        note: "Vault CRUD capability — answer yes; use add_contact with {\"name\":\"...\"} when user names a contact to create.",
+    },
+    {
         id: "blxckbook-write-intent",
         pattern: /\b(edit(?:s|ing)?|update|change|modify|add to)\s+(?:my\s+)?blxckbook\b/i,
         action: "summary",
@@ -111,6 +118,7 @@ export const ACCOUNT_PHRASE_COLLISIONS = [
     },
 ];
 const CONTACT_CAPTURE = /\b(?:about|on|with)\s+([A-Za-z][A-Za-z0-9' -]{1,40})\b/i;
+const CONTACT_NAMED_CAPTURE = /\b(?:named|called)\s+([A-Za-z][A-Za-z0-9' -]{1,40})(?:\s*[.?!]|$)/i;
 export function planAccountTools(userPrompt) {
     const tools = new Set();
     const slashHints = new Set();
@@ -150,6 +158,19 @@ export function planAccountTools(userPrompt) {
         }
     }
     if (!contactName) {
+        const named = CONTACT_NAMED_CAPTURE.exec(userPrompt);
+        if (named?.[1]) {
+            const captured = named[1].trim();
+            if (!isKingdomSurfaceName(captured)) {
+                contactName = captured;
+                if (!action)
+                    action = "contact";
+                tools.add("account_query");
+                matchedRules.push("contact-named-captured");
+            }
+        }
+    }
+    if (!contactName) {
         const named = CONTACT_CAPTURE.exec(userPrompt);
         if (named?.[1]) {
             const captured = named[1].trim();
@@ -185,13 +206,17 @@ export function isVaultPrimaryPrompt(userPrompt) {
         return false;
     return planAccountTools(userPrompt).tools.length > 0;
 }
-const VAULT_MUTATION_INTENT = /\b(add|create|update|edit|change|modify|delete|remove|import|sync)\b/i;
+const VAULT_MUTATION_INTENT = /\b(add|create|update|edit|change|modify|delete|remove|import|sync|try)\b/i;
 /** Read-only vault turn — safe to answer from server-prefetched data without tool loop. */
 export function isVaultReadOnlyPrompt(userPrompt) {
     if (!isVaultPrimaryPrompt(userPrompt))
         return false;
     const plan = planAccountTools(userPrompt);
     if (!plan.action || plan.action === "export_preview")
+        return false;
+    if (/\b(?:CRUD|test contact)\b/i.test(userPrompt))
+        return false;
+    if (/\bcontact\s+(?:named|called)\s+/i.test(userPrompt))
         return false;
     if (VAULT_MUTATION_INTENT.test(userPrompt) &&
         /\b(?:contact|journal|playlist|vault|blxckbook|nxt)\b/i.test(userPrompt)) {

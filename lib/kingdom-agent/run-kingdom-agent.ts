@@ -12,6 +12,7 @@ import { formatKingdomAgentError } from "@/lib/kingdom-agent/format-agent-error"
 import { loadCliModule } from "@/lib/kingdom-agent/cli-loader";
 import { createKingdomModel, type AgentProvider } from "@/lib/kingdom-agent/providers";
 import type { AuthenticatedAccountSession } from "@/lib/kingdom-agent/types";
+import { repairKingdomToolCall } from "@/lib/kingdom-agent/repair-tool-call";
 import { stripSpicyCanon } from "@/lib/spicy-mode";
 
 export interface RunKingdomAgentInput {
@@ -109,6 +110,7 @@ async function createKingdomToolLoopAgent(input: RunKingdomAgentInput) {
     tools: tools ?? {},
     instructions: systemPrompt,
     stopWhen: stepCountIs(8),
+    experimental_repairToolCall: repairKingdomToolCall,
   });
 
   return {
