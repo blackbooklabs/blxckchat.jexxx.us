@@ -1,85 +1,53 @@
 import { NextResponse } from 'next/server';
-import { generateText } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { createXai } from '@ai-sdk/xai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { createGroq } from '@ai-sdk/groq';
 import { getServerUserIdFromRequest } from '@/lib/serverAuth';
 import { loadUserByokSettings, resolveActiveByok } from '@/lib/byok-server';
-import { HF_INFERENCE_ROUTER_BASE } from '@/lib/provider-models';
 import { miniCorsHeaders, miniOptionsResponse } from '@/lib/mini-cors';
-import type { ByokProviderId } from '@/lib/byok-settings-types';
+import { runWithAccountSessionResolver } from '@/lib/kingdom-agent/request-session';
+import {
+  resolveWebAccountSession,
+  resolveWebAccountSessionFromRequest,
+} from '@/lib/kingdom-agent/web-session';
+import { runKingdomAgent } from '@/lib/kingdom-agent/run-kingdom-agent';
+import type { IncomingChatMessage } from '@/lib/chat-message-normalizer';
+import type { AgentProvider } from '@/lib/kingdom-agent/providers';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 type MiniMessage = {
   role: 'user' | 'assistant' | 'system';
   content: string;
 };
 
-function buildModel(provider: ByokProviderId, apiKey: string, model: string) {
-  switch (provider) {
-    case 'grok':
-      return createXai({ apiKey })(model);
-    case 'anthropic':
-      return createAnthropic({ apiKey })(model);
-    case 'gemini':
-      return createGoogleGenerativeAI({ apiKey })(model);
-    case 'groq':
-      return createGroq({ apiKey })(model);
-    case 'kimi':
-      return createOpenAI({ apiKey, baseURL: 'https://api.moonshot.ai/v1' })(model);
-    case 'openrouter':
-      return createOpenAI({ apiKey, baseURL: 'https://openrouter.ai/api/v1' })(model);
-    case 'ollama': {
-      let host = apiKey?.trim() || 'http://localhost:11434';
-      if (!host.endsWith('/v1')) {
-        host = host.replace(/\/$/, '');
-        host = host.endsWith('/api') ? host.replace(/\/api$/, '/v1') : `${host}/v1`;
-      }
-      return createOpenAI({ apiKey: 'ollama', baseURL: host })(model);
-    }
-    case 'bonsai':
-      return createOpenAI({ apiKey: 'bonsai', baseURL: 'http://localhost:8080/v1' })(model);
-    case 'kingdom':
-      return createOpenAI({
-        apiKey: apiKey || process.env.HF_TOKEN || '',
-        baseURL: HF_INFERENCE_ROUTER_BASE,
-      })(model);
-    case 'openai':
-    default:
-      return createOpenAI({ apiKey })(model);
-  }
-}
-
 export async function OPTIONS(req: Request) {
   return miniOptionsResponse(req);
 }
 
 /**
- * Server-side BYOK completion for Mini widget.
- * Loads encrypted settings from Supabase — same path as blxckchat.jexxx.us/chat.
+ * Kingdom Agent for Mini widget — same tool stack as /api/agent (VEIL, TV, vault CRUD, Law, Docs).
+ * Server-side BYOK + Bearer Clerk JWT from mini.blxckchat.jexxx.us.
  */
 export async function POST(req: Request) {
   const origin = req.headers.get('origin');
+  const cors = miniCorsHeaders(origin);
+
   const userId = await getServerUserIdFromRequest(req);
   if (!userId) {
     return NextResponse.json(
       { error: 'Unauthorized', message: 'Sign in with the same Clerk account as BLXCKCHAT.' },
-      { status: 401, headers: miniCorsHeaders(origin) },
+      { status: 401, headers: cors },
     );
   }
 
-  let body: { messages?: MiniMessage[]; systemPrompt?: string };
+  let body: {
+    messages?: MiniMessage[];
+    systemPrompt?: string;
+    mode?: 'venus' | 'innocent';
+  };
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json(
-      { error: 'Invalid JSON' },
-      { status: 400, headers: miniCorsHeaders(origin) },
-    );
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400, headers: cors });
   }
 
   const settings = await loadUserByokSettings(userId);
@@ -88,45 +56,57 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error: 'BYOK_NOT_CONFIGURED',
-        message:
-          'Set up your API key at blxckchat.jexxx.us/chat (⚙️ settings), then try again.',
+        message: 'Set up your API key at blxckchat.jexxx.us/chat (⚙️ settings), then try again.',
       },
-      { status: 403, headers: miniCorsHeaders(origin) },
+      { status: 403, headers: cors },
     );
   }
 
-  const messages = (body.messages ?? []).map((m) => ({
-    role: m.role === 'system' ? 'system' as const : m.role === 'user' ? 'user' as const : 'assistant' as const,
+  const incomingMessages: IncomingChatMessage[] = (body.messages ?? []).map((m) => ({
+    role: m.role,
     content: m.content,
   }));
 
-  const systemPrompt = body.systemPrompt?.trim();
-  const aiMessages = systemPrompt
-    ? [{ role: 'system' as const, content: systemPrompt }, ...messages.filter((m) => m.role !== 'system')]
-    : messages;
-
   try {
-    const { text } = await generateText({
-      model: buildModel(byok.activeProvider, byok.apiKey, byok.model),
-      messages: aiMessages,
-    });
+    const result = await runWithAccountSessionResolver(
+      () => resolveWebAccountSessionFromRequest(req),
+      async () => {
+        const sessionResult = await resolveWebAccountSession();
+        if (!sessionResult.ok) {
+          throw new Error(sessionResult.message);
+        }
+
+        return runKingdomAgent({
+          session: sessionResult.session,
+          messages: incomingMessages,
+          provider: byok.activeProvider as AgentProvider,
+          apiKey: byok.apiKey,
+          model: byok.model,
+          mode: body.mode ?? 'venus',
+          projectInstructions: body.systemPrompt?.trim() ?? '',
+        });
+      },
+    );
 
     return NextResponse.json(
       {
-        text,
-        provider: byok.activeProvider,
-        model: byok.model,
+        text: result.text,
+        provider: result.provider,
+        model: result.model,
+        agent: true,
+        steps: result.steps,
+        signature: '♡💦 BLXCKCHAT Kingdom Agent',
       },
-      { headers: miniCorsHeaders(origin) },
+      { headers: cors },
     );
   } catch (error) {
-    console.error('[Mini Agent] completion error:', error);
+    console.error('[Mini Kingdom Agent] error:', error);
     return NextResponse.json(
       {
         error: 'COMPLETION_FAILED',
         message: error instanceof Error ? error.message : 'AI request failed',
       },
-      { status: 500, headers: miniCorsHeaders(origin) },
+      { status: 500, headers: cors },
     );
   }
 }

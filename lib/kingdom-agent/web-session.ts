@@ -2,9 +2,11 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { createClient } from "@supabase/supabase-js";
 import {
   getServerAuthSession,
+  getServerAuthSessionFromRequest,
   getServerSessionToken,
 } from "@/lib/serverAuth";
 import { createUserSupabaseClient, loadWebSupabaseEnv } from "@/lib/user-supabase";
+import { getRequestSessionResolver } from "@/lib/kingdom-agent/request-session";
 import type {
   AccountSessionResult,
   AuthenticatedAccountSession,
@@ -34,21 +36,11 @@ function createOperatorSchemaClient(
   });
 }
 
-/**
- * Resolve Clerk cookie session → RLS-scoped MAMAbase clients (CLI parity).
- */
-export async function resolveWebAccountSession(): Promise<AccountSessionResult> {
-  const authSession = await getServerAuthSession();
-  if (!authSession) {
-    return {
-      ok: false,
-      reason: "not_signed_in",
-      message: "Sign in to BLXCKCHAT to access your vault, playlists, and empire tools.",
-    };
-  }
-
-  const { userId, sessionToken: accessToken } = authSession;
-
+async function buildAuthenticatedSession(
+  userId: string,
+  accessToken: string,
+  getAccessToken: () => Promise<string>,
+): Promise<AccountSessionResult> {
   const env = loadWebSupabaseEnv();
   if (!env) {
     return {
@@ -87,8 +79,6 @@ export async function resolveWebAccountSession(): Promise<AccountSessionResult> 
     };
   }
 
-  const getAccessToken = async () =>
-    (await getServerSessionToken()) ?? accessToken;
   const isSuperAdmin = isSuperAdminClerkUser(userId);
   const operatorEnv = isSuperAdmin ? loadOperatorEnv() : null;
 
@@ -125,4 +115,49 @@ export async function resolveWebAccountSession(): Promise<AccountSessionResult> 
   }
 
   return { ok: true, session };
+}
+
+/**
+ * Resolve Clerk cookie session → RLS-scoped Supabase clients (CLI parity).
+ * When inside runWithAccountSessionResolver (Mini Bearer), uses per-request resolver.
+ */
+export async function resolveWebAccountSession(): Promise<AccountSessionResult> {
+  const requestResolver = getRequestSessionResolver();
+  if (requestResolver) {
+    return requestResolver();
+  }
+
+  const authSession = await getServerAuthSession();
+  if (!authSession) {
+    return {
+      ok: false,
+      reason: "not_signed_in",
+      message: "Sign in to BLXCKCHAT to access your vault, playlists, and empire tools.",
+    };
+  }
+
+  const { userId, sessionToken: accessToken } = authSession;
+  const getAccessToken = async () =>
+    (await getServerSessionToken()) ?? accessToken;
+
+  return buildAuthenticatedSession(userId, accessToken, getAccessToken);
+}
+
+/** Bearer JWT from Mini widget (no shared cookie with blxckchat.jexxx.us). */
+export async function resolveWebAccountSessionFromRequest(
+  req: Request,
+): Promise<AccountSessionResult> {
+  const authSession = await getServerAuthSessionFromRequest(req);
+  if (!authSession) {
+    return {
+      ok: false,
+      reason: "not_signed_in",
+      message: "Sign in to access your vault, playlists, and empire tools.",
+    };
+  }
+
+  const { userId, sessionToken: accessToken } = authSession;
+  const getAccessToken = async () => accessToken;
+
+  return buildAuthenticatedSession(userId, accessToken, getAccessToken);
 }
