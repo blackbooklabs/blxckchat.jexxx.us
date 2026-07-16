@@ -35,6 +35,35 @@ const nextConfig = {
   
   // Trailing slashes for consistent URLs
   trailingSlash: true,
+
+  // Allow BLXCKCHAT Mini (and other jexxx.us subdomains) to fetch user-settings
+  // cross-origin with credentials so BYOK syncs automatically.
+  async headers() {
+    return [
+      {
+        source: '/api/user-settings',
+        headers: [
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: 'https://mini.blxckchat.jexxx.us',
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, PUT, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Content-Type, Authorization',
+          },
+          {
+            key: 'Access-Control-Allow-Credentials',
+            value: 'true',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
+
