@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServerUserId } from '@/lib/serverAuth';
+import { getServerUserIdFromRequest } from '@/lib/serverAuth';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import {
   decryptSettingsPayload,
@@ -11,6 +11,25 @@ import {
 } from '@/lib/byok-settings-types';
 
 export const runtime = 'nodejs';
+
+// Subdomains allowed to fetch settings cross-origin with credentials
+const ALLOWED_ORIGINS = new Set([
+  'https://mini.blxckchat.jexxx.us',
+  'https://blxckchat.jexxx.us',
+  'https://blxckbook.jexxx.us',
+  'https://dxsh.blxckbook.jexxx.us',
+]);
+
+function corsHeaders(origin: string | null) {
+  const allowedOrigin = origin && ALLOWED_ORIGINS.has(origin) ? origin : 'https://blxckchat.jexxx.us';
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Credentials': 'true',
+    'Vary': 'Origin',
+  };
+}
 
 function wrapSettings(settings: UserByokSettings) {
   return JSON.stringify({ v: BYOK_SETTINGS_VERSION, settings });
@@ -29,10 +48,17 @@ function unwrapSettings(raw: string): UserByokSettings | null {
   }
 }
 
-export async function GET() {
-  const userId = await getServerUserId();
+// Handle CORS preflight
+export async function OPTIONS(req: Request) {
+  const origin = req.headers.get('origin');
+  return new NextResponse(null, { status: 204, headers: corsHeaders(origin) });
+}
+
+export async function GET(req: Request) {
+  const origin = req.headers.get('origin');
+  const userId = await getServerUserIdFromRequest(req);
   if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders(origin) });
   }
 
   const supabase = getSupabaseAdmin();
@@ -44,43 +70,44 @@ export async function GET() {
 
   if (error) {
     if (process.env.NODE_ENV === 'development') {
-      return NextResponse.json({ settings: null, source: 'dev-fallback' });
+      return NextResponse.json({ settings: null, source: 'dev-fallback' }, { headers: corsHeaders(origin) });
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500, headers: corsHeaders(origin) });
   }
 
   if (!data?.settings_encrypted) {
-    return NextResponse.json({ settings: null });
+    return NextResponse.json({ settings: null }, { headers: corsHeaders(origin) });
   }
 
   try {
     const plain = decryptSettingsPayload(data.settings_encrypted);
     const settings = unwrapSettings(plain);
-    return NextResponse.json({
-      settings,
-      updatedAt: data.updated_at,
-    });
+    return NextResponse.json(
+      { settings, updatedAt: data.updated_at },
+      { headers: corsHeaders(origin) },
+    );
   } catch (e) {
     console.error('Failed to decrypt BYOK settings:', e);
-    return NextResponse.json({ error: 'Failed to decrypt settings' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to decrypt settings' }, { status: 500, headers: corsHeaders(origin) });
   }
 }
 
 export async function PUT(req: Request) {
-  const userId = await getServerUserId();
+  const origin = req.headers.get('origin');
+  const userId = await getServerUserIdFromRequest(req);
   if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders(origin) });
   }
 
   let body: { settings?: UserByokSettings };
   try {
     body = await req.json();
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400, headers: corsHeaders(origin) });
   }
 
   if (!body.settings?.activeProvider || !body.settings.providersConfig) {
-    return NextResponse.json({ error: 'Missing settings payload' }, { status: 400 });
+    return NextResponse.json({ error: 'Missing settings payload' }, { status: 400, headers: corsHeaders(origin) });
   }
 
   const payload = wrapSettings({
@@ -93,7 +120,7 @@ export async function PUT(req: Request) {
     encrypted = encryptSettingsPayload(payload);
   } catch (e) {
     console.error('Encrypt failed:', e);
-    return NextResponse.json({ error: 'Encryption failed' }, { status: 500 });
+    return NextResponse.json({ error: 'Encryption failed' }, { status: 500, headers: corsHeaders(origin) });
   }
 
   const supabase = getSupabaseAdmin();
@@ -108,10 +135,10 @@ export async function PUT(req: Request) {
 
   if (error) {
     if (process.env.NODE_ENV === 'development') {
-      return NextResponse.json({ ok: true, source: 'dev-fallback' });
+      return NextResponse.json({ ok: true, source: 'dev-fallback' }, { headers: corsHeaders(origin) });
     }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500, headers: corsHeaders(origin) });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true }, { headers: corsHeaders(origin) });
 }
