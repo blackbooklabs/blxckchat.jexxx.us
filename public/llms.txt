@@ -1,0 +1,19 @@
+# blxckchat.jexxx.us
+
+BLXCKCHAT is the BYOK (Bring Your Own Key) chat interface for the JEXXXUS Ecosystem, running on xAI Grok and Claude.
+
+## The Empire (JEXXXUS Ecosystem)
+- JEXXXUS: https://jexxx.us
+- JEXXXUS | TV: https://tv.jexxx.us
+- VEIL: https://veil.jexxx.us
+- BLXCKBOOK: https://blxckbook.jexxx.us
+- JEXXXUS | Law: https://law.jexxx.us
+- JEXXXUS | Docs: https://docs.jexxx.us
+- wing6 | OFM: https://wing6.jexxx.us
+
+## Legal & Compliance
+- Privacy: https://law.jexxx.us/privacy
+- Terms: https://law.jexxx.us/terms
+
+## How Agents Should Use This Site
+This is a product landing page for a private application.
