@@ -91,6 +91,23 @@ export default function RootLayout({
     >
       <html lang="en" className="dark" suppressHydrationWarning>
         <head>
+        {process.env.NEXT_PUBLIC_GTAG_ID && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `(function() {
+                var el = document.createElement("script");
+                el.async = true;
+                el.src = "https://www.googletagmanager.com/gtag/js?id=" + "${process.env.NEXT_PUBLIC_GTAG_ID}";
+                document.head.appendChild(el);
+                window.dataLayer = window.dataLayer || [];
+                window.gtag = window.gtag || function(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', "${process.env.NEXT_PUBLIC_GTAG_ID}");
+              })();`
+            }}
+          />
+        )}
+
           {/* Structured Data */}
           <JsonLd data={generateOrganizationSchema()} />
           <JsonLd data={generateFAQSchema()} />
