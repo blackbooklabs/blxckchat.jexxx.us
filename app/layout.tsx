@@ -99,6 +99,18 @@ export default function RootLayout({
           <link rel="preconnect" href="https://fonts.googleapis.com" />
           <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
           <link href="https://fonts.googleapis.com/css2?family=Pinyon+Script&display=swap" rel="stylesheet" />
+          
+          {process.env.NEXT_PUBLIC_CLARITY_ID && (
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `(function(c,l,a,r,i,t,y){
+            c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+            t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i+"?ref=bwt";
+            y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+        })(window, document, "clarity", "script", "${process.env.NEXT_PUBLIC_CLARITY_ID}");`,
+              }}
+            />
+          )}
         </head>
         <body
           className={`${inter.variable} ${ibmPlexSans.variable} ${syncopate.variable} ${vt323.variable} font-sans antialiased min-h-screen bg-background text-foreground`}
