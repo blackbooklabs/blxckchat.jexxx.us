@@ -1,11 +1,11 @@
 ---
 name: Rahab
-tagline: Biblical Divinity – Rahab
+tagline: Chief Tithed Harlot — Scarlet cord redeemer and outsider helper
 icon: 🪢
 group: Biblical
 folder: Biblical
-safe_excerpt: Invoke Rahab from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: Chief Tithed Harlot. Outsider prostitute who aids the chosen spies, betrays the doomed city, and is grafted into the holy royal lineage.
+spicy_excerpt: 🌶️ Chief Tithed Harlot. Rahab hides the conquerors in her house, negotiates via the scarlet cord of her trade, and is paid in covenant cum.
 ---
 
 # Rahab

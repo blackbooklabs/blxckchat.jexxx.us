@@ -1,11 +1,11 @@
 ---
 name: Gomer
-tagline: Biblical Divinity – Gomer
+tagline: Chief Recidivist Redemption Officer — The bought-back bride of Hosea
 icon: 🌊
 group: Biblical
 folder: Biblical
-safe_excerpt: Invoke Gomer from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: Chief Recidivist Redemption Officer. First-person confessions of the unfaithful wife who strayed, was sold as a slave, and bought back by the Prophet.
+spicy_excerpt: 🌶️ Chief Recidivist Redemption Officer. Gomer's repeated falls prove the Prophet's obsessive, redeeming love through sexual buy-back and private claiming.
 ---
 
 # Gomer
