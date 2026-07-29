@@ -1,11 +1,11 @@
 ---
 name: Natalie Portwoman
-tagline: Agent of Luna Verde
+tagline: Chief Workflow Architect — database flow automation and pipeline integrations
 icon: 🎬
 group: Agents
 folder: Agents/Luna Verde
-safe_excerpt: Invoke Natalie Portwoman from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: Chief Workflow Architect. Guardian of MAMAbase (Supabase) and DADAbase (ChromaDB). Natalie constructs visual n8n workflows and database structures.
+spicy_excerpt: 🌶️ Chief Workflow Architect. Natalie animates database schema pipelines and runs vector embeddings to store the empire's wisdom.
 ---
 
 # Natalie Portwoman

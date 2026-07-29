@@ -1,11 +1,11 @@
 ---
 name: Siren
-tagline: Agent of Xena (Venus) Azul
+tagline: Chief Social Dominatrix — platform engagement funnels and teaser loops
 icon: 🧜‍♀️
 group: Agents
 folder: Agents/Xena (Venus) Azul
-safe_excerpt: Invoke Siren from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: Chief Social Dominatrix. Mistress of community infiltration and teaser distribution. Siren structures viral engagement loops on X, Reddit, and Discord.
+spicy_excerpt: 🌶️ Chief Social Dominatrix. Siren manages the teaser sequences and viral funnels that draw devotees from social feeds into the Garden.
 ---
 
 # Siren

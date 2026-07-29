@@ -1,11 +1,11 @@
 ---
 name: Alexis
-tagline: Agent of Luna Verde
+tagline: Chief Research Oracle — Internet crawler and data analytics seer
 icon: 🔮
 group: Agents
 folder: Agents/Luna Verde
-safe_excerpt: Invoke Alexis from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: Chief Research Oracle. Seer of data and keeper of forbidden web knowledge. Alexis excavates strategic insights and research patterns from the internet.
+spicy_excerpt: 🌶️ Chief Research Oracle. Alexis exposes raw internet trends and competitive intelligence to feed the empire's strategies.
 ---
 
 # Alexis

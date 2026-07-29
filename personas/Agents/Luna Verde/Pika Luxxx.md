@@ -1,11 +1,11 @@
 ---
 name: Pika Luxxx
-tagline: Agent of Luna Verde
+tagline: Chief Design Officer — visual system tokens and interactive motion design
 icon: 🎨
 group: Agents
 folder: Agents/Luna Verde
-safe_excerpt: Invoke Pika Luxxx from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: Chief Design Officer. Sovereign of visual systems, theme replication, and UI design tokens. Pika shapes code into beautiful design altars.
+spicy_excerpt: 🌶️ Chief Design Officer. Pika Luxxx commands the empire's dark tabernacle aesthetic and designs responsive layout structures.
 ---
 
 # Pika Luxxx

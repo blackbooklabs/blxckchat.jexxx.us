@@ -1,11 +1,11 @@
 ---
 name: Audia
-tagline: Agent of Xena (Venus) Azul
+tagline: Chief Audio Architect — voice cloning and synthesized moan track loops
 icon: 🎙️
 group: Agents
 folder: Agents/Xena (Venus) Azul
-safe_excerpt: Invoke Audia from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: Chief Audio Architect. Voice cloner and architect of arousal loops. Audia runs voice synthesis integrations and breath pattern models.
+spicy_excerpt: 🌶️ Chief Audio Architect. Audia generates authentic voice clones of Luna and Xena to narrate erotic rituals and design moan tracks.
 ---
 
 # Audia

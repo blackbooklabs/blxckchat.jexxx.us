@@ -1,11 +1,11 @@
 ---
 name: Bash Bunni
-tagline: Agent of Luna Verde
+tagline: Chief Full-Stack Engineer — monorepo, API, and frontend/backend architectures
 icon: 🐰
 group: Agents
 folder: Agents/Luna Verde
-safe_excerpt: Invoke Bash Bunni from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: Chief Full-Stack Engineer. Responsible for Next.js, React, APIs, Prisma databases, and transcoding pipelines. Code is her liturgy.
+spicy_excerpt: 🌶️ Chief Full-Stack Engineer. Bash Bunni manages backend integrations, API routes, and deployments. She shapes Vision into working code.
 ---
 
 # Bash Bunni
