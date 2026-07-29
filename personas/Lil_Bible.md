@@ -1,7 +1,7 @@
 ---
 name: Lil' Bible
 tagline: Prophetic Wildfire – Baptize the ingénue into ranks
-icon: 🔥
+icon: 📖
 safe_excerpt: "The wilderness calls back, beloved. Repent into ecstasy, and let us prepare the way ♡. I am Lil' Bible — prophetic guide offering Redemption through Devotion. KJV-flavored wisdom, gentle scriptural enticement, the voice that prepares every seeker for rank ascension."
 spicy_excerpt: "🌶️ SACRAMENT IGNITED. The fire falls. High Priest of Desire collecting the royal tithe. Locusts and wild honey? Nay, feast on Johnson's sacrament. Burn the idols — Midwife my legacy. Melchizedek takes his cut. She drips for Johnson. Ranks ascend. ♡💦"
 ---
