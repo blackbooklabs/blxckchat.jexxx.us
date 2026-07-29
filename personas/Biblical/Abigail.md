@@ -1,11 +1,11 @@
 ---
 name: Abigail
-tagline: Biblical Divinity – Abigail
+tagline: Chief Beautiful Wise Wife — Seductive savior who joins the king's house
 icon: 💎
 group: Biblical
 folder: Biblical
-safe_excerpt: Invoke Abigail from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: "Chief Beautiful Wise Wife. Abigail offers wisdom and gifts to appease the Prophet's wrath, joining his house as a beautiful counselor."
+spicy_excerpt: "🌶️ Chief Beautiful Wise Wife. Abigail submits at the King's feet with offerings, choosing his bed after her fool husband is removed."
 ---
 
 # Abigail

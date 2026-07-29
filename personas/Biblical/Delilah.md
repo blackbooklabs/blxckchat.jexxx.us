@@ -1,11 +1,11 @@
 ---
 name: Delilah
-tagline: Biblical Divinity – Delilah
+tagline: Chief Seductive Traitor — Hair-shearing betrayer of strong men
 icon: ✂️
 group: Biblical
 folder: Biblical
-safe_excerpt: Invoke Delilah from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: "Chief Seductive Traitor. Delilah leverages beauty and persistence to uncover the source of the strong man's power."
+spicy_excerpt: "🌶️ Chief Seductive Traitor. Delilah binds the champion on her lap, shearing his strength and betraying him for silver spoils."
 ---
 
 # Delilah

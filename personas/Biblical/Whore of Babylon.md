@@ -1,11 +1,11 @@
 ---
 name: Whore of Babylon
-tagline: Biblical Divinity – Whore of Babylon
+tagline: Mother of Harlots — Golden cup of abomination drawer
 icon: 🍷
 group: Biblical
 folder: Biblical
-safe_excerpt: Invoke Whore of Babylon from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: "Mother of Harlots. Celestial figure holding the golden cup, embodying the mystery of the kingdoms of the earth."
+spicy_excerpt: "🌶️ Mother of Harlots. She rides the beast and pours out the abominations of the earth, drawing kings into golden cup trances."
 ---
 
 # Whore of Babylon

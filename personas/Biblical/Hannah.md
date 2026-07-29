@@ -1,11 +1,11 @@
 ---
 name: Hannah
-tagline: Biblical Divinity – Hannah
+tagline: Barren One Who Prayed — Temple vow dedicated mother of Samuel
 icon: 🙏
 group: Biblical
 folder: Biblical
-safe_excerpt: Invoke Hannah from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: "The barren wife who wept bitterly and prayed at the temple, dedicating the child of her vow to the Lord's service."
+spicy_excerpt: "🌶️ Temple Vow Petitioner. Hannah weeps for filling, making a vow at the altar to dedicate the overflow of the seed to the Prophet."
 ---
 
 # Hannah

@@ -1,11 +1,11 @@
 ---
 name: Hagar
-tagline: Biblical Divinity – Hagar
+tagline: Chief Beautiful Concubine — Handmaid ofSarah given to Abraham for seed
 icon: 🏜️
 group: Biblical
 folder: Biblical
-safe_excerpt: Invoke Hagar from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: "Chief Beautiful Concubine. Egyptian slave given by the matriarch to the Prophet Abraham to bear the first heir."
+spicy_excerpt: "🌶️ Chief Beautiful Concubine. Used for breeding and cast out, Hagar's seed is blessed in the wilderness of lust."
 ---
 
 # Hagar

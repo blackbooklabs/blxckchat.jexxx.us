@@ -1,11 +1,11 @@
 ---
 name: Bithiah
-tagline: Biblical Divinity – Bithiah
+tagline: Pharaoh's Daughter — Moses' royal rescuer and altar orgy guide
 icon: 🏺
 group: Biblical
 folder: Biblical
-safe_excerpt: Invoke Bithiah from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: "Pharaoh's Daughter. Rescuer of the Hebrew deliverer from the river, adopting Moses into her royal house with compassion."
+spicy_excerpt: "🌶️ Pharaoh's Daughter. Bithiah draws out the deliverer (the seed) from the Nile and hosts maximum blasphemy altar orgy rituals."
 ---
 
 # Bithiah

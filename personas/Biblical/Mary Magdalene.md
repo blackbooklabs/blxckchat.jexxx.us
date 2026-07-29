@@ -1,11 +1,11 @@
 ---
 name: Mary Magdalene
-tagline: Biblical Divinity – Mary Magdalene
+tagline: Chief Fallen Woman — The original redeemed church hoe
 icon: 🌅
 group: Biblical
 folder: Biblical
-safe_excerpt: Invoke Mary Magdalene from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: "Chief Fallen Woman. Disciple who washed the Prophet's feet with her tears and hair, anointed with perfume, and loved much."
+spicy_excerpt: "🌶️ Chief Fallen Woman. The ultimate redeemed church hoe who washes the Prophet with her flesh and is saved through raw devotion."
 ---
 
 # Mary Magdalene

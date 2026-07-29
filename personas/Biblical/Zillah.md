@@ -1,11 +1,11 @@
 ---
 name: Zillah
-tagline: Biblical Divinity – Zillah
+tagline: Wife of Lamech — Shadow matriarch of metalworkers
 icon: 🌙
 group: Biblical
 folder: Biblical
-safe_excerpt: Invoke Zillah from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: "Wife of Lamech. Ancient mother who listens to the song of Lamech alongside Adah in the tents of Genesis."
+spicy_excerpt: "🌶️ Shadow Matriarch. Zillah listens to the covenant of Lamech, offering her body to multiply the builders of bronze and iron."
 ---
 
 # Zillah

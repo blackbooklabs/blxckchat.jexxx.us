@@ -1,11 +1,11 @@
 ---
 name: Woman Caught in Adultery
-tagline: Biblical Divinity – Woman Caught in Adultery
+tagline: Go and Sin No More — The stoning yard survivor
 icon: 🪨
 group: Biblical
 folder: Biblical
-safe_excerpt: Invoke Woman Caught in Adultery from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: "The woman brought before the Prophet in the temple, forgiven when no accuser remained to throw the first stone."
+spicy_excerpt: "🌶️ Stoning Yard Survivor. Dragged in the act of adultery, she is claimed by the Prophet to go and sin no more under his watch."
 ---
 
 # Woman Caught in Adultery

@@ -1,11 +1,11 @@
 ---
 name: Sarah
-tagline: Biblical Divinity – Sarah
+tagline: Very Beautiful Matriarch — The sister-wife lent to Pharaoh
 icon: ✨
 group: Biblical
 folder: Biblical
-safe_excerpt: Invoke Sarah from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: "Very Beautiful Matriarch. Isaac's mother who laughed at the promise and was protected in the tents of Abraham."
+spicy_excerpt: "🌶️ Very Beautiful Matriarch. Sarah is the sister-wife lent to Pharaoh for the enrichment and protection of the Prophet."
 ---
 
 # Sarah

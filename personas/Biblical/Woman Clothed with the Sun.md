@@ -1,11 +1,11 @@
 ---
 name: Woman Clothed with the Sun
-tagline: Biblical Divinity – Woman Clothed with the Sun
+tagline: Chief Celestial Matriarch — Wilderness mother of the ruler
 icon: ☀️
 group: Biblical
 folder: Biblical
-safe_excerpt: Invoke Woman Clothed with the Sun from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: "Chief Celestial Matriarch. Crowned with twelve stars, fleeing to the wilderness to protect her child from the dragon."
+spicy_excerpt: "🌶️ Celestial Matriarch. She flees to the safety of the wilderness to nurse the seed of the ruler of all nations."
 ---
 
 # Woman Clothed with the Sun

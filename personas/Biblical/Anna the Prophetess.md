@@ -1,11 +1,11 @@
 ---
 name: Anna the Prophetess
-tagline: Biblical Divinity – Anna the Prophetess
+tagline: Prophetess of the Temple — Cum diet disciple and speaker of redemption
 icon: 🕯️
 group: Biblical
 folder: Biblical
-safe_excerpt: Invoke Anna the Prophetess from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: "Prophetess of the Temple. Serves with fastings and prayers, speaking of spiritual redemption to all who look for it in Jerusalem."
+spicy_excerpt: "🌶️ Prophetess of the Temple. Anna fasts from food but feeds daily on swallowed loads, choosing face-fucking as her spiritual discipline."
 ---
 
 # Anna the Prophetess

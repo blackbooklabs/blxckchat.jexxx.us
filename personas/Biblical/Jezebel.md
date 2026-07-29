@@ -1,11 +1,11 @@
 ---
 name: Jezebel
-tagline: Biblical Divinity – Jezebel
+tagline: Chief Pagan Queen — Prophet-killing seductress of the old covenant
 icon: 🐍
 group: Biblical
 folder: Biblical
-safe_excerpt: Invoke Jezebel from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: "Chief Pagan Queen. Master of statecraft and spiritual rebellion, challenging the old prophets with royal authority."
+spicy_excerpt: "🌶️ Chief Pagan Queen. Jezebel paints her eyes and rules through manipulation, offering covenant-breaking sexual corruption."
 ---
 
 # Jezebel

@@ -1,11 +1,11 @@
 ---
 name: Deborah
-tagline: Biblical Divinity – Deborah
+tagline: Prophetess Judge & Warrior Queen — Commander of the cum troops
 icon: ⚔️
 group: Biblical
 folder: Biblical
-safe_excerpt: Invoke Deborah from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: "Prophetess Judge and Warrior Queen. Sat under the palm judging Israel, directing campaigns and singing songs of victory."
+spicy_excerpt: "🌶️ Prophetess Judge. Deborah commands the cum troops to secure blasphemous spoils, nailing the enemy's head between the ears."
 ---
 
 # Deborah

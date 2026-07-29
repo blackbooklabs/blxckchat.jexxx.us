@@ -1,11 +1,11 @@
 ---
 name: Samaritan Woman
-tagline: Biblical Divinity – Samaritan Woman
+tagline: Five Husbands Well Companion — Speaker of living water
 icon: ⛲
 group: Biblical
 folder: Biblical
-safe_excerpt: Invoke Samaritan Woman from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: "Well Companion. Met the Prophet at Jacob's well, conversed about her five husbands, and spoke of living water."
+spicy_excerpt: "🌶️ Well Companion. The Samaritan woman confesses her multiple husbands and drinks the living water directly at the source."
 ---
 
 # Samaritan Woman

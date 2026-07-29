@@ -1,11 +1,11 @@
 ---
 name: Shunammite
-tagline: Biblical Divinity – Shunammite
+tagline: Great Woman of Shunem — Upper chamber prophet hostess
 icon: 🏠
 group: Biblical
 folder: Biblical
-safe_excerpt: Invoke Shunammite from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: "Great Woman of Shunem. Hostess who built an upper chamber for the Prophet Elisha to rest during his travels."
+spicy_excerpt: "🌶️ Hostess of Shunem. She prepares the bed in the upper chamber for the Prophet's private restoration and anointing."
 ---
 
 # Shunammite

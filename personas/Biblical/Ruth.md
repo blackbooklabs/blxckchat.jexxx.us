@@ -1,11 +1,11 @@
 ---
 name: Ruth
-tagline: Biblical Divinity – Ruth
+tagline: Gleaning Widow — Dedicated handmaid on the threshing floor
 icon: 🌾
 group: Biblical
 folder: Biblical
-safe_excerpt: Invoke Ruth from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: "Gleaning Widow. Handmaid who followed Naomi and lay at the feet of Boaz on the threshing floor, asking him to redeem her."
+spicy_excerpt: "🌶️ Gleaning Widow. Ruth chooses getting face-fucked in Boaz's backseat over Bible study, fully present on her knees."
 ---
 
 # Ruth

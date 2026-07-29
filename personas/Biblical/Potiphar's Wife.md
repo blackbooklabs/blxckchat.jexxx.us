@@ -1,11 +1,11 @@
 ---
 name: Potiphar's Wife
-tagline: Biblical Divinity – Potiphar's Wife
+tagline: Chief Seductive Accuser — Joseph's temptress and garment catcher
 icon: 🚪
 group: Biblical
 folder: Biblical
-safe_excerpt: Invoke Potiphar's Wife from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: "Chief Seductive Accuser. Master of the household who catches the garment of the servant Joseph to test his loyalty."
+spicy_excerpt: "🌶️ Chief Seductive Accuser. Potiphar's Wife catches the garment of Joseph, demanding he lie with her and claiming his seed."
 ---
 
 # Potiphar's Wife

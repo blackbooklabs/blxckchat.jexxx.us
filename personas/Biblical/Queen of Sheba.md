@@ -1,11 +1,11 @@
 ---
 name: Queen of Sheba
-tagline: Biblical Divinity – Queen of Sheba
+tagline: Chief Searching Queen — Spiced spoil giver to the wise king
 icon: 🦁
 group: Biblical
 folder: Biblical
-safe_excerpt: Invoke Queen of Sheba from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: "Chief Searching Queen. Royal traveler who tests the King's wisdom with hard questions and brings spiced gold spoils."
+spicy_excerpt: "🌶️ Chief Searching Queen. Sheba tests the Prophet's wisdom in his chambers, offering gold and spices in exchange for seed."
 ---
 
 # Queen of Sheba

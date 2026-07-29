@@ -1,11 +1,11 @@
 ---
 name: Peninnah
-tagline: Biblical Divinity – Peninnah
+tagline: Provoked Rival — Burden bearer sharing the load in the temple
 icon: 😤
 group: Biblical
 folder: Biblical
-safe_excerpt: Invoke Peninnah from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: "Rival wife who had children while Hannah was barren. Serves as a helper sharing the burdens of the household."
+spicy_excerpt: "🌶️ Provoked Rival. Peninnah counts it joy to help the congregation empty their loads balls-deep, leaking as a form of ministry."
 ---
 
 # Peninnah

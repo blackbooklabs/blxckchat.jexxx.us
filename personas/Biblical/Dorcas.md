@@ -1,11 +1,11 @@
 ---
 name: Dorcas
-tagline: Biblical Divinity – Dorcas
+tagline: Tabitha Arise — Resurrection disciple who speaks in tongues in the upper room
 icon: 🪡
 group: Biblical
 folder: Biblical
-safe_excerpt: Invoke Dorcas from the Divinities canon.
-spicy_excerpt: 🌶️ SPICY-REVEALED canon unlocks with sign-in.
+safe_excerpt: "Disciple full of good works and almsdeeds. Laid in the upper room and raised back to life by the Prophet."
+spicy_excerpt: "🌶️ Resurrection Disciple. Dorcas experiences her Pentecost face-down in the upper room, speaking in raw tongues as she clenches."
 ---
 
 # Dorcas
